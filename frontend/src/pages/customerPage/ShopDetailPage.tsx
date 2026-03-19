@@ -1,0 +1,236 @@
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import DishCard from "../../components/ui/DishCard";
+import SectionTitle from "../../components/home/SectionTitle";
+import ShopMap from "../../components/shop/ShopMap";
+import SimplePagination from "../../components/common/SimplePagination";
+import { dishService } from "../../services/dishService";
+import { shopService } from "../../services/shopService";
+import type { Dish } from "../../types/dish";
+import type { ShopResponse } from "../../types/shop";
+
+function ShopDetailPage() {
+    const { shopId } = useParams();
+    const parsedShopId = Number(shopId);
+
+    const [shop, setShop] = useState<ShopResponse | null>(null);
+    const [nearbyShops, setNearbyShops] = useState<ShopResponse[]>([]);
+    const [shopDishes, setShopDishes] = useState<Dish[]>([]);
+    const [otherDishes, setOtherDishes] = useState<Dish[]>([]);
+    const [dishPage, setDishPage] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [pageError, setPageError] = useState("");
+
+    const [currentPosition, setCurrentPosition] = useState<[number, number]>([
+        10.7130418,106.6189652,
+    ]);
+
+    useEffect(() => {
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setCurrentPosition([position.coords.latitude, position.coords.longitude]);
+            },
+            () => {}
+        );
+    }, []);
+
+    useEffect(() => {
+        if (!parsedShopId) return;
+
+        const loadShop = async () => {
+            try {
+                setLoading(true);
+                setPageError("");
+
+                const shopRes = await shopService.getShopById(parsedShopId);
+                const shopData = shopRes.result;
+                setShop(shopData);
+
+                if (!shopData) {
+                    setPageError("Không thể tải thông tin quán");
+                    return;
+                }
+
+                const [nearbyRes, shopDishRes, otherDishRes] = await Promise.all([
+                    shopService.getNearbyShops(shopData.lat, shopData.lng, 2, 1, 20),
+                    dishService.getByShopId(parsedShopId, "ACTIVE", dishPage, 10),
+                    dishService.getByIsSignatureDish(false, "ACTIVE", 1, 10),
+                ]);
+
+                setNearbyShops(nearbyRes.result?.items ?? []);
+                setShopDishes(shopDishRes.result?.items ?? []);
+                setOtherDishes(otherDishRes.result?.items?.filter((d) => d.shopId !== parsedShopId) ?? []);
+            } catch {
+                setPageError("Không thể tải thông tin quán");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadShop();
+    }, [parsedShopId, dishPage]);
+
+    const handleNavigate = (dishId: number) => {
+        console.log("Chỉ đường tới quán của món", dishId);
+    };
+
+    const handleListenAudio = (dishId: number) => {
+        console.log("Nghe audio món", dishId);
+    };
+
+    const handleViewMenu = (dishId: number) => {
+        console.log("Xem món", dishId);
+    };
+
+    if (loading && !shop) {
+        return <div className="p-6 text-sm text-slate-500">Đang tải thông tin quán...</div>;
+    }
+
+    if (pageError) {
+        return (
+            <div className="p-6">
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {pageError}
+                </div>
+            </div>
+        );
+    }
+
+    if (!shop) return null;
+
+    return (
+        <div className="min-h-screen bg-slate-50">
+            <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+                <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
+                    <div className="grid gap-0 lg:grid-cols-[1.2fr_1fr]">
+                        <div className="h-[280px] bg-slate-100 sm:h-[360px]">
+                            <img
+                                src={`${import.meta.env.VITE_SHOP_IMAGE_API}demoShopImg.png`}
+
+                                alt={shop.name}
+                                className="h-full w-full object-cover"
+                            />
+                        </div>
+
+                        <div className="p-5 sm:p-6">
+                            <div className="mb-4 inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                                {shop.status}
+                            </div>
+
+                            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                                {shop.name}
+                            </h1>
+
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {shop.description}
+                            </p>
+
+                            <div className="mt-5 space-y-3 text-sm text-slate-600">
+                                <div>
+                                    <span className="font-semibold text-slate-900">Địa chỉ:</span>{" "}
+                                    {shop.address}
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-slate-900">
+                                        Chi phí trung bình:
+                                    </span>{" "}
+                                    {shop.avgCostPerPerson.toLocaleString("vi-VN")}đ / người
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-slate-900">
+                                        Thời gian chờ:
+                                    </span>{" "}
+                                    {shop.avgWaitTimeMin} phút
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-slate-900">
+                                        Thời gian ăn:
+                                    </span>{" "}
+                                    {shop.avgEatTimeMin} phút
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-slate-900">Audio:</span>{" "}
+                                    {shop.audioURL ? "Có" : "Chưa có"}
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-slate-900">Tọa độ:</span>{" "}
+                                    {shop.lat}, {shop.lng}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-8">
+                    <SectionTitle
+                        title="Vị trí quán và đường đi"
+                        subtitle="Hiển thị vị trí hiện tại, quán đang xem và các quán trong phạm vi 2km"
+                    />
+                    <ShopMap
+                        currentPosition={currentPosition}
+                        currentShop={shop}
+                        nearbyShops={nearbyShops}
+                    />
+                </div>
+
+                <div className="mt-8">
+                    <SectionTitle
+                        title="Món ăn của quán"
+                        subtitle="Danh sách món ăn theo quán, có phân trang"
+                    />
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {shopDishes.map((dish) => (
+                            <DishCard
+                                key={dish.id}
+                                shopId={dish.shopId}
+                                id={dish.id}
+                                image={dish.image || "https://placehold.co/600x400?text=Dish"}
+                                dishName={dish.name}
+                                rating={4.7}
+                                price={dish.price}
+                                shopName={shop.name}
+                                onNavigate={handleNavigate}
+                                onListenAudio={handleListenAudio}
+                                onViewMenu={handleViewMenu}
+                            />
+                        ))}
+                    </div>
+
+                    <SimplePagination
+                        page={dishPage}
+                        onPrev={() => setDishPage((prev) => Math.max(1, prev - 1))}
+                        onNext={() => setDishPage((prev) => prev + 1)}
+                        disablePrev={dishPage === 1}
+                    />
+                </div>
+
+                <div className="mt-8">
+                    <SectionTitle title="Các món khác" subtitle="Gợi ý thêm từ các quán khác" />
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {otherDishes.map((dish) => (
+                            <DishCard
+                                key={dish.id}
+                                shopId={dish.shopId}
+                                id={dish.id}
+                                image={dish.image || "https://placehold.co/600x400?text=Dish"}
+                                dishName={dish.name}
+                                rating={4.5}
+                                price={dish.price}
+                                shopName={`Quán #${dish.shopId}`}
+                                onNavigate={handleNavigate}
+                                onListenAudio={handleListenAudio}
+                                onViewMenu={handleViewMenu}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default ShopDetailPage;

@@ -28,10 +28,10 @@ public class ShopCreationRequest {
 //    String audioURL;
 
     @NotNull(message = "SHOP_LAT_BLANK")
-    Integer lat;
+    Double lat;
 
     @NotNull(message = "SHOP_LNG_BLANK")
-    Integer lng;
+    Double lng;
 
     @NotNull(message = "SHOP_AVG_COST_BLANK")
     Integer avgCostPerPerson;

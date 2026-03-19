@@ -4,6 +4,7 @@ package com.audioguide.controller;
 import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.authDTO.LoginRequest;
 import com.audioguide.dto.authDTO.LoginResponse;
+import com.audioguide.dto.userDTO.UserResponse;
 import com.audioguide.service.AuthenticationService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -26,6 +27,14 @@ public class AuthenticationController {
     ApiResponse<LoginResponse> authenticate(@RequestBody @Valid LoginRequest request){
         var result =  authenticationService.authenticate(request);
         return ApiResponse.<LoginResponse>builder()
+                .result(result)
+                .build();
+    }
+
+    @PostMapping("/me")
+    ApiResponse<UserResponse> getCurrentUser() throws Exception {
+        var result = authenticationService.getUserFromToken();
+        return ApiResponse.<UserResponse>builder()
                 .result(result)
                 .build();
     }

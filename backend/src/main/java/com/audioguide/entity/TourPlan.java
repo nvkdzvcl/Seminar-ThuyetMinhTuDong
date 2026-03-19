@@ -38,6 +38,7 @@ public class TourPlan {
 
     LocalDate createdAt;
 
+    @Enumerated(EnumType.STRING)
     Status status;
 
 

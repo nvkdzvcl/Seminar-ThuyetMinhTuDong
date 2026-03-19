@@ -1,5 +1,6 @@
 package com.audioguide.service;
 
+import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.dishDTO.DishCreationRequest;
 import com.audioguide.dto.dishDTO.DishResponse;
 import com.audioguide.dto.dishDTO.DishUpdateRequest;
@@ -17,6 +18,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -150,4 +153,74 @@ public class DishService {
 
         return dishMapper.toDishResponseFromDish(dish);
     }
+
+    public PagingDto<DishResponse> searchDishes(String name, Status status, int page, int size) {
+        log.info("Searching dishes with name {} and status {} page {} size {}", name, status, page, size);
+        if (page < 1) throw new AppException(ErrorCode.INVALID_PAGE_NUMBER);
+        if (size < 1) throw new AppException(ErrorCode.INVALID_PAGE_SIZE);
+
+        Pageable pageable = PageRequest.of(page - 1, size);
+
+        var dishPage = dishRepository.findByNameContainingIgnoreCaseAndStatus(name, status, pageable);
+
+        List<DishResponse> items = dishPage.getContent()
+                .stream()
+                .map(dishMapper::toDishResponseFromDish)
+                .toList();
+
+        return new PagingDto<>(
+                items,
+                dishPage.getTotalElements(),
+                dishPage.getNumber() + 1,
+                dishPage.getSize(),
+                dishPage.getTotalPages()
+        );
+    }
+
+
+    public PagingDto<DishResponse> getSignatureDish(boolean isSignature, Status status, int page, int size) {
+        if (page < 1) throw new AppException(ErrorCode.INVALID_PAGE_NUMBER);
+        if (size < 1 || size > 10) throw new AppException(ErrorCode.INVALID_PAGE_SIZE);
+
+        Pageable pageable = PageRequest.of(page - 1, size);
+
+        var dishPage = dishRepository.findByIsSignatureAndStatus(isSignature, status, pageable);
+
+        List<DishResponse> items = dishPage.getContent()
+                .stream()
+                .map(dishMapper::toDishResponseFromDish)
+                .toList();
+
+        return new PagingDto<>(
+                items,
+                dishPage.getTotalElements(),
+                dishPage.getNumber() + 1,
+                dishPage.getSize(),
+                dishPage.getTotalPages()
+        );
+
+    }
+
+
+    public PagingDto<DishResponse> getDishesByShopId(Integer shopId, Status status, Integer page, Integer size) {
+        if (page < 1) throw new AppException(ErrorCode.INVALID_PAGE_NUMBER);
+        if (size < 1 ) throw new AppException(ErrorCode.INVALID_PAGE_SIZE);
+
+        Pageable pageable = PageRequest.of(page - 1, size);
+
+        var dishes = dishRepository.findByShopIdAndStatus(shopId, status, pageable);
+        List<DishResponse> items = dishes.stream()
+                .map(dishMapper::toDishResponseFromDish)
+                .toList();
+
+        return new PagingDto<>(
+                items,
+                dishes.getTotalElements(),
+                dishes.getNumber() + 1,
+                dishes.getSize(),
+                dishes.getTotalPages()
+        );
+    }
+
+
 }

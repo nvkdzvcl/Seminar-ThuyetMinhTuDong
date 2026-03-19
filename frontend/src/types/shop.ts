@@ -1,0 +1,27 @@
+export type ShopResponse = {
+  id: number;
+  ownerId: string;
+  name: string;
+  address: string;
+  description: string;
+  imageName: string;
+  audioURL: string;
+  lat: number;
+  lng: number;
+  avgCostPerPerson: number;
+  avgWaitTimeMin: number;
+  avgEatTimeMin: number;
+  createdAt: string;
+  status: string;
+};
+
+export type ShopCreationRequest = {
+  name: string;
+  address: string;
+  description: string;
+  lat: number;
+  lng: number;
+  avgCostPerPerson: number;
+  avgWaitTimeMin: number;
+  avgEatTimeMin: number;
+};

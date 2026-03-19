@@ -47,6 +47,10 @@ public enum ErrorCode {
     SHOP_ID_NOT_BLANK( "SHOP_ID_NOT_BLANK", HttpStatus.BAD_REQUEST, "Shop ID is required for dish creation"),
     ORDER_NOT_FOUND( "ORDER_NOT_FOUND", HttpStatus.NOT_FOUND, "Order not found"),
 
+
+    INVALID_LAT_LNG("INVALID_LAT_LNG", HttpStatus.BAD_REQUEST, "Latitude hoặc longitude không hợp lệ"),
+    INVALID_RADIUS("INVALID_RADIUS", HttpStatus.BAD_REQUEST, "Radius phải lớn hơn 0"),
+
 // authentication/authorization
     UNAUTHENTICATED( "UNAUTHENTICATED", HttpStatus.UNAUTHORIZED, "Unauthenticated"),
     UNAUTHORIZED( "UNAUTHORIZED", HttpStatus.FORBIDDEN, "You do not have permission"),

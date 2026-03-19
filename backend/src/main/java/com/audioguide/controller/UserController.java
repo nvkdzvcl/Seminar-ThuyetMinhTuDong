@@ -3,9 +3,7 @@ package com.audioguide.controller;
 
 import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.apiDTO.PagingDto;
-import com.audioguide.dto.userDTO.UserCreationRequest;
-import com.audioguide.dto.userDTO.UserResponse;
-import com.audioguide.dto.userDTO.UserUpdateRequest;
+import com.audioguide.dto.userDTO.*;
 import com.audioguide.enums.SortDirection;
 import com.audioguide.enums.UserStatus;
 import com.audioguide.service.UserService;
@@ -68,6 +66,16 @@ public class UserController {
         userService.deleteUserById(id);
         return ApiResponse.<Boolean>builder()
                 .message("User deleted successfully")
+                .build();
+    }
+
+
+
+    @PostMapping("/register")
+    ApiResponse<UserRegisterResponse> registerUser(@RequestBody @Valid UserRegister request) {
+        return ApiResponse.<UserRegisterResponse>builder()
+                .message("User registered successfully")
+                .result(userService.registerUser(request))
                 .build();
     }
 }

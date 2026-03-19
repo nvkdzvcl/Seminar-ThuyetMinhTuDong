@@ -37,3 +37,6 @@ springdoc:
         path: /swagger
     api-docs:
         path: /api-docs
+
+file:
+    upload-dir: D:/Study/SGU/NAM_3/Ki_2/SEMINAR/VinhKhanh_Audio_Guide/backend/uploads/

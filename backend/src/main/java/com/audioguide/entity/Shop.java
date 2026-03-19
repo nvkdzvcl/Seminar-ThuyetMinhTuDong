@@ -37,13 +37,14 @@ public class Shop {
     String description;
     String imageName;
     String audioURL;
-    Integer lat;
-    Integer lng;
+    Double lat;
+    Double lng;
 
     Integer avgCostPerPerson;
     Integer avgWaitTimeMin;   // in minutes
     Integer avgEatTimeMin;
     LocalDate createdAt;
+    @Enumerated(EnumType.STRING)
     Status status;
 
 }

@@ -25,8 +25,8 @@ public class ShopResponse {
     String description;
     String imageName;
     String audioURL;
-    Integer lat;
-    Integer lng;
+    Double lat;
+    Double lng;
 
     Integer avgCostPerPerson;
     Integer avgWaitTimeMin;

@@ -1,7 +1,7 @@
 package com.audioguide.dto.tourStopDTO;
 
 
-import com.audioguide.dto.tourStopItemDTP.TourStopItemResponse;
+import com.audioguide.dto.tourStopItemDTO.TourStopItemResponse;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 

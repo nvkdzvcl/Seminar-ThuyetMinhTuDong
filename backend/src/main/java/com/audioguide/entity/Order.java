@@ -41,6 +41,7 @@ public class Order {
 
     PaymentStatus paymentStatus;
 
+    @Enumerated(EnumType.STRING)
     Status status;
 
     @OneToMany(mappedBy = "order", fetch = FetchType.EAGER)

@@ -39,5 +39,5 @@ build/
 .DS_Store
 
 **/coverage/
-# *.yaml
+*.yaml
 /note.md

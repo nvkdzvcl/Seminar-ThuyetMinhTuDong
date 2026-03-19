@@ -37,8 +37,8 @@ public class ShopService {
     ShopMapper shopMapper;
     UserRepository userRepository;
 
-    Path IMAGE_DIR = Path.of("uploads/images");
-    Path AUDIO_DIR = Path.of("uploads/audios");
+    Path IMAGE_DIR = Path.of("uploads/shop-images");
+    Path AUDIO_DIR = Path.of("uploads/shop-audios");
 
     public ShopResponse createShop(Integer ownerId, ShopCreationRequest request) {
 
@@ -183,6 +183,34 @@ public class ShopService {
 
         return audioUrl;
     }
+
+
+    public PagingDto<ShopResponse> searchShops(String name, Status status, int page, int size) {
+        var pageable = PageRequest.of(page - 1, size);
+        var shopPage = shopRepository.findByNameContainingIgnoreCaseAndStatus(name, status, pageable);
+        var shopResponses = shopMapper.toShopResponseFromShopList(shopPage.getContent());
+        return PagingDto.<ShopResponse>builder()
+                .items(shopResponses)
+                .currentPage(page)
+                .totalItems(shopPage.getTotalElements())
+                .totalPages(shopPage.getTotalPages())
+                .build();
+    }
+
+
+    public PagingDto<ShopResponse> getShopNearLocation(double lat, double lng, double radius, Integer page, Integer size) {
+        var pageable = PageRequest.of(page - 1, size);
+        var shopPage = shopRepository.findNearbyShops(lat, lng, radius, Status.ACTIVE, pageable);
+        var shopResponses = shopMapper.toShopResponseFromShopList(shopPage.getContent());
+        return PagingDto.<ShopResponse>builder()
+                .items(shopResponses)
+                .currentPage(page)
+                .totalItems(shopPage.getTotalElements())
+                .totalPages(shopPage.getTotalPages())
+                .build();
+    }
+
+
 
 
 

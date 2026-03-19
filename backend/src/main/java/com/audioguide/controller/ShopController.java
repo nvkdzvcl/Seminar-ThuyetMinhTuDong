@@ -84,7 +84,8 @@ public class ShopController {
                 .build();
     }
 
-    @PostMapping(value = "/{shopId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@securityService.isOwnerOrAmin(#shopId)")
+    @PostMapping(value = "/{shopId}/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<String> uploadShopImage(
             @PathVariable Integer shopId,
             @RequestParam("file") MultipartFile file) {
@@ -94,7 +95,7 @@ public class ShopController {
                 .build();
     }
 
-    @PostMapping(value = "/{shopId}/audio", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/{shopId}/upload-audio", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<String> uploadShopAudio(
             @PathVariable Integer shopId,
             @RequestParam("file") MultipartFile file) {
@@ -104,4 +105,34 @@ public class ShopController {
                 .build();
     }
 
+
+    @GetMapping("/search")
+    public ApiResponse<PagingDto<ShopResponse>> searchShops(
+            @RequestParam String name,
+            @RequestParam(required = false) Status status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.<PagingDto<ShopResponse>>builder()
+                .message("Search shops successfully")
+                .result(shopService.searchShops(name, status, page, size))
+                .build();
+    }
+
+
+
+    @GetMapping("/nearby")
+    public ApiResponse<PagingDto<ShopResponse>> getNearbyShops(
+            @RequestParam double latitude,
+            @RequestParam double longitude,
+            @RequestParam(defaultValue = "2") double radius,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.<PagingDto<ShopResponse>>builder()
+                .message("Get nearby shops successfully")
+                .result(shopService.getShopNearLocation(latitude, longitude, radius, page, size))
+                .build();
+
+    }
 }

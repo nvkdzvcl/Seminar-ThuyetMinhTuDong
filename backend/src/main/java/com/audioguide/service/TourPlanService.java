@@ -5,7 +5,7 @@ package com.audioguide.service;
 import com.audioguide.dto.tourPlanDTO.TourPlanCreationRequest;
 import com.audioguide.dto.tourPlanDTO.TourPlanResponse;
 import com.audioguide.dto.tourStopDTO.TourStopResponse;
-import com.audioguide.dto.tourStopItemDTP.TourStopItemResponse;
+import com.audioguide.dto.tourStopItemDTO.TourStopItemResponse;
 import com.audioguide.entity.Dish;
 import com.audioguide.entity.Shop;
 import com.audioguide.entity.TourPlan;

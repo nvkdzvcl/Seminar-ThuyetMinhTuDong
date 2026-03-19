@@ -58,28 +58,17 @@ VALUES
 -- thường Hibernate sẽ lưu ordinal -> ACTIVE = 0, DELETED = 1
 -- =========================
 INSERT INTO shop
-(id, owner_id, shop_type_id, name, address, description, image_name, audioURL, lat, lng,
- avg_cost_per_person, avg_wait_time_min, avg_eat_time_min, created_at, status)
+(id, owner_id, shop_type_id, name, address, description, image_name, audioURL, lat, lng, avg_cost_per_person, avg_wait_time_min, avg_eat_time_min, created_at, status)
 VALUES
-(1, 2, 1, 'Oc Dao Vinh Khanh',          '15 Vinh Khanh, Quan 4, TP.HCM',
- 'Chuyen cac mon oc tuoi song va nuong muoi ot', 'shop1.jpg', 'shop1.mp3',
- 1080, 1068, 120000, 12, 35, '2026-03-01', 0),
+(1, 2, 1, 'Oc Dao Vinh Khanh', '15 Vinh Khanh, Quan 4, TP.HCM', 'Chuyen cac mon oc tuoi song va nuong muoi ot', 'shop1.jpg', 'shop1.mp3', 10.7607194, 106.7007169, 120000, 12, 35, '2026-03-01', "ACTIVE"),
 
-(2, 3, 2, 'Banh Canh Cua Co Dung',      '25 Vinh Khanh, Quan 4, TP.HCM',
- 'Banh canh cua dac biet, nuoc dung dam da', 'shop2.jpg', 'shop2.mp3',
- 1082, 1069, 85000, 8, 25, '2026-03-01', 0),
+(2, 3, 2, 'Banh Canh Cua Co Dung',      '25 Vinh Khanh, Quan 4, TP.HCM', 'Banh canh cua dac biet, nuoc dung dam da', 'shop2.jpg', 'shop2.mp3', 10.7612809, 106.7033943, 85000, 8, 25, '2026-03-01', "ACTIVE"),
 
-(3, 4, 3, 'An Vat Cua Pho',             '39 Vinh Khanh, Quan 4, TP.HCM',
- 'Banh trang, ca vien chien, tokbokki va mon an vat', 'shop3.jpg', 'shop3.mp3',
- 1085, 1070, 60000, 6, 20, '2026-03-01', 0),
+(3, 4, 3, 'An Vat Cua Pho',             '39 Vinh Khanh, Quan 4, TP.HCM', 'Banh trang, ca vien chien, tokbokki va mon an vat', 'shop3.jpg', 'shop3.mp3', 10.7611719, 106.7033665, 60000, 6, 20, '2026-03-01', "ACTIVE"),
 
-(4, 5, 4, 'Tra Sua Dem Sai Gon',        '52 Vinh Khanh, Quan 4, TP.HCM',
- 'Tra sua, tra tac, nuoc ep va cac mon giai nhiet', 'shop4.jpg', 'shop4.mp3',
- 1087, 1072, 45000, 5, 15, '2026-03-01', 0),
+(4, 5, 4, 'Tra Sua Dem Sai Gon',        '52 Vinh Khanh, Quan 4, TP.HCM', 'Tra sua, tra tac, nuoc ep va cac mon giai nhiet', 'shop4.jpg', 'shop4.mp3', 10.7617836, 106.7036373, 45000, 5, 15, '2026-03-01', "ACTIVE"),
 
-(5, 1, 1, 'Hai San Nuong 1995',         '66 Vinh Khanh, Quan 4, TP.HCM',
- 'Hai san nuong mo hanh, tom, muc, so diep', 'shop5.jpg', 'shop5.mp3',
- 1090, 1075, 150000, 15, 40, '2026-03-01', 0);
+(5, 1, 1, 'Hai San Nuong 1995',         '66 Vinh Khanh, Quan 4, TP.HCM', 'Hai san nuong mo hanh, tom, muc, so diep', 'shop5.jpg', 'shop5.mp3', 10.7615518,106.7023348, 150000, 15, 40, '2026-03-01', "ACTIVE");
 
 -- =========================
 -- 5) DISH (20 rows)
@@ -147,16 +136,16 @@ VALUES
 INSERT INTO orders
 (id, shop_id, customer_id, total_price, payment_method, created_at, payment_status, status)
 VALUES
-(1, 1, 1, 175000, 0, '2026-03-02', 1, 0),
-(2, 2, 1, 130000, 1, '2026-03-03', 1, 0),
-(3, 3, 1,  75000, 0, '2026-03-03', 1, 0),
-(4, 4, 1,  60000, 1, '2026-03-04', 1, 0),
-(5, 5, 1, 215000, 0, '2026-03-05', 0, 0),
-(6, 1, 1,  90000, 1, '2026-03-06', 1, 0),
-(7, 2, 1,  65000, 0, '2026-03-07', 1, 0),
-(8, 3, 1, 105000, 1, '2026-03-08', 1, 0),
-(9, 4, 1,  70000, 0, '2026-03-09', 0, 0),
-(10,5, 1, 300000, 1, '2026-03-10', 1, 0);
+(1, 1, 1, 175000, 0, '2026-03-02', 1, "ACTIVE"),
+(2, 2, 1, 130000, 1, '2026-03-03', 1, "ACTIVE"),
+(3, 3, 1,  75000, 0, '2026-03-03', 1, "ACTIVE"),
+(4, 4, 1,  60000, 1, '2026-03-04', 1, "ACTIVE"),
+(5, 5, 1, 215000, 0, '2026-03-05', 0, "ACTIVE"),
+(6, 1, 1,  90000, 1, '2026-03-06', 1, "ACTIVE"),
+(7, 2, 1,  65000, 0, '2026-03-07', 1, "ACTIVE"),
+(8, 3, 1, 105000, 1, '2026-03-08', 1, "ACTIVE"),
+(9, 4, 1,  70000, 0, '2026-03-09', 0, "ACTIVE"),
+(10,5, 1, 300000, 1, '2026-03-10', 1, "ACTIVE");
 
 -- =========================
 -- 8) ORDER ITEM (18 rows)
@@ -166,33 +155,33 @@ VALUES
 INSERT INTO order_item
 (id, dish_id, order_id, quantity, price_per_unit, status)
 VALUES
-(1,  1,  1, 1,  90000, 2),
-(2,  2,  1, 1,  85000, 2),
+(1,  1,  1, 1,  90000, "WAITING"),
+(2,  2,  1, 1,  85000, "WAITING"),
 
-(3,  5,  2, 2,  65000, 2),
+(3,  5,  2, 2,  65000, "WAITING"),
 
-(4,  9,  3, 1,  30000, 2),
-(5, 10,  3, 1,  25000, 2),
-(6, 12,  3, 1,  35000, 2),
+(4,  9,  3, 1,  30000, "WAITING"),
+(5, 10,  3, 1,  25000, "WAITING"),
+(6, 12,  3, 1,  35000, "WAITING"),
 
-(7, 13,  4, 1,  35000, 2),
-(8, 16,  4, 1,  30000, 2),
+(7, 13,  4, 1,  35000, "WAITING"),
+(8, 16,  4, 1,  30000, "WAITING"),
 
-(9, 17,  5, 1, 110000, 0),
-(10,19,  5, 1,  95000, 1),
+(9, 17,  5, 1, 110000, "WAITING"),
+(10,19,  5, 1,  95000, "WAITING"),
 
-(11, 1,  6, 1,  90000, 2),
+(11, 1,  6, 1,  90000, "WAITING"),
 
-(12, 5,  7, 1,  65000, 2),
+(12, 5,  7, 1,  65000, "WAITING"),
 
-(13, 9,  8, 1,  30000, 2),
-(14,11,  8, 1,  45000, 2),
-(15,12,  8, 1,  35000, 2),
+(13, 9,  8, 1,  30000, "WAITING"),
+(14,11,  8, 1,  45000, "WAITING"),
+(15,12,  8, 1,  35000, "WAITING"),
 
-(16,13,  9, 2,  35000, 1),
+(16,13,  9, 2,  35000, "WAITING"),
 
-(17,17, 10, 1, 110000, 2),
-(18,20, 10, 1, 150000, 2);
+(17,17, 10, 1, 110000, "WAITING"),
+(18,20, 10, 1, 150000, "WAITING");
 
 -- =========================
 -- 9) TOUR PLAN (5 rows)
@@ -201,35 +190,34 @@ VALUES
 INSERT INTO tour_plan
 (id, customer_id, budget_total, tour_stop_count, time_total_min, people_count, est_cost, created_at, status)
 VALUES
-(1, 1, 300000, 3, 120, 2, 295000, '2026-03-05', 0),
-(2, 1, 180000, 2,  60, 1, 165000, '2026-03-06', 0),
-(3, 1, 450000, 3, 150, 3, 430000, '2026-03-07', 0),
-(4, 1, 120000, 2,  45, 1, 110000, '2026-03-08', 0),
-(5, 1, 600000, 4, 180, 4, 590000, '2026-03-09', 0);
+(1, 1, 300000, 3, 120, 2, 295000, '2026-03-05', "ACTIVE"),
+(2, 1, 180000, 2,  60, 1, 165000, '2026-03-06', "ACTIVE"),
+(3, 1, 450000, 3, 150, 3, 430000, '2026-03-07', "ACTIVE"),
+(4, 1, 120000, 2,  45, 1, 110000, '2026-03-08', "ACTIVE"),
+(5, 1, 600000, 4, 180, 4, 590000, '2026-03-09', "ACTIVE");
 
 -- =========================
 -- 10) TOUR STOP (12 rows)
 -- planed_cost theo đúng tên cột Hibernate đang tạo
 -- =========================
 INSERT INTO tour_stop
-(id, customer_id, shop_id, stop_index, planed_cost, time_to_spend_in_minutes, tour_plan_id)
+(id, shop_id, stop_index, planned_cost, time_to_spend_in_minutes, tour_plan_id)
 VALUES
-(1,  1, 2, 1, 130000, 30, 1),
-(2,  1, 1, 2,  85000, 40, 1),
-(3,  1, 4, 3,  80000, 20, 1),
+(1,  2, 1, 130000, 30, 1),
+(2,  1, 2,  85000, 40, 1),
+(3,  4, 3,  80000, 20, 1),
 
-(4,  1, 2, 1,  65000, 25, 2),
-(5,  1, 4, 2, 100000, 20, 2),
+(4,  2, 1,  65000, 25, 2),
+(5,  4, 2, 100000, 20, 2),
+(6,  5, 1, 215000, 45, 3),
+(7,  1, 2, 175000, 40, 3),
+(8,  4, 3,  40000, 15, 3),
 
-(6,  1, 5, 1, 215000, 45, 3),
-(7,  1, 1, 2, 175000, 40, 3),
-(8,  1, 4, 3,  40000, 15, 3),
+(9,  3, 1,  75000, 20, 4),
+(10, 4, 2,  35000, 15, 4),
 
-(9,  1, 3, 1,  75000, 20, 4),
-(10, 1, 4, 2,  35000, 15, 4),
-
-(11, 1, 5, 1, 300000, 50, 5),
-(12, 1, 3, 2, 105000, 25, 5);
+(11, 5, 1, 300000, 50, 5),
+(12, 3, 2, 105000, 25, 5);
 
 -- =========================
 -- 11) TOUR STOP ITEM (16 rows)

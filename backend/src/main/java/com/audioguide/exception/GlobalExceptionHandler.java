@@ -3,6 +3,7 @@ package com.audioguide.exception;
 import com.audioguide.dto.apiDTO.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,12 +17,15 @@ import com.audioguide.enums.UserRole;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.core.NestedExceptionUtils;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import java.security.Principal;
 import java.util.Map;
 
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+    SimpMessagingTemplate messagingTemplate;
 
     @ExceptionHandler(value = Exception.class)
     ResponseEntity<ApiResponse> handlingRuntimeException(Exception  exception){
@@ -156,6 +160,43 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.FORBIDDEN.getStatusCode())
                 .body(apiResponse);
+    }
+
+
+    @MessageExceptionHandler(IllegalArgumentException.class)
+    public void handleIllegalArgumentException(IllegalArgumentException ex, Principal principal) {
+        if (principal == null) {
+            return;
+        }
+
+        ApiResponse<Object> response = ApiResponse.builder()
+                .code(ErrorCode.REQUEST_BODY_INVALID.getCode())
+                .message(ex.getMessage())
+                .build();
+
+        messagingTemplate.convertAndSendToUser(
+                principal.getName(),
+                "/queue/nearby-shops-error",
+                response
+        );
+    }
+
+    @MessageExceptionHandler(Exception.class)
+    public void handleGeneralException(Exception ex, Principal principal) {
+        if (principal == null) {
+            return;
+        }
+
+        ApiResponse<Object> response = ApiResponse.builder()
+                .code(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
+                .message(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
+                .build();
+
+        messagingTemplate.convertAndSendToUser(
+                principal.getName(),
+                "/queue/nearby-shops-error",
+                response
+        );
     }
 
 }

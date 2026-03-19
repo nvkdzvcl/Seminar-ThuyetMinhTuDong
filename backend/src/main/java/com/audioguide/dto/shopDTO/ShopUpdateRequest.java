@@ -25,9 +25,9 @@ public class ShopUpdateRequest {
 
 //     String audioURL;
 
-    Integer lat;
+    Double lat;
 
-    Integer lng;
+    Double lng;
 
     Integer avgCostPerPerson;
 

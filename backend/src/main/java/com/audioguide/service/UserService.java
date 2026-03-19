@@ -2,9 +2,7 @@ package com.audioguide.service;
 
 
 import com.audioguide.dto.apiDTO.PagingDto;
-import com.audioguide.dto.userDTO.UserCreationRequest;
-import com.audioguide.dto.userDTO.UserResponse;
-import com.audioguide.dto.userDTO.UserUpdateRequest;
+import com.audioguide.dto.userDTO.*;
 import com.audioguide.entity.User;
 import com.audioguide.enums.SortDirection;
 import com.audioguide.enums.UserRole;
@@ -131,5 +129,28 @@ public class UserService {
         return true;
     }
 
+
+    public UserRegisterResponse registerUser(UserRegister register){
+        if (userRepository.existsByEmail(register.getEmail())) {
+            log.error("Email {} is already in use", register.getEmail());
+            throw new AppException(ErrorCode.EMAIL_EXISTS);
+        }
+
+        if (userRepository.existsByPhoneNumber(register.getPhoneNumber())) {
+            log.error("Phone number {} is already in use", register.getPhoneNumber());
+            throw new AppException(ErrorCode.PHONE_NUMBER_EXISTS);
+        }
+
+        var userEntity = userMapper.toUserFromUserRegister(register);
+        userEntity.setPassword(passwordEncoder.encode(register.getPassword()));
+        userEntity.setStatus(UserStatus.ACTIVE);
+        userEntity.setRole(UserRole.CUSTOMER);
+        userEntity.setCreatedAt(LocalDate.now());
+        var savedUser = userRepository.save(userEntity);
+        log.info("User with email {} registered successfully", register.getEmail());
+        return UserRegisterResponse.builder()
+                .isRegistered(true)
+                .build();
+    }
 
 }

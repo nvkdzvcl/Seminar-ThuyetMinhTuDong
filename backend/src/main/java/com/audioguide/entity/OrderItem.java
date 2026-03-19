@@ -35,6 +35,7 @@ public class OrderItem {
 
     Integer pricePerUnit;
 
+    @Enumerated(EnumType.STRING)
     OrderItemStatus status;
 
 
