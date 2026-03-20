@@ -1,35 +1,53 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap");
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
+/* Vietnamese Food Street Theme - Warm, appetizing, vibrant */
 :root {
+  /* Warm cream background */
   --background: oklch(0.97 0.01 85);
   --foreground: oklch(0.2 0.02 30);
+  
+  /* Card styling with cream tones */
   --card: oklch(0.99 0.005 85);
   --card-foreground: oklch(0.2 0.02 30);
+  
   --popover: oklch(0.99 0.005 85);
   --popover-foreground: oklch(0.2 0.02 30);
+  
+  /* Primary - Brick Red (warm, appetizing) */
   --primary: oklch(0.5 0.18 25);
   --primary-foreground: oklch(0.98 0.005 85);
+  
+  /* Secondary - Warm Orange */
   --secondary: oklch(0.92 0.03 75);
   --secondary-foreground: oklch(0.35 0.1 30);
+  
+  /* Muted - Soft warm gray */
   --muted: oklch(0.94 0.01 80);
   --muted-foreground: oklch(0.45 0.02 30);
+  
+  /* Accent - Golden Yellow */
   --accent: oklch(0.85 0.15 85);
   --accent-foreground: oklch(0.25 0.05 30);
+  
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
+  
   --border: oklch(0.88 0.02 75);
   --input: oklch(0.92 0.01 80);
   --ring: oklch(0.5 0.18 25);
+  
+  /* Chart colors - Food street inspired */
   --chart-1: oklch(0.5 0.18 25);
   --chart-2: oklch(0.7 0.16 55);
   --chart-3: oklch(0.8 0.14 85);
   --chart-4: oklch(0.55 0.12 145);
   --chart-5: oklch(0.45 0.1 200);
+  
   --radius: 0.75rem;
+  
   --sidebar: oklch(0.25 0.03 30);
   --sidebar-foreground: oklch(0.95 0.01 85);
   --sidebar-primary: oklch(0.7 0.16 55);
@@ -38,6 +56,8 @@
   --sidebar-accent-foreground: oklch(0.95 0.01 85);
   --sidebar-border: oklch(0.35 0.03 30);
   --sidebar-ring: oklch(0.5 0.18 25);
+  
+  /* Custom food street colors */
   --brick-red: oklch(0.5 0.18 25);
   --orange-warm: oklch(0.7 0.16 55);
   --golden-yellow: oklch(0.85 0.15 85);
@@ -49,28 +69,38 @@
 .dark {
   --background: oklch(0.18 0.02 30);
   --foreground: oklch(0.95 0.01 85);
+  
   --card: oklch(0.22 0.02 30);
   --card-foreground: oklch(0.95 0.01 85);
+  
   --popover: oklch(0.22 0.02 30);
   --popover-foreground: oklch(0.95 0.01 85);
+  
   --primary: oklch(0.65 0.18 40);
   --primary-foreground: oklch(0.15 0.02 30);
+  
   --secondary: oklch(0.3 0.03 30);
   --secondary-foreground: oklch(0.95 0.01 85);
+  
   --muted: oklch(0.28 0.02 30);
   --muted-foreground: oklch(0.7 0.02 80);
+  
   --accent: oklch(0.75 0.15 75);
   --accent-foreground: oklch(0.18 0.02 30);
+  
   --destructive: oklch(0.5 0.2 25);
   --destructive-foreground: oklch(0.95 0 0);
+  
   --border: oklch(0.32 0.02 30);
   --input: oklch(0.28 0.02 30);
   --ring: oklch(0.65 0.18 40);
+  
   --chart-1: oklch(0.65 0.18 40);
   --chart-2: oklch(0.7 0.16 55);
   --chart-3: oklch(0.8 0.14 85);
   --chart-4: oklch(0.6 0.12 145);
   --chart-5: oklch(0.55 0.1 200);
+  
   --sidebar: oklch(0.15 0.02 30);
   --sidebar-foreground: oklch(0.95 0.01 85);
   --sidebar-primary: oklch(0.7 0.16 55);
@@ -82,8 +112,8 @@
 }
 
 @theme inline {
-  --font-sans: "Be Vietnam Pro", "Geist", sans-serif;
-  --font-mono: "Geist Mono", monospace;
+  --font-sans: 'Be Vietnam Pro', 'Geist', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -120,6 +150,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Custom colors for food street */
   --color-brick-red: var(--brick-red);
   --color-orange-warm: var(--orange-warm);
   --color-golden-yellow: var(--golden-yellow);
@@ -132,13 +164,12 @@
   * {
     @apply border-border outline-ring/50;
   }
-
   body {
     @apply bg-background text-foreground;
-    margin: 0;
   }
 }
 
+/* Custom scrollbar for mobile feel */
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -152,12 +183,14 @@
   border-radius: 2px;
 }
 
+/* Smooth transitions */
 * {
   transition-property: background-color, border-color, color, fill, stroke;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
 
+/* Neon glow effect for decorative elements */
 .neon-glow {
   box-shadow: 0 0 10px var(--neon-glow), 0 0 20px var(--neon-glow);
 }
