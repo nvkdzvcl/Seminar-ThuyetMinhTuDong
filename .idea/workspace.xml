@@ -4,7 +4,243 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="613202fb-cdc3-4ac8-9474-6e0245c458a1" name="Changes" comment="" />
+    <list default="true" id="613202fb-cdc3-4ac8-9474-6e0245c458a1" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PRD_AudioTour_v1.1.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/eslint.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/package.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/public/vite.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/App.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/analytics/ListenChart.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/analytics/StatCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/analytics/TopPOIsTable.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/audio/AudioPlayer.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/common/AuthGuard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/common/LoadingSpinner.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/layout/AdminLayout.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/layout/Sidebar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/map/AdminMap.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/map/GuestMap.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/components/poi/POIForm.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/contexts/AuthContext.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/data/mockData.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/hooks/useAnalytics.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/hooks/useGeofence.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/hooks/useGeolocation.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/hooks/usePOIs.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/index.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/main.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/pages/AnalyticsPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/pages/DashboardPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/pages/GuestAppPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/pages/LoginPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/pages/POIManagementPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/pages/ToursPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/services/analyticsService.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/services/authService.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/services/guestService.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/services/poiService.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/services/tourService.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/types/index.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/src/utils/haversine.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/tsconfig.app.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/tsconfig.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/tsconfig.node.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/audio-tour-poc/vite.config.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/codeStyles/codeStyleConfig.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/copilot.data.migration.agent.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/copilot.data.migration.ask.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/copilot.data.migration.ask2agent.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/copilot.data.migration.edit.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/encodings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/data/img-dish/anh_mau.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/pom.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/VinhKhanhTourGuideApplication.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/openApi/OpenApiConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/openApi/OpenApiGroupConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/security/ApplicationInitConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/security/CustomJwtDecoder.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/security/JwtAuthenticationEntryPoint.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/security/PasswordConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/security/SecurityConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/security/StaticResourceConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/websocketConfig/AuthChannelInterceptor.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/websocketConfig/StompPrincipal.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/configuration/websocketConfig/WebSocketConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/AudioController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/AuthenticationController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/DishController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/LanguageController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/LocationSocketController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/OrderContoller.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/ShopController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/TourPlanController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/controller/UserController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/apiDTO/ApiResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/apiDTO/PagingDto.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/audioDTO/AudioCreationRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/audioDTO/AudioResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/authDTO/LoginRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/authDTO/LoginResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/dishDTO/DishCreationRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/dishDTO/DishResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/dishDTO/DishUpdateRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/languageDTO/LanguageCreationRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/languageDTO/LanguageResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/orderDTO/OrderCreationRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/orderDTO/OrderResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/orderItemDTO/OrderItemCreationRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/orderItemDTO/OrderItemResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/shopDTO/ShopCreationRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/shopDTO/ShopResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/shopDTO/ShopUpdateRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/socketDTO/LocationMessage.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/socketDTO/NearbyShopSocketRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/tourPlanDTO/TourPlanCreationRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/tourPlanDTO/TourPlanResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/tourStopDTO/TourStopResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/tourStopItemDTO/TourStopItemResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/userDTO/UserCreationRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/userDTO/UserRegister.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/userDTO/UserRegisterResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/userDTO/UserResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/dto/userDTO/UserUpdateRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/Audio.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/Dish.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/Language.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/Order.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/OrderItem.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/Shop.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/ShopType.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/TourPlan.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/TourStop.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/TourStopItem.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/entity/User.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/enums/OrderItemStatus.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/enums/PaymentMethod.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/enums/PaymentStatus.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/enums/SortDirection.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/enums/Status.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/enums/UserRole.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/enums/UserStatus.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/exception/AppException.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/exception/ErrorCode.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/exception/GlobalExceptionHandler.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/AudioMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/DishMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/LanguageMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/OrderItemMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/OrderMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/ShopMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/TourPlanMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/TourStopItemMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/TourStopMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/mapper/UserMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/repository/AudioRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/repository/DishRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/repository/LanguageRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/repository/OrderItemRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/repository/OrderRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/repository/ShopRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/repository/TourPlanRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/repository/UserRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/AudioService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/AuthenticationService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/DishService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/LanguageService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/LocationSocketService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/OrderItemService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/OrderService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/SecurityService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/ShopService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/TourPlanService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/service/UserService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/audioguide/utils/FileStoreUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/data.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/uploads/dish-images/anh_mau.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/uploads/dish-images/demoDishImg.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/uploads/shop-images/demoShopImg.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/.env" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/.prettierrc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/eslint.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/postcss.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/public/favicon.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/public/icons.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/assets/hero.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/assets/icons/locationHumanMarker.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/assets/icons/locationShopMarker.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/assets/icons/locationTargetMarker.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/assets/icons/shopIconMarker.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/assets/react.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/assets/vite.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/common/SimplePagination.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/home/HomeSearchBar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/home/NearbyMap.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/home/SectionTitle.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/layout/DefaultLayout.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/layout/Footer.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/layout/Header.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/modals/ModalHost.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/shop/SearchShopBar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/shop/ShopCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/shop/ShopMap.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/ui/DishCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/ui/ModalBase.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/ui/NavButton.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/index.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/main.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/auth/LoginOrRegister.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/customerPage/DishDetailPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/customerPage/DishHomePage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/customerPage/NearbyShopPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/customerPage/ScanShopQrPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/customerPage/SearchDishPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/customerPage/SearchShopPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/customerPage/ShopDetailPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/providers/ReduxProvider.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/routes/route.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/authService.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/axiosClient.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/dishService.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/locationSocket.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/shopService.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/stores/hooks.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/stores/slices/audioSlice.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/stores/slices/authSlice.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/stores/slices/dishSlice.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/stores/slices/modalSlice.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/stores/slices/shopSlice.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/stores/store.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/stores/useAudioPlayer.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/types/api.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/types/auth.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/types/dish.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/types/icons.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/types/shop.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/tailwind.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/tsconfig.app.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/tsconfig.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/tsconfig.node.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/vite.config.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/product_requirement_document.docx" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -33,22 +269,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;Khanh&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;E:/Seminar-ThuyetMinhTuDong&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "vibeKhanh",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "E:/Seminar-ThuyetMinhTuDong",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="E:\Seminar-ThuyetMinhTuDong\backend\src\main\java\com\audioguide\modules\user\mapper" />
@@ -75,6 +312,7 @@
       <updated>1773561789289</updated>
       <workItem from="1773561790500" duration="2884000" />
       <workItem from="1773980778227" duration="347000" />
+      <workItem from="1773996085412" duration="804000" />
     </task>
     <servers />
   </component>

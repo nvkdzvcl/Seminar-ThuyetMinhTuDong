@@ -1,0 +1,13 @@
+{
+  "name": "seminar-thuyet-minh-tu-dong",
+  "private": true,
+  "scripts": {
+    "dev:admin": "npm --prefix apps/admin-web run dev",
+    "dev:customer": "npm --prefix apps/customer-web run dev",
+    "dev:shopowner": "npm --prefix apps/shopowner-web run dev",
+    "dev:api": "mvn -f apps/api-server/pom.xml spring-boot:run",
+    "build:admin": "npm --prefix apps/admin-web run build",
+    "build:customer": "npm --prefix apps/customer-web run build",
+    "build:shopowner": "npm --prefix apps/shopowner-web run build"
+  }
+}
