@@ -8,9 +8,11 @@ import { dishService } from "../../services/dishService";
 import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
+import { useAudioPlayer } from "../../stores/useAudioPlayer";
 
 function ShopDetailPage() {
     const { shopId } = useParams();
+    const { currentAudio, isAudioPlaying, toggleAudio } = useAudioPlayer();
     const parsedShopId = Number(shopId);
 
     const [shop, setShop] = useState<ShopResponse | null>(null);
@@ -76,8 +78,21 @@ function ShopDetailPage() {
         console.log("Chỉ đường tới quán của món", dishId);
     };
 
-    const handleListenAudio = (dishId: number) => {
-        console.log("Nghe audio món", dishId);
+    const handleListenAudio = async (dishId: number) => {
+        const targetDish = [...shopDishes, ...otherDishes].find((dish) => dish.id === dishId);
+        if (!targetDish) return;
+
+        try {
+            await toggleAudio({
+                id: targetDish.id,
+                type: "DISH",
+                url: targetDish.audioURL,
+                title: targetDish.name,
+                shopId: targetDish.shopId,
+            });
+        } catch (error) {
+            console.error("Nghe audio món lỗi", error);
+        }
     };
 
     const handleViewMenu = (dishId: number) => {
@@ -157,6 +172,24 @@ function ShopDetailPage() {
                                 <div>
                                     <span className="font-semibold text-slate-900">Tọa độ:</span>{" "}
                                     {shop.lat}, {shop.lng}
+                                </div>
+                                <div className="pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            void toggleAudio({
+                                                id: shop.id,
+                                                type: "SHOP",
+                                                url: shop.audioURL,
+                                                title: shop.name,
+                                            })
+                                        }
+                                        className="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700"
+                                    >
+                                        {isAudioPlaying && currentAudio?.type === "SHOP" && currentAudio.id === shop.id
+                                            ? "Tắt audio quán"
+                                            : "Phát audio quán"}
+                                    </button>
                                 </div>
                             </div>
                         </div>

@@ -11,9 +11,11 @@ import { dishService } from "../../services/dishService";
 import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
+import { useAudioPlayer } from "../../stores/useAudioPlayer";
 
 function HomePage() {
     const navigate = useNavigate();
+    const { toggleAudio } = useAudioPlayer();
 
     const [keyword, setKeyword] = useState("");
     const [featuredDishes, setFeaturedDishes] = useState<Dish[]>([]);
@@ -81,8 +83,21 @@ function HomePage() {
         navigate(`/shop/${shopId}`);
     };
 
-    const handleListenAudio = (dishId: number) => {
-        console.log("Nghe audio món:", dishId);
+    const handleListenAudio = async (dishId: number) => {
+        const targetDish = [...featuredDishes, ...normalDishes].find((dish) => dish.id === dishId);
+        if (!targetDish) return;
+
+        try {
+            await toggleAudio({
+                id: targetDish.id,
+                type: "DISH",
+                url: targetDish.audioURL,
+                title: targetDish.name,
+                shopId: targetDish.shopId,
+            });
+        } catch (error) {
+            console.error("Nghe audio món lỗi:", error);
+        }
     };
 
     const handleViewDish = (dishId: number) => {

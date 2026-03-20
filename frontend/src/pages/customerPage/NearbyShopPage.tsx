@@ -2,20 +2,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-import L from "leaflet";
+import L, { icon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import { locationSocketService } from "../../services/locationSocket";
 import type { ShopResponse } from "../../types/shop";
 import { useAppDispatch, useAppSelector } from "../../stores/hooks";
-import {
-    setAudioPlaying,
-    setAutoTurnOnAudio,
-    setCurrentAudioShopId,
-    setCurrentShop,
-    setNearbyShops,
-} from "../../stores/slices/shopSlice";
+import { setCurrentShop, setNearbyShops } from "../../stores/slices/shopSlice";
+import { setAutoTurnOnNearbyShopAudio } from "../../stores/slices/audioSlice";
+import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import ShopCard from "../../components/shop/ShopCard";
+import { icons } from "../../types/icons";
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -69,8 +66,15 @@ function RecenterMap({ center }: { center: PositionTuple }) {
 
 export default function NearbyShopPage() {
     const dispatch = useAppDispatch();
-    const { shops, currentShop, autoTurnOnAudio, isAudioPlaying, currentAudioShopId } =
-        useAppSelector((state) => state.shop);
+    const { shops, currentShop } = useAppSelector((state) => state.shop);
+    const {
+        currentAudio,
+        isAudioPlaying,
+        playAudio,
+        toggleAudio,
+        stopAudio,
+        autoTurnOnNearbyShopAudio,
+    } = useAudioPlayer();
 
     const [error, setError] = useState("");
     const [connected, setConnected] = useState(false);
@@ -79,78 +83,43 @@ export default function NearbyShopPage() {
     ]);
 
     const token = localStorage.getItem(import.meta.env.VITE_LS_ACCESS) || "";
-    const audioRef = useRef<HTMLAudioElement | null>(null);
     const currentShopIdRef = useRef<number | null>(null);
-    const currentAudioShopIdRef = useRef<number | null>(null);
-    const autoAudioRef = useRef<boolean>(autoTurnOnAudio);
+    const autoAudioRef = useRef<boolean>(autoTurnOnNearbyShopAudio);
 
     useEffect(() => {
         currentShopIdRef.current = currentShop?.id ?? null;
     }, [currentShop]);
 
     useEffect(() => {
-        currentAudioShopIdRef.current = currentAudioShopId;
-    }, [currentAudioShopId]);
+        autoAudioRef.current = autoTurnOnNearbyShopAudio;
+    }, [autoTurnOnNearbyShopAudio]);
 
-    useEffect(() => {
-        autoAudioRef.current = autoTurnOnAudio;
-    }, [autoTurnOnAudio]);
-
-    const stopCurrentAudio = () => {
-        if (!audioRef.current) return;
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current = null;
-        dispatch(setAudioPlaying(false));
-        dispatch(setCurrentAudioShopId(null));
-    };
-
-    const playShopAudio = (shop: ShopResponse) => {
-        if (!shop.audioURL) return;
-
-        if (currentAudioShopIdRef.current === shop.id && audioRef.current) {
-            return;
-        }
-
-        stopCurrentAudio();
-
-        const audio = new Audio(shop.audioURL);
-        audioRef.current = audio;
-
-        audio.onplay = () => {
-            dispatch(setAudioPlaying(true));
-            dispatch(setCurrentAudioShopId(shop.id));
-        };
-
-        audio.onpause = () => {
-            dispatch(setAudioPlaying(false));
-        };
-
-        audio.onended = () => {
-            dispatch(setAudioPlaying(false));
-        };
-
-        audio.play().catch((err) => {
+    const playShopAudio = async (shop: ShopResponse, trigger: "MANUAL" | "REALTIME" = "MANUAL") => {
+        try {
+            await playAudio({
+                id: shop.id,
+                type: "SHOP",
+                url: shop.audioURL,
+                title: shop.name,
+                trigger,
+            });
+        } catch (err) {
             console.error("Play audio failed:", err);
-        });
+        }
     };
 
-    const toggleCurrentShopAudio = () => {
+    const toggleCurrentShopAudio = async () => {
         if (!currentShop?.audioURL) return;
 
-        if (currentAudioShopIdRef.current !== currentShop.id || !audioRef.current) {
-            playShopAudio(currentShop);
-            return;
-        }
-
-        if (audioRef.current.paused) {
-            audioRef.current.play().catch((err) => {
-                console.error("Resume audio failed:", err);
+        try {
+            await toggleAudio({
+                id: currentShop.id,
+                type: "SHOP",
+                url: currentShop.audioURL,
+                title: currentShop.name,
             });
-            dispatch(setAudioPlaying(true));
-        } else {
-            audioRef.current.pause();
-            dispatch(setAudioPlaying(false));
+        } catch (err) {
+            console.error("Toggle audio failed:", err);
         }
     };
 
@@ -175,10 +144,9 @@ export default function NearbyShopPage() {
                 if (
                     autoAudioRef.current &&
                     nearestShop.audioURL &&
-                    !isSameCurrentShop &&
-                    currentAudioShopIdRef.current !== nearestShop.id
+                    !isSameCurrentShop
                 ) {
-                    playShopAudio(nearestShop);
+                    playShopAudio(nearestShop, "REALTIME");
                 }
             },
             (errorResponse) => {
@@ -190,7 +158,7 @@ export default function NearbyShopPage() {
         );
 
         return () => {
-            stopCurrentAudio();
+            stopAudio();
             locationSocketService.disconnect();
             setConnected(false);
         };
@@ -270,7 +238,7 @@ export default function NearbyShopPage() {
     };
 
     const handleListenOtherShopAudio = (shop: ShopResponse) => {
-        playShopAudio(shop);
+        void playShopAudio(shop);
         dispatch(setCurrentShop(shop));
     };
 
@@ -300,8 +268,8 @@ export default function NearbyShopPage() {
                     <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                         <input
                             type="checkbox"
-                            checked={autoTurnOnAudio}
-                            onChange={(e) => dispatch(setAutoTurnOnAudio(e.target.checked))}
+                            checked={autoTurnOnNearbyShopAudio}
+                            onChange={(e) => dispatch(setAutoTurnOnNearbyShopAudio(e.target.checked))}
                             className="h-4 w-4 rounded border-slate-300"
                         />
                         <span className="text-sm font-medium text-slate-700">
@@ -343,11 +311,11 @@ export default function NearbyShopPage() {
 
                                     <RecenterMap center={currentPosition} />
 
-                                    <Marker position={currentPosition}>
+                                    <Marker icon={icons.locationHumanMarker} position={currentPosition}>
                                         <Popup>Vị trí hiện tại của bạn</Popup>
                                     </Marker>
 
-                                    <Marker position={[currentShop.lat, currentShop.lng]}>
+                                    <Marker icon={icons.locationShopMarker} position={[currentShop.lat, currentShop.lng]}>
                                         <Popup>
                                             <div>
                                                 <div className="font-semibold">
@@ -361,7 +329,7 @@ export default function NearbyShopPage() {
                                     </Marker>
 
                                     {otherShops.map((shop) => (
-                                        <Marker key={shop.id} position={[shop.lat, shop.lng]}>
+                                        <Marker key={shop.id} icon={icons.shopIconMarker} position={[shop.lat, shop.lng]}>
                                             <Popup>
                                                 <div>
                                                     <div className="font-semibold">{shop.name}</div>
@@ -415,7 +383,7 @@ export default function NearbyShopPage() {
                                             onClick={toggleCurrentShopAudio}
                                             className="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700"
                                         >
-                                            {isAudioPlaying && currentAudioShopId === currentShop.id
+                                            {isAudioPlaying && currentAudio?.type === "SHOP" && currentAudio.id === currentShop.id
                                                 ? "Tắt audio"
                                                 : "Phát audio"}
                                         </button>
@@ -490,7 +458,7 @@ export default function NearbyShopPage() {
                                     onViewShop={handleViewOtherShop}
                                     rating={4.6}
                                     category="Ẩm thực đường phố"
-                                    // onListenAudio={handleListenOtherShopAudio}
+                                    onListenAudio={handleListenOtherShopAudio}
                                 />
                             ))}
                         </div>

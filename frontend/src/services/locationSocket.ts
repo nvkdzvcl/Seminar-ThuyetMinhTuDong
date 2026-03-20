@@ -30,7 +30,7 @@ export const locationSocketService = {
         }
 
         stompClient = new Client({
-            brokerURL: "ws://localhost:8080/vinhkhanhfoodtour/api/ws-location",
+            brokerURL: `${import.meta.env.VITE_WS_API}/ws-location`,
             reconnectDelay: 5000,
             connectHeaders: {
                 Authorization: `Bearer ${token}`,

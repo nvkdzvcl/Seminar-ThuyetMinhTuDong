@@ -47,7 +47,7 @@ function NearbyMap({ currentPosition, shops }: NearbyMapProps) {
                     </Marker>
 
                     {shops.map((shop) => (
-                        <Marker key={shop.id} position={[shop.lat, shop.lng]}>
+                        <Marker key={shop.id} icon={icons.shopIconMarker} position={[shop.lat, shop.lng]}>
                             <Popup>
                                 <div className="min-w-[160px]">
                                     <div className="font-semibold">{shop.name}</div>

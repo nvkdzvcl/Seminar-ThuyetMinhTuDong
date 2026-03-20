@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { routePath } from "../../routes/route";
 import SearchShopBar from "../../components/shop/SearchShopBar";
 import ShopCard from "../../components/shop/ShopCard";
 import { shopService } from "../../services/shopService";
 import type { ShopResponse } from "../../types/shop";
+import { useAudioPlayer } from "../../stores/useAudioPlayer";
 
 function SearchShopPage() {
     const navigate = useNavigate();
+    const { toggleAudio } = useAudioPlayer();
 
     const [keyword, setKeyword] = useState("");
     const [shops, setShops] = useState<ShopResponse[]>([]);
@@ -61,11 +64,23 @@ function SearchShopPage() {
     };
 
     const handleViewShop = (shopId: number) => {
-        navigate(`/shop/${shopId}`);
+        navigate(routePath.ShopDetailPage.replace(":shopId", String(shopId)));
     };
 
-    const handleListenAudio = (shopId: number) => {
-        console.log("Nghe audio quán:", shopId);
+    const handleListenAudio = async (shopId: number) => {
+        const targetShop = shops.find((shop) => shop.id === shopId);
+        if (!targetShop) return;
+
+        try {
+            await toggleAudio({
+                id: targetShop.id,
+                type: "SHOP",
+                url: targetShop.audioURL,
+                title: targetShop.name,
+            });
+        } catch (error) {
+            console.error("Nghe audio quán lỗi:", error);
+        }
     };
 
     const pageTitle = useMemo(() => {
@@ -89,16 +104,26 @@ function SearchShopPage() {
                             Tìm kiếm quán ăn
                         </h1>
                         <p className="mt-2 text-sm text-slate-600 sm:text-base">
-                            Tìm quán theo tên và khám phá thông tin quán phù hợp với bạn
+                            Tìm quán theo tên, nghe audio và quét QR để vào nhanh trang quán.
                         </p>
                     </div>
 
-                    <div className="mt-5">
-                        <SearchShopBar
-                            keyword={keyword}
-                            onKeywordChange={setKeyword}
-                            onSubmit={handleSearch}
-                        />
+                    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="flex-1">
+                            <SearchShopBar
+                                keyword={keyword}
+                                onKeywordChange={setKeyword}
+                                onSubmit={handleSearch}
+                            />
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate(routePath.scanShopQrPage)}
+                            className="h-12 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                            Quét QR quán
+                        </button>
                     </div>
                 </div>
 

@@ -7,6 +7,7 @@ export type Dish = {
   price: number;
   isSignature: boolean;
   image: string;
+  audioURL?: string;
   createdAt: string;
   status: string;
 };

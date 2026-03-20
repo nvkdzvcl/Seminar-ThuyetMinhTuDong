@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useNavigate } from "react-router-dom";
+import { useAudioPlayer } from "../../stores/useAudioPlayer";
 
 type DishCardProps = {
     id: number;
@@ -30,7 +31,10 @@ function DishCard({
     onViewMenu,
 }: DishCardProps) {
     const navigate = useNavigate();
-    
+    const { currentAudio, isAudioPlaying } = useAudioPlayer();
+    const isCurrentDishAudio =
+        currentAudio?.type === "DISH" && currentAudio.id === id;
+
     const handleNavigateToShop = (shopId: number) => {
         navigate(`/shop/${shopId}`);
     };
@@ -96,10 +100,14 @@ function DishCard({
                     <button
                         type="button"
                         onClick={() => onListenAudio(id)}
-                        className="rounded-2xl border border-cyan-200 bg-cyan-50 px-2 py-2.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100 active:scale-[0.98] sm:px-4 sm:py-3 sm:text-sm"
+                        className={`rounded-2xl px-2 py-2.5 text-[11px] font-semibold transition active:scale-[0.98] sm:px-4 sm:py-3 sm:text-sm ${
+                            isCurrentDishAudio && isAudioPlaying
+                                ? "border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                : "border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
+                        }`}
                     >
-                        <span className="sm:hidden">Audio</span>
-                        <span className="hidden sm:inline">Nghe audio</span>
+                        <span className="sm:hidden">{isCurrentDishAudio && isAudioPlaying ? "Tắt" : "Audio"}</span>
+                        <span className="hidden sm:inline">{isCurrentDishAudio && isAudioPlaying ? "Tắt audio" : "Nghe audio"}</span>
                     </button>
 
                     <button

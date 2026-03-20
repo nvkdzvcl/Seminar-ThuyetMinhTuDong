@@ -16,8 +16,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 dark:bg-background-dark dark:text-text-inverse
             "
         >
-            <Header />
 
+            <Header />
             <main className="flex-grow flex flex-col">
                 {children}
             </main>
