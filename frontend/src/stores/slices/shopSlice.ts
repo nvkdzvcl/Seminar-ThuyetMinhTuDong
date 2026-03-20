@@ -3,20 +3,11 @@ import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/tool
 import { shopService } from "../../services/shopService";
 import type { ShopResponse } from "../../types/shop";
 
-const AUTO_AUDIO_KEY = "autoTurnOnAudio";
-
-const getStoredAutoAudio = () => {
-    return localStorage.getItem(AUTO_AUDIO_KEY) === "true";
-};
-
 type ShopState = {
     shops: ShopResponse[];
     currentShop: ShopResponse | null;
     loading: boolean;
     error: string | null;
-    autoTurnOnAudio: boolean;
-    isAudioPlaying: boolean;
-    currentAudioShopId: number | null;
 };
 
 const initialState: ShopState = {
@@ -24,9 +15,6 @@ const initialState: ShopState = {
     currentShop: null,
     loading: false,
     error: null,
-    autoTurnOnAudio: getStoredAutoAudio(),
-    isAudioPlaying: false,
-    currentAudioShopId: null,
 };
 
 export const fetchShops = createAsyncThunk<
@@ -127,16 +115,6 @@ const shopSlice = createSlice({
         setCurrentShop: (state, action: PayloadAction<ShopResponse | null>) => {
             state.currentShop = action.payload;
         },
-        setAudioPlaying: (state, action: PayloadAction<boolean>) => {
-            state.isAudioPlaying = action.payload;
-        },
-        setCurrentAudioShopId: (state, action: PayloadAction<number | null>) => {
-            state.currentAudioShopId = action.payload;
-        },
-        setAutoTurnOnAudio: (state, action: PayloadAction<boolean>) => {
-            state.autoTurnOnAudio = action.payload;
-            localStorage.setItem(AUTO_AUDIO_KEY, String(action.payload));
-        },
     },
     extraReducers: (builder) => {
         builder
@@ -199,9 +177,6 @@ export const {
     clearCurrentShop,
     setNearbyShops,
     setCurrentShop,
-    setAudioPlaying,
-    setCurrentAudioShopId,
-    setAutoTurnOnAudio,
 } = shopSlice.actions;
 
 export default shopSlice.reducer;

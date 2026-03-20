@@ -6,7 +6,7 @@ const Header: React.FC = () => {
     const { pathname } = useLocation();
 
     const baseClass =
-        "flex min-w-0 flex-1 items-center justify-center rounded-xl px-2 py-2.5 text-[13px] font-semibold transition-all duration-200";
+        "shrink-0 inline-flex min-w-max items-center justify-center rounded-xl px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-all duration-200";
 
     const activeClass = `${baseClass} bg-blue-600 text-white shadow-md`;
     const inactiveClass = `${baseClass} bg-white text-slate-700 hover:bg-blue-50 hover:text-blue-600`;
@@ -20,6 +20,9 @@ const Header: React.FC = () => {
 
     const isShopActive =
         isExactOrChild(routePath.shopSearchPage);
+
+    const isScanShopQrActive =
+        pathname === routePath.scanShopQrRootPage;
 
     const isTourActive =
         pathname === routePath.NearbyShopPage || pathname.startsWith("/tour/");
@@ -36,45 +39,59 @@ const Header: React.FC = () => {
         pathname.startsWith("/change-password") ||
         pathname.startsWith("/edit-profile");
 
+
+
+
+
+
     return (
         <header className="sticky top-0 z-50 bg-white shadow-sm">
             <div className="mx-auto w-full max-w-md px-3 py-2">
-                <nav className="flex items-center gap-2 rounded-2xl bg-slate-100 p-2">
-                    <NavLink
-                        to={routePath.HomeDishPage}
-                        className={isDishActive ? activeClass : inactiveClass}
-                    >
-                        Món ăn
-                    </NavLink>
+                <div className="overflow-x-auto scrollbar-hide">
+                    <nav className="flex min-w-max items-center gap-2 rounded-2xl bg-slate-100 p-2 whitespace-nowrap">
+                        <NavLink
+                            to={routePath.HomeDishPage}
+                            className={isDishActive ? activeClass : inactiveClass}
+                        >
+                            Món ăn
+                        </NavLink>
 
-                    <NavLink
-                        to={routePath.shopSearchPage}
-                        className={isShopActive ? activeClass : inactiveClass}
-                    >
-                        Quán ăn
-                    </NavLink>
+                        <NavLink
+                            to={routePath.shopSearchPage}
+                            className={isShopActive ? activeClass : inactiveClass}
+                        >
+                            Quán ăn
+                        </NavLink>
 
-                    <NavLink
-                        to={routePath.NearbyShopPage}
-                        className={isTourActive ? activeClass : inactiveClass}
-                    >
-                        Gần tôi
-                    </NavLink>
+                        <NavLink
+                            to={routePath.NearbyShopPage}
+                            className={isTourActive ? activeClass : inactiveClass}
+                        >
+                            Gần tôi
+                        </NavLink>
 
-                    <NavLink
-                        to="/order"
-                        className={isOrderActive ? activeClass : inactiveClass}
-                    >
-                        Đơn hàng
-                    </NavLink>
+                        <NavLink
+                            to={routePath.scanShopQrRootPage}
+                            className={ isScanShopQrActive ? activeClass : inactiveClass}
+                        >
+                            Quét QR
+                        </NavLink>
 
-                    <NavLink
-                        to="/profile"
-                        className={isProfileActive ? activeClass : inactiveClass}
-                    >
-                        Hồ sơ
-                    </NavLink>
-                </nav>
+                        <NavLink
+                            to="/order"
+                            className={isOrderActive ? activeClass : inactiveClass}
+                        >
+                            Đơn hàng
+                        </NavLink>
+
+                        <NavLink
+                            to="/profile"
+                            className={isProfileActive ? activeClass : inactiveClass}
+                        >
+                            Hồ sơ
+                        </NavLink>
+                    </nav>
+                </div>
             </div>
         </header>
     );

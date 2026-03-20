@@ -11,9 +11,11 @@ import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { routePath } from "../../routes/route";
+import { useAudioPlayer } from "../../stores/useAudioPlayer";
 
 function SearchDishPage() {
     const navigate = useNavigate();
+    const { toggleAudio } = useAudioPlayer();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const keywordFromUrl = searchParams.get("keyword") || "";
@@ -90,8 +92,21 @@ function SearchDishPage() {
         console.log("Đi tới quán của món:", dishId);
     };
 
-    const handleListenAudio = (dishId: number) => {
-        console.log("Nghe audio món:", dishId);
+    const handleListenAudio = async (dishId: number) => {
+        const targetDish = dishes.find((dish) => dish.id === dishId);
+        if (!targetDish) return;
+
+        try {
+            await toggleAudio({
+                id: targetDish.id,
+                type: "DISH",
+                url: targetDish.audioURL,
+                title: targetDish.name,
+                shopId: targetDish.shopId,
+            });
+        } catch (error) {
+            console.error("Nghe audio món lỗi:", error);
+        }
     };
 
     const handleViewDish = (dishId: number) => {

@@ -5,6 +5,7 @@ import { dishService } from "../../services/dishService";
 import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
+import { useAudioPlayer } from "../../stores/useAudioPlayer";
 
 function DishDetailPage() {
     const { dishId } = useParams();
@@ -12,6 +13,7 @@ function DishDetailPage() {
     const parsedDishId = Number(dishId);
 
     const [dish, setDish] = useState<Dish | null>(null);
+    const { currentAudio, isAudioPlaying, toggleAudio } = useAudioPlayer();
     const [shop, setShop] = useState<ShopResponse | null>(null);
     const [otherDishes, setOtherDishes] = useState<Dish[]>([]);
     const [loading, setLoading] = useState(false);
@@ -74,8 +76,20 @@ function DishDetailPage() {
         navigate(`/shop/${dish.shopId}`);
     };
 
-    const handleListenAudio = () => {
-        console.log("Nghe audio món:", dish?.id);
+    const handleListenAudio = async () => {
+        if (!dish) return;
+
+        try {
+            await toggleAudio({
+                id: dish.id,
+                type: "DISH",
+                url: dish.audioURL,
+                title: dish.name,
+                shopId: dish.shopId,
+            });
+        } catch (error) {
+            console.error("Nghe audio món lỗi:", error);
+        }
     };
 
     const handleNavigateDish = (id: number) => {
@@ -159,7 +173,9 @@ function DishDetailPage() {
                                     onClick={handleListenAudio}
                                     className="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700"
                                 >
-                                    Nghe audio
+                                    {isAudioPlaying && currentAudio?.type === "DISH" && currentAudio.id === dish.id
+                                        ? "Tắt audio"
+                                        : "Nghe audio"}
                                 </button>
                             </div>
 
@@ -248,7 +264,17 @@ function DishDetailPage() {
                                     price={item.price}
                                     shopName={shop?.name || `Quán #${item.shopId}`}
                                     onNavigate={handleNavigateDish}
-                                    onListenAudio={(id) => console.log("Nghe audio món", id)}
+                                    onListenAudio={(id) => {
+                                        const targetDish = otherDishes.find((item) => item.id === id);
+                                        if (!targetDish) return;
+                                        void toggleAudio({
+                                            id: targetDish.id,
+                                            type: "DISH",
+                                            url: targetDish.audioURL,
+                                            title: targetDish.name,
+                                            shopId: targetDish.shopId,
+                                        });
+                                    }}
                                     onViewMenu={handleNavigateDish}
                                 />
                             ))}

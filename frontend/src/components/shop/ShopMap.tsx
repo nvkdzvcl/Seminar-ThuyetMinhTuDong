@@ -82,7 +82,7 @@ function ShopMap({ currentPosition, currentShop, nearbyShops }: ShopMapProps) {
                         <Popup>Vị trí hiện tại của bạn</Popup>
                     </Marker>
 
-                    <Marker position={[currentShop.lat, currentShop.lng]} icon={icons.locationTargetMarker}>
+                    <Marker position={[currentShop.lat, currentShop.lng]} icon={icons.locationShopMarker}>
                         <Popup>
                             <div>
                                 <div className="font-semibold">{`# ${currentShop.id}, ${currentShop.name}`}</div>
@@ -98,7 +98,7 @@ function ShopMap({ currentPosition, currentShop, nearbyShops }: ShopMapProps) {
                     {nearbyShops
                         .filter((shop) => shop.id !== currentShop.id)
                         .map((shop) => (
-                            <Marker key={shop.id} position={[shop.lat, shop.lng]}>
+                            <Marker key={shop.id} icon={icons.shopIconMarker} position={[shop.lat, shop.lng]}>
                                 <Popup>
                                     <div>
                                         <div className="font-semibold">{`# ${shop.id}, ${shop.name}`}</div>
