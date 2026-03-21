@@ -81,7 +81,7 @@ export const registerThunk = createAsyncThunk<
 /** RESTORE: đọc localStorage */
 export const restoreMeThunk = createAsyncThunk<User | null, void, { rejectValue: string }>(
   "auth/restore",
-  async (_, thunkAPI) => {
+  async () => {
     const token = localStorage.getItem(LS_ACCESS);
     if (!token) return null;
 
@@ -182,7 +182,7 @@ const authSlice = createSlice({
                 // logout thành công => clear local
                 clearAuth(state);
             })
-            .addCase(logoutThunk.rejected, (state, action) => {
+            .addCase(logoutThunk.rejected, (state) => {
                 // logout fail vẫn clear local để user không bị kẹt
                 clearAuth(state);
                 // nếu muốn hiện lỗi:

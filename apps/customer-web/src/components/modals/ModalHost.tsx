@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../stores/hooks";
 import { closeTopModal } from "../../stores/slices/modalSlice";
 import ModalBase from "../ui/ModalBase";
@@ -20,8 +20,6 @@ export default function ModalHost() {
     if (stack.length === 0) return null;
 
     // chỉ modal top-most nhận close
-    const top = stack[stack.length - 1];
-
     return (
         <>
             {stack.map((item, idx) => {

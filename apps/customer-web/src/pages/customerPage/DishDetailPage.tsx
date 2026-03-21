@@ -6,6 +6,7 @@ import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
+import { resolveMediaUrl } from "../../utils/media";
 
 function DishDetailPage() {
     const { dishId } = useParams();
@@ -18,6 +19,11 @@ function DishDetailPage() {
     const [otherDishes, setOtherDishes] = useState<Dish[]>([]);
     const [loading, setLoading] = useState(false);
     const [pageError, setPageError] = useState("");
+    const dishImageSrc = resolveMediaUrl(
+        dish?.image,
+        import.meta.env.VITE_DISH_IMAGE_API,
+        "https://placehold.co/1200x800?text=Dish"
+    );
 
     useEffect(() => {
         if (!parsedDishId || Number.isNaN(parsedDishId)) return;
@@ -124,7 +130,7 @@ function DishDetailPage() {
                         {/* IMAGE */}
                         <div className="h-[280px] bg-slate-100 sm:h-[420px]">
                             <img
-                                src={`${import.meta.env.VITE_DISH_IMAGE_API}anh_mau.jpg`}
+                                src={dishImageSrc}
                                 alt={dish.name}
                                 className="h-full w-full object-cover"
                             />

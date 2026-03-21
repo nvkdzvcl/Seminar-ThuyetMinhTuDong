@@ -1,17 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Be_Vietnam_Pro } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const beVietnamPro = Be_Vietnam_Pro({ 
-  subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-sans"
-});
+const _geist = Geist({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Phố Ẩm Thực Vĩnh Khánh - Quản lý Quán',
-  description: 'Ứng dụng quản lý quán ăn và thuyết minh tự động cho phố ẩm thực Vĩnh Khánh',
+  title: 'Vĩnh Khánh Food Tour',
+  description: 'Khám phá ẩm thực đường phố Vĩnh Khánh - Nghe thuyết minh AI bằng mọi ngôn ngữ',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -37,7 +34,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#8B3A3A',
+  themeColor: '#10b981',
 }
 
 export default function RootLayout({
@@ -47,7 +44,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body className={`${beVietnamPro.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         {children}
         <Analytics />
       </body>

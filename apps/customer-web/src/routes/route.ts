@@ -6,6 +6,8 @@ import SearchDishPage from "../pages/customerPage/SearchDishPage";
 import SearchShopPage from "../pages/customerPage/SearchShopPage";
 import ScanShopQrPage from "../pages/customerPage/ScanShopQrPage";
 import ShopDetailPage from "../pages/customerPage/ShopDetailPage";
+import OrderPage from "../pages/customerPage/OrderPage";
+import ProfilePage from "../pages/customerPage/ProfilePage";
 
 
 const routePath = {
@@ -21,6 +23,8 @@ const routePath = {
     NearbyShopPage: "/nearby-shops",
     scanShopQrPage: "/shop/scan-qr",
     scanShopQrRootPage: "/scan-qr",
+    orderPage: "/order",
+    profilePage: "/profile",
 
    
 };
@@ -113,6 +117,22 @@ const cusPublicRoutes = [
         isContent: true,
         type: "CUSTOMER",
         component: ScanShopQrPage,
+        isPrivate: false,
+    },
+    {
+        path: routePath.orderPage,
+        label: "Đơn hàng",
+        isContent: true,
+        type: "CUSTOMER",
+        component: OrderPage,
+        isPrivate: false,
+    },
+    {
+        path: routePath.profilePage,
+        label: "Hồ sơ",
+        isContent: true,
+        type: "CUSTOMER",
+        component: ProfilePage,
         isPrivate: false,
     },
 

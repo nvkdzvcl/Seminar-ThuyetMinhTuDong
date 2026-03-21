@@ -1,6 +1,7 @@
 import React from "react";
 import Header from "./Header";
-
+import BottomNav from "./BottomNav";
+import MiniAudioPlayer from "./MiniAudioPlayer";
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -12,15 +13,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div
             className="
                 min-h-screen flex flex-col font-sans
-                bg-background-light text-text-primary
-                dark:bg-background-dark dark:text-text-inverse
+                bg-slate-50 text-slate-900
             "
         >
 
             <Header />
-            <main className="flex-grow flex flex-col">
+            <main className="mx-auto flex w-full max-w-5xl flex-grow flex-col pb-[7.5rem]">
                 {children}
             </main>
+            <MiniAudioPlayer />
+            <BottomNav />
         </div>
     );
 };

@@ -9,6 +9,7 @@ import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
+import { resolveMediaUrl } from "../../utils/media";
 
 function ShopDetailPage() {
     const { shopId } = useParams();
@@ -22,6 +23,11 @@ function ShopDetailPage() {
     const [dishPage, setDishPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [pageError, setPageError] = useState("");
+    const shopImageSrc = resolveMediaUrl(
+        shop?.imageName,
+        import.meta.env.VITE_SHOP_IMAGE_API,
+        "https://placehold.co/1200x800?text=Shop"
+    );
 
     const [currentPosition, setCurrentPosition] = useState<[number, number]>([
         10.7130418,106.6189652,
@@ -122,8 +128,7 @@ function ShopDetailPage() {
                     <div className="grid gap-0 lg:grid-cols-[1.2fr_1fr]">
                         <div className="h-[280px] bg-slate-100 sm:h-[360px]">
                             <img
-                                src={`${import.meta.env.VITE_SHOP_IMAGE_API}demoShopImg.png`}
-
+                                src={shopImageSrc}
                                 alt={shop.name}
                                 className="h-full w-full object-cover"
                             />

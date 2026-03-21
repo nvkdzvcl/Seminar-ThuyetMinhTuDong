@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { resolveMediaUrl } from "../../utils/media";
+
 type ShopCardProps = {
     id: number;
     image: string;
@@ -18,11 +20,17 @@ function ShopCard({
     onViewShop,
     onListenAudio,
 }: ShopCardProps) {
+    const imageSrc = resolveMediaUrl(
+        image,
+        import.meta.env.VITE_SHOP_IMAGE_API,
+        "https://placehold.co/800x500?text=Shop"
+    );
+
     return (
         <div className="group w-full overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
             <div className="relative h-48 w-full overflow-hidden bg-slate-100 sm:h-56">
                 <img
-                    src={`${import.meta.env.VITE_SHOP_IMAGE_API}demoShopImg.png`}
+                    src={imageSrc}
                     alt={shopName}
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 />

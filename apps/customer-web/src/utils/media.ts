@@ -1,0 +1,27 @@
+const ABSOLUTE_URL_PATTERN = /^(https?:)?\/\//i;
+
+export function resolveMediaUrl(
+    value: string | null | undefined,
+    baseUrl: string | undefined,
+    fallback: string
+) {
+    const normalizedValue = value?.trim();
+
+    if (!normalizedValue) {
+        return fallback;
+    }
+
+    if (
+        ABSOLUTE_URL_PATTERN.test(normalizedValue) ||
+        normalizedValue.startsWith("data:") ||
+        normalizedValue.startsWith("blob:")
+    ) {
+        return normalizedValue;
+    }
+
+    if (!baseUrl) {
+        return normalizedValue;
+    }
+
+    return `${baseUrl}${normalizedValue.replace(/^\/+/, "")}`;
+}

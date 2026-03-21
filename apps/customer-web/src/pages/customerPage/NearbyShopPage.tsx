@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-import L, { icon } from "leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import { locationSocketService } from "../../services/locationSocket";
@@ -13,6 +13,7 @@ import { setAutoTurnOnNearbyShopAudio } from "../../stores/slices/audioSlice";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import ShopCard from "../../components/shop/ShopCard";
 import { icons } from "../../types/icons";
+import { resolveMediaUrl } from "../../utils/media";
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -229,6 +230,11 @@ export default function NearbyShopPage() {
     const otherShops = useMemo(() => {
         return shops.filter((shop) => shop.id !== currentShop?.id);
     }, [shops, currentShop]);
+    const currentShopImageSrc = resolveMediaUrl(
+        currentShop?.imageName,
+        import.meta.env.VITE_SHOP_IMAGE_API,
+        "https://placehold.co/800x500?text=Shop"
+    );
 
     const handleOpenDirections = () => {
         if (!currentShop) return;
@@ -237,7 +243,10 @@ export default function NearbyShopPage() {
         window.open(url, "_blank");
     };
 
-    const handleListenOtherShopAudio = (shop: ShopResponse) => {
+    const handleListenOtherShopAudio = (shopId: number) => {
+        const shop = otherShops.find((item) => item.id === shopId);
+        if (!shop) return;
+
         void playShopAudio(shop);
         dispatch(setCurrentShop(shop));
     };
@@ -352,10 +361,7 @@ export default function NearbyShopPage() {
                         <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
                                 <img
-                                    src={
-                                        currentShop.imageName ||
-                                        "https://placehold.co/800x500?text=Shop"
-                                    }
+                                    src={currentShopImageSrc}
                                     alt={currentShop.name}
                                     className="h-64 w-full rounded-[24px] object-cover"
                                 />

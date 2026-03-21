@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useNavigate } from "react-router-dom";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
+import { resolveMediaUrl } from "../../utils/media";
 
 type DishCardProps = {
     id: number;
@@ -26,14 +27,17 @@ function DishCard({
     rating,
     price,
     shopName,
-    onNavigate,
     onListenAudio,
-    onViewMenu,
 }: DishCardProps) {
     const navigate = useNavigate();
     const { currentAudio, isAudioPlaying } = useAudioPlayer();
     const isCurrentDishAudio =
         currentAudio?.type === "DISH" && currentAudio.id === id;
+    const imageSrc = resolveMediaUrl(
+        image,
+        import.meta.env.VITE_DISH_IMAGE_API,
+        "https://placehold.co/600x400?text=Dish"
+    );
 
     const handleNavigateToShop = (shopId: number) => {
         navigate(`/shop/${shopId}`);
@@ -47,9 +51,7 @@ function DishCard({
         <div className="group w-full overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
             <div className="relative h-44 w-full overflow-hidden bg-slate-100 sm:h-52">
                 <img
-                    // src={"http://localhost:8080/vinhkhanhfoodtour/api/uploads/dish-images/demoDishImg.png"}
-                    src={`${import.meta.env.VITE_DISH_IMAGE_API}anh_mau.jpg`}
-                    // src={`${import.meta.env.VITE_IMAGE_API}demoDishImg.png`}
+                    src={imageSrc}
                     alt={dishName}
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 />
