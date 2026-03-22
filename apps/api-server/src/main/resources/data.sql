@@ -1,5 +1,28 @@
 USE vinhkhanhfoodtour;
 
+CREATE TABLE IF NOT EXISTS poi (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    shop_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    address VARCHAR(255) NOT NULL,
+    lat DOUBLE NULL,
+    lng DOUBLE NULL,
+    region VARCHAR(255) NULL,
+    category VARCHAR(255) NULL,
+    owner_id INT NULL,
+    owner_name VARCHAR(255) NULL,
+    cover_image VARCHAR(500) NULL,
+    risk_flag BIT(1) NOT NULL DEFAULT b'0',
+    risk_score INT NULL,
+    status VARCHAR(50) NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
+ALTER TABLE poi
+    ADD COLUMN IF NOT EXISTS shop_id INT NOT NULL DEFAULT 1;
+
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_SAFE_UPDATES = 0;
 
@@ -14,6 +37,7 @@ DELETE FROM shop;
 DELETE FROM shop_type;
 DELETE FROM language;
 DELETE FROM users;
+DELETE FROM poi;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -30,6 +54,19 @@ VALUES
 (3, 'owner',     '0901000003', 'owner@gmail.com',    '$2a$10$MiWdfWi2Af4vK6hwSzboQuu6Ydtj0LxGUdYCbBjgU5/5o8uNEL1za', 'vi', 'OWNER_SHOP', '2026-03-01', 'ACTIVE'),
 (4, 'owner2',     '0901000004', 'owner2@gmail.com',   '$2a$10$MiWdfWi2Af4vK6hwSzboQuu6Ydtj0LxGUdYCbBjgU5/5o8uNEL1za', 'en', 'OWNER_SHOP', '2026-03-01', 'ACTIVE'),
 (5, 'user124',      '0901000005', 'user124@gmail.com',          '$2a$10$InlLC0hKujhnwNGK45nqL.hUHZPNh4Azuhq05mB9xL7fTKFqWtnCK', 'vi', 'CUSTOMER',      '2026-03-01', 'ACTIVE');
+
+-- =========================
+-- 1.1) POI (5 rows)
+-- status: DRAFT, PUBLISHED, FLAGGED, HIDDEN
+-- =========================
+INSERT INTO poi
+(id, shop_id, name, description, address, lat, lng, region, category, owner_id, owner_name, cover_image, risk_flag, risk_score, status, created_at, updated_at)
+VALUES
+(1, 1, 'Oc Dao Vinh Khanh', NULL, '15 Vinh Khanh, Quan 4, TP.HCM', 10.7607194, 106.7007169, NULL, 'SEAFOOD', 2, 'user123', 'shop1.jpg', b'0', NULL, 'PUBLISHED', '2026-03-01 08:00:00', '2026-03-20 10:00:00'),
+(2, 2, 'Banh Canh Cua Co Dung', NULL, '25 Vinh Khanh, Quan 4, TP.HCM', 10.7612809, 106.7033943, NULL, 'NOODLE', 3, 'owner', 'shop2.jpg', b'0', NULL, 'PUBLISHED', '2026-03-01 09:00:00', '2026-03-19 14:30:00'),
+(3, 3, 'An Vat Cua Pho', NULL, '39 Vinh Khanh, Quan 4, TP.HCM', 10.7611719, 106.7033665, NULL, 'SNACK', 4, 'owner2', 'shop3.jpg', b'1', 75, 'FLAGGED', '2026-03-02 10:00:00', '2026-03-20 09:00:00'),
+(4, 4, 'Tra Sua Dem Sai Gon', NULL, '52 Vinh Khanh, Quan 4, TP.HCM', 10.7617836, 106.7036373, NULL, 'DRINK', 5, 'user124', 'shop4.jpg', b'0', NULL, 'DRAFT', '2026-03-10 08:00:00', '2026-03-19 11:00:00'),
+(5, 5, 'Hai San Nuong 1995', NULL, '66 Vinh Khanh, Quan 4, TP.HCM', 10.7615518,106.7023348, NULL, 'SEAFOOD', 1, 'ADMIN', 'shop5.jpg', b'1', 85, 'HIDDEN', '2026-03-03 10:00:00', '2026-03-12 16:00:00');
 
 -- =========================
 -- 2) LANGUAGE (3 rows)
@@ -136,16 +173,16 @@ VALUES
 INSERT INTO orders
 (id, shop_id, customer_id, total_price, payment_method, created_at, payment_status, status)
 VALUES
-(1, 1, 1, 175000, 0, '2026-03-02', 1, "ACTIVE"),
-(2, 2, 1, 130000, 1, '2026-03-03', 1, "ACTIVE"),
-(3, 3, 1,  75000, 0, '2026-03-03', 1, "ACTIVE"),
-(4, 4, 1,  60000, 1, '2026-03-04', 1, "ACTIVE"),
-(5, 5, 1, 215000, 0, '2026-03-05', 0, "ACTIVE"),
-(6, 1, 1,  90000, 1, '2026-03-06', 1, "ACTIVE"),
-(7, 2, 1,  65000, 0, '2026-03-07', 1, "ACTIVE"),
-(8, 3, 1, 105000, 1, '2026-03-08', 1, "ACTIVE"),
-(9, 4, 1,  70000, 0, '2026-03-09', 0, "ACTIVE"),
-(10,5, 1, 300000, 1, '2026-03-10', 1, "ACTIVE");
+(1, 1, 1, 175000, 0, '2026-03-16', 1, "ACTIVE"),
+(2, 2, 1, 130000, 1, '2026-03-17', 1, "ACTIVE"),
+(3, 3, 1,  75000, 0, '2026-03-17', 1, "ACTIVE"),
+(4, 4, 1,  60000, 1, '2026-03-18', 1, "ACTIVE"),
+(5, 5, 1, 215000, 0, '2026-03-19', 0, "ACTIVE"),
+(6, 1, 1,  90000, 1, '2026-03-20', 1, "ACTIVE"),
+(7, 2, 1,  65000, 0, '2026-03-21', 1, "ACTIVE"),
+(8, 3, 1, 105000, 1, '2026-03-22', 1, "ACTIVE"),
+(9, 4, 1,  70000, 0, '2026-03-22', 0, "ACTIVE"),
+(10,5, 1, 300000, 1, '2026-03-22', 1, "ACTIVE");
 
 -- =========================
 -- 8) ORDER ITEM (18 rows)
@@ -259,3 +296,4 @@ ALTER TABLE order_item AUTO_INCREMENT = 19;
 ALTER TABLE tour_plan AUTO_INCREMENT = 6;
 ALTER TABLE tour_stop AUTO_INCREMENT = 13;
 ALTER TABLE tour_stop_item AUTO_INCREMENT = 17;
+ALTER TABLE poi AUTO_INCREMENT = 6;

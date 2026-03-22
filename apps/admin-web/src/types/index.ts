@@ -1,75 +1,137 @@
-﻿export interface POI {
-  id: string;
-  name: string;
-  category: 'food' | 'drink' | 'snack' | 'wc' | 'parking';
-  lat: number;
-  lng: number;
-  radius: number;
-  audioUrl?: string;
-  textToSpeech?: string;
-  createdAt: string;
-  updatedAt: string;
+// User Types
+export type UserRole = 'super_admin' | 'staff' | 'store_owner'
+export type UserStatus = 'active' | 'suspended'
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  status: UserStatus
+  createdAt: string
+  avatar?: string
+  lastActivity?: string
 }
 
-export interface Tour {
-  id: string;
-  name: string;
-  poiIds: string[];
-  qrToken: string;
-  qrImageUrl: string;
-  createdAt: string;
-  isActive: boolean;
+// POI Types
+export type POIStatus = 'draft' | 'published' | 'flagged' | 'hidden'
+
+export interface POI {
+  id: string
+  shopId?: string
+  name: string
+  description?: string
+  address?: string
+  lat?: number
+  lng?: number
+  region?: string
+  category?: string
+  status: POIStatus
+  ownerId?: string
+  ownerName?: string
+  coverImage?: string
+  riskFlag: boolean
+  riskScore?: number
+  updatedAt: string
+  createdAt: string
 }
 
-export interface ListenEvent {
-  id: string;
-  poiId: string;
-  tourId: string;
-  sessionToken: string;
-  durationMs: number;
-  completed: boolean;
-  timestamp: string;
-  lat: number;
-  lng: number;
+export interface POIVersion {
+  id: string
+  poiId: string
+  version: number
+  content: string
+  audioUrl?: string
+  createdAt: string
+  createdBy: string
 }
 
-export interface AdminUser {
-  id: string;
-  username: string;
-  lastLoginAt: string;
+export interface POIChangeLog {
+  id: string
+  poiId: string
+  action: string
+  actor: string
+  timestamp: string
+  before?: string
+  after?: string
+  reason?: string
 }
 
-export interface AuthState {
-  user: AdminUser | null;
-  token: string | null;
-  isAuthenticated: boolean;
+// Job Types
+export type JobStatus = 'queued' | 'processing' | 'failed' | 'done'
+export type JobType = 'audio_generation' | 'content_moderation' | 'image_processing' | 'data_sync'
+
+export interface Job {
+  id: string
+  type: JobType
+  status: JobStatus
+  relatedPOI?: string
+  relatedUser?: string
+  retryCount: number
+  startedAt?: string
+  endedAt?: string
+  error?: string
+  createdAt: string
 }
 
-export interface AnalyticsSummary {
-  totalListens: number;
-  avgDurationMs: number;
-  uniqueSessions: number;
-  completionRate: number;
+// Audit Log Types
+export type AuditModule = 'poi' | 'user' | 'job' | 'system' | 'settings'
+export type AuditAction = 'create' | 'update' | 'delete' | 'status_change' | 'login' | 'logout'
+
+export interface AuditLog {
+  id: string
+  timestamp: string
+  actor: string
+  actorId: string
+  module: AuditModule
+  action: AuditAction
+  entity: string
+  entityId: string
+  before?: string
+  after?: string
+  reason?: string
 }
 
-export interface DailyListenData {
-  date: string;
-  listens: number;
+// Settings Types
+export interface SystemSettings {
+  timeout: number
+  defaultLanguage: string
+  uploadLimit: number
+  riskScoreThresholdLow: number
+  riskScoreThresholdHigh: number
 }
 
-export interface TopPOI {
-  poiId: string;
-  poiName: string;
-  category: string;
-  totalListens: number;
-  avgDurationMs: number;
+// Dashboard Types
+export interface KPIStat {
+  label: string
+  value: string | number
+  change?: number
+  changeType?: 'increase' | 'decrease' | 'neutral'
 }
 
-export type TimeRange = 'day' | 'week' | 'month' | 'all';
+export interface ChartDataPoint {
+  date: string
+  jobs: number
+  success: number
+  failed: number
+}
 
-export const MAIN_CATEGORIES = ['food', 'drink', 'snack'] as const;
-export const SUB_CATEGORIES = ['wc', 'parking'] as const;
+export interface RegionStat {
+  region: string
+  poiCount: number
+  percentage: number
+}
 
-export function isMainCategory(cat: string): boolean {
-  return (MAIN_CATEGORIES as readonly string[]).includes(cat);
+export interface WeeklyVisitPoint {
+  date: string
+  visits: number
+}
+
+export interface Alert {
+  id: string
+  type: 'flagged_poi' | 'failed_job'
+  title: string
+  description: string
+  timestamp: string
+  severity: 'warning' | 'error'
 }
