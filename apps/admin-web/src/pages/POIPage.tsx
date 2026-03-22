@@ -18,22 +18,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { DataTableToolbar } from '@/components/shared/DataTableToolbar'
 import { FilterBar, type FilterConfig } from '@/components/shared/FilterBar'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -42,8 +26,7 @@ import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import type { POI, POIStatus } from '@/types'
 import { formatDateTime } from '@/lib/utils'
-import { createPoi, deletePoi, fetchPois, updatePoiStatus } from '@/services/poiService'
-import { fetchShopOptions, type ShopOption } from '@/services/shopService'
+import { deletePoi, fetchPois, updatePoiStatus } from '@/services/poiService'
 
 const PAGE_SIZE = 10
 
@@ -60,15 +43,12 @@ export function POIPage() {
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [shopOptions, setShopOptions] = useState<ShopOption[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedPOI, setSelectedPOI] = useState<POI | null>(null)
-  const [selectedShopId, setSelectedShopId] = useState('')
 
   const filterConfigs: FilterConfig[] = [
     { key: 'status', label: 'Trạng thái', options: statusOptions, value: filters.status },
@@ -107,18 +87,6 @@ export function POIPage() {
     void loadPois()
   }, [currentPage, pageSize, search, filters])
 
-  useEffect(() => {
-    const loadShops = async () => {
-      try {
-        const shops = await fetchShopOptions()
-        setShopOptions(shops)
-      } catch {
-        setShopOptions([])
-      }
-    }
-    void loadShops()
-  }, [])
-
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
     setCurrentPage(1)
@@ -131,28 +99,6 @@ export function POIPage() {
   }
 
   const hasActiveFilters = Boolean(search) || Object.values(filters).some((v) => v && v !== 'all')
-
-  const handleCreate = () => {
-    setSelectedShopId('')
-    setCreateDialogOpen(true)
-  }
-
-  const handleSubmitCreate = async () => {
-    if (!selectedShopId) {
-      toast.error('Vui lòng chọn cửa hàng')
-      return
-    }
-    try {
-      await createPoi({
-        shopId: Number(selectedShopId),
-      })
-      toast.success('Đã tạo POI mới từ cửa hàng thành công!')
-      setCreateDialogOpen(false)
-      await loadPois()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Tạo POI thất bại')
-    }
-  }
 
   const handleToggleVisibility = async (poi: POI) => {
     const newStatus: POIStatus = poi.status === 'hidden' ? 'draft' : 'hidden'
@@ -183,8 +129,6 @@ export function POIPage() {
       <DataTableToolbar
         title="Quản lý POI"
         description="POI hiện được giản lược theo tên cửa hàng"
-        onAdd={handleCreate}
-        addLabel="Tạo POI từ cửa hàng"
       />
 
       <FilterBar
@@ -205,9 +149,7 @@ export function POIPage() {
         <EmptyState
           icon={Store}
           title="Không tìm thấy POI nào"
-          description={hasActiveFilters ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm' : 'Bắt đầu bằng cách tạo POI mới'}
-          actionLabel={!hasActiveFilters ? 'Tạo POI mới' : undefined}
-          onAction={!hasActiveFilters ? handleCreate : undefined}
+          description={hasActiveFilters ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm' : 'Hiện chưa có POI nào'}
         />
       ) : (
         <>
@@ -301,36 +243,6 @@ export function POIPage() {
           />
         </>
       )}
-
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Tạo POI từ cửa hàng</DialogTitle>
-            <DialogDescription>POI sẽ lấy theo tên cửa hàng đã chọn</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2 py-4">
-            <Label>Cửa hàng</Label>
-            <Select value={selectedShopId} onValueChange={setSelectedShopId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn cửa hàng" />
-              </SelectTrigger>
-              <SelectContent>
-                {shopOptions.map((shop) => (
-                  <SelectItem key={shop.value} value={shop.value}>
-                    {shop.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={() => void handleSubmitCreate()}>Tạo POI</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <ConfirmActionDialog
         open={deleteDialogOpen}

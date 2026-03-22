@@ -5,7 +5,6 @@ import {
   MapPin,
   AlertTriangle,
   CheckCircle,
-  Plus,
   RefreshCw,
   AlertCircle,
   Flag,
@@ -78,8 +77,8 @@ export function DashboardPage() {
             Làm mới
           </Button>
           <Button size="sm" onClick={() => navigate('/poi')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Tạo POI mới
+            <MapPin className="mr-2 h-4 w-4" />
+            Quản lý POI
           </Button>
         </div>
       </div>

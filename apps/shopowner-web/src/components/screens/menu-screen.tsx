@@ -13,6 +13,7 @@ import {
   Filter,
   Flame
 } from "lucide-react"
+import type { PoiApprovalStatus } from "@/components/app-shell"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,7 @@ type Screen = "dashboard" | "menu" | "qr" | "insights" | "shop-profile" | "dish-
 
 interface MenuScreenProps {
   onNavigate: (screen: Screen, dishId?: string) => void
+  poiApprovalStatus: PoiApprovalStatus
 }
 
 const dishes = [
@@ -98,7 +100,7 @@ function SpicyIndicator({ level }: { level: number }) {
   )
 }
 
-export function MenuScreen({ onNavigate }: MenuScreenProps) {
+export function MenuScreen({ onNavigate, poiApprovalStatus }: MenuScreenProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [filter, setFilter] = useState<"all" | "available" | "unavailable">("all")
 
@@ -112,6 +114,14 @@ export function MenuScreen({ onNavigate }: MenuScreenProps) {
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-4">
+      {poiApprovalStatus !== "approved" && (
+        <Card className="border-amber-500/40 bg-amber-500/10">
+          <CardContent className="p-3 text-sm text-muted-foreground">
+            POI chưa duyệt: thay đổi thực đơn sẽ được lưu ở dạng nháp.
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

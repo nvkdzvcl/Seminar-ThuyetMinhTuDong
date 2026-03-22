@@ -14,4 +14,6 @@ public class PoiStatusUpdateRequest {
 
     @NotNull(message = "REQUEST_BODY_INVALID")
     PoiStatus status;
+
+    String reason;
 }

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS poi (
     cover_image VARCHAR(500) NULL,
     risk_flag BIT(1) NOT NULL DEFAULT b'0',
     risk_score INT NULL,
+    rejection_reason TEXT NULL,
     status VARCHAR(50) NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
@@ -22,6 +23,20 @@ CREATE TABLE IF NOT EXISTS poi (
 
 ALTER TABLE poi
     ADD COLUMN IF NOT EXISTS shop_id INT NOT NULL DEFAULT 1;
+
+ALTER TABLE poi
+    ADD COLUMN IF NOT EXISTS rejection_reason TEXT NULL;
+
+CREATE TABLE IF NOT EXISTS poi_approval_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    shop_id INT NOT NULL,
+    poi_id INT NULL,
+    status VARCHAR(50) NOT NULL,
+    submitted_at DATETIME NOT NULL,
+    reviewer VARCHAR(255) NULL,
+    reviewed_at DATETIME NULL,
+    reason TEXT NULL
+);
 
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_SAFE_UPDATES = 0;
@@ -38,6 +53,7 @@ DELETE FROM shop_type;
 DELETE FROM language;
 DELETE FROM users;
 DELETE FROM poi;
+DELETE FROM poi_approval_history;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -60,13 +76,20 @@ VALUES
 -- status: DRAFT, PUBLISHED, FLAGGED, HIDDEN
 -- =========================
 INSERT INTO poi
-(id, shop_id, name, description, address, lat, lng, region, category, owner_id, owner_name, cover_image, risk_flag, risk_score, status, created_at, updated_at)
+(id, shop_id, name, description, address, lat, lng, region, category, owner_id, owner_name, cover_image, risk_flag, risk_score, rejection_reason, status, created_at, updated_at)
 VALUES
-(1, 1, 'Oc Dao Vinh Khanh', NULL, '15 Vinh Khanh, Quan 4, TP.HCM', 10.7607194, 106.7007169, NULL, 'SEAFOOD', 2, 'user123', 'shop1.jpg', b'0', NULL, 'PUBLISHED', '2026-03-01 08:00:00', '2026-03-20 10:00:00'),
-(2, 2, 'Banh Canh Cua Co Dung', NULL, '25 Vinh Khanh, Quan 4, TP.HCM', 10.7612809, 106.7033943, NULL, 'NOODLE', 3, 'owner', 'shop2.jpg', b'0', NULL, 'PUBLISHED', '2026-03-01 09:00:00', '2026-03-19 14:30:00'),
-(3, 3, 'An Vat Cua Pho', NULL, '39 Vinh Khanh, Quan 4, TP.HCM', 10.7611719, 106.7033665, NULL, 'SNACK', 4, 'owner2', 'shop3.jpg', b'1', 75, 'FLAGGED', '2026-03-02 10:00:00', '2026-03-20 09:00:00'),
-(4, 4, 'Tra Sua Dem Sai Gon', NULL, '52 Vinh Khanh, Quan 4, TP.HCM', 10.7617836, 106.7036373, NULL, 'DRINK', 5, 'user124', 'shop4.jpg', b'0', NULL, 'DRAFT', '2026-03-10 08:00:00', '2026-03-19 11:00:00'),
-(5, 5, 'Hai San Nuong 1995', NULL, '66 Vinh Khanh, Quan 4, TP.HCM', 10.7615518,106.7023348, NULL, 'SEAFOOD', 1, 'ADMIN', 'shop5.jpg', b'1', 85, 'HIDDEN', '2026-03-03 10:00:00', '2026-03-12 16:00:00');
+(1, 1, 'Oc Dao Vinh Khanh', NULL, '15 Vinh Khanh, Quan 4, TP.HCM', 10.7607194, 106.7007169, NULL, 'SEAFOOD', 2, 'user123', 'shop1.jpg', b'0', NULL, NULL, 'PUBLISHED', '2026-03-01 08:00:00', '2026-03-20 10:00:00'),
+(2, 2, 'Banh Canh Cua Co Dung', NULL, '25 Vinh Khanh, Quan 4, TP.HCM', 10.7612809, 106.7033943, NULL, 'NOODLE', 3, 'owner', 'shop2.jpg', b'0', NULL, NULL, 'PUBLISHED', '2026-03-01 09:00:00', '2026-03-19 14:30:00'),
+(3, 3, 'An Vat Cua Pho', NULL, '39 Vinh Khanh, Quan 4, TP.HCM', 10.7611719, 106.7033665, NULL, 'SNACK', 4, 'owner2', 'shop3.jpg', b'1', 75, 'Ảnh biển hiệu chưa rõ, vui lòng cập nhật lại.', 'FLAGGED', '2026-03-02 10:00:00', '2026-03-20 09:00:00'),
+(4, 4, 'Tra Sua Dem Sai Gon', NULL, '52 Vinh Khanh, Quan 4, TP.HCM', 10.7617836, 106.7036373, NULL, 'DRINK', 5, 'user124', 'shop4.jpg', b'0', NULL, NULL, 'DRAFT', '2026-03-10 08:00:00', '2026-03-19 11:00:00'),
+(5, 5, 'Hai San Nuong 1995', NULL, '66 Vinh Khanh, Quan 4, TP.HCM', 10.7615518,106.7023348, NULL, 'SEAFOOD', 1, 'ADMIN', 'shop5.jpg', b'1', 85, 'Thiếu thông tin giờ mở cửa.', 'HIDDEN', '2026-03-03 10:00:00', '2026-03-12 16:00:00');
+
+INSERT INTO poi_approval_history
+(id, shop_id, poi_id, status, submitted_at, reviewer, reviewed_at, reason)
+VALUES
+(1, 3, 3, 'pending', '2026-03-17 09:10:00', NULL, NULL, NULL),
+(2, 3, 3, 'rejected', '2026-03-18 14:20:00', 'Admin', '2026-03-18 14:20:00', 'Ảnh biển hiệu chưa rõ, vui lòng cập nhật lại.'),
+(3, 4, 4, 'pending', '2026-03-20 08:30:00', NULL, NULL, NULL);
 
 -- =========================
 -- 2) LANGUAGE (3 rows)
@@ -297,3 +320,4 @@ ALTER TABLE tour_plan AUTO_INCREMENT = 6;
 ALTER TABLE tour_stop AUTO_INCREMENT = 13;
 ALTER TABLE tour_stop_item AUTO_INCREMENT = 17;
 ALTER TABLE poi AUTO_INCREMENT = 6;
+ALTER TABLE poi_approval_history AUTO_INCREMENT = 4;

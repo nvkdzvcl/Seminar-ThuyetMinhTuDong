@@ -51,6 +51,8 @@ public class Poi {
 
     Integer riskScore;
 
+    String rejectionReason;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     PoiStatus status;

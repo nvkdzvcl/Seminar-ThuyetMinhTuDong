@@ -13,17 +13,22 @@ import {
   Sparkles, 
   Eye,
   TrendingUp,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert
 } from "lucide-react"
+import type { PoiApprovalStatus } from "@/components/app-shell"
 
 type Screen = "dashboard" | "menu" | "qr" | "insights" | "shop-profile" | "dish-editor" | "audio-management"
 
 interface DashboardScreenProps {
   onNavigate: (screen: Screen) => void
+  poiApprovalStatus: PoiApprovalStatus
+  rejectionReason: string
 }
 
-export function DashboardScreen({ onNavigate }: DashboardScreenProps) {
+export function DashboardScreen({ onNavigate, poiApprovalStatus, rejectionReason }: DashboardScreenProps) {
   const isOpen = true
+  const isApproved = poiApprovalStatus === "approved"
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-6">
@@ -109,6 +114,27 @@ export function DashboardScreen({ onNavigate }: DashboardScreenProps) {
       </div>
 
       {/* Quick Actions */}
+      {!isApproved && (
+        <Card className="border-amber-500/40 bg-amber-500/10">
+          <CardContent className="p-4">
+            <div className="flex gap-3">
+              <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  POI chưa được duyệt
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Menu và audio chỉ ở trạng thái nháp, chưa public cho khách.
+                </p>
+                {poiApprovalStatus === "rejected" && rejectionReason ? (
+                  <p className="text-xs text-muted-foreground">Lý do: {rejectionReason}</p>
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">Thao tác nhanh</h2>
         <div className="grid grid-cols-2 gap-3">

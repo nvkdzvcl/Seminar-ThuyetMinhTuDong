@@ -2,13 +2,17 @@ package com.audioguide.service;
 
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.poiDTO.PoiCreateRequest;
+import com.audioguide.dto.poiDTO.PoiApprovalHistoryItemResponse;
+import com.audioguide.dto.poiDTO.PoiApprovalSummaryResponse;
 import com.audioguide.dto.poiDTO.PoiResponse;
 import com.audioguide.dto.poiDTO.PoiStatusUpdateRequest;
 import com.audioguide.dto.poiDTO.PoiUpdateRequest;
+import com.audioguide.entity.PoiApprovalHistory;
 import com.audioguide.entity.Poi;
 import com.audioguide.enums.PoiStatus;
 import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;
+import com.audioguide.repository.PoiApprovalHistoryRepository;
 import com.audioguide.repository.PoiRepository;
 import com.audioguide.repository.ShopRepository;
 import lombok.AccessLevel;
@@ -25,6 +29,7 @@ import java.time.LocalDateTime;
 public class PoiService {
 
     PoiRepository poiRepository;
+    PoiApprovalHistoryRepository poiApprovalHistoryRepository;
     ShopRepository shopRepository;
 
     public PagingDto<PoiResponse> getAll(
@@ -75,12 +80,14 @@ public class PoiService {
                 .coverImage(shop.getImageName())
                 .riskFlag(Boolean.TRUE.equals(request.getRiskFlag()))
                 .riskScore(request.getRiskScore())
+                .rejectionReason(null)
                 .status(PoiStatus.DRAFT)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
-
-        return toResponse(poiRepository.save(poi));
+        var saved = poiRepository.save(poi);
+        saveHistory(saved.getShopId(), saved.getId(), "pending", null, null);
+        return toResponse(saved);
     }
 
     public PoiResponse update(Integer id, PoiUpdateRequest request) {
@@ -105,8 +112,67 @@ public class PoiService {
     public PoiResponse updateStatus(Integer id, PoiStatusUpdateRequest request) {
         var poi = findByIdOrThrow(id);
         poi.setStatus(request.getStatus());
+        if (request.getStatus() == PoiStatus.FLAGGED || request.getStatus() == PoiStatus.HIDDEN) {
+            poi.setRejectionReason(request.getReason());
+            saveHistory(poi.getShopId(), poi.getId(), "rejected", "Admin", request.getReason());
+        } else if (request.getStatus() == PoiStatus.PUBLISHED) {
+            poi.setRejectionReason(null);
+            saveHistory(poi.getShopId(), poi.getId(), "approved", "Admin", null);
+        }
         poi.setUpdatedAt(LocalDateTime.now());
         return toResponse(poiRepository.save(poi));
+    }
+
+    public PoiApprovalSummaryResponse getApprovalSummaryByShopId(Integer shopId) {
+        var shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
+        var poiOptional = poiRepository.findByShopId(shopId);
+        var history = poiApprovalHistoryRepository.findByShopIdOrderBySubmittedAtDesc(shopId);
+        if (poiOptional.isEmpty()) {
+            return PoiApprovalSummaryResponse.builder()
+                    .shopId(shopId)
+                    .status("unregistered")
+                    .history(history.stream().map(this::toHistoryResponse).toList())
+                    .build();
+        }
+
+        var poi = poiOptional.get();
+        return PoiApprovalSummaryResponse.builder()
+                .shopId(shop.getId())
+                .poiId(poi.getId())
+                .status(mapToOwnerStatus(poi.getStatus()))
+                .rejectionReason(poi.getRejectionReason())
+                .history(history.stream().map(this::toHistoryResponse).toList())
+                .build();
+    }
+
+    public PoiApprovalSummaryResponse submitRegistration(Integer shopId) {
+        var shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
+        var now = LocalDateTime.now();
+        var poi = poiRepository.findByShopId(shopId).orElseGet(() -> Poi.builder()
+                .shopId(shop.getId())
+                .name(shop.getName())
+                .description(null)
+                .address(shop.getAddress())
+                .lat(shop.getLat())
+                .lng(shop.getLng())
+                .region(null)
+                .category(shop.getShopType() != null ? shop.getShopType().getName() : null)
+                .ownerId(shop.getOwner() != null ? shop.getOwner().getId() : null)
+                .ownerName(shop.getOwner() != null ? shop.getOwner().getFullName() : null)
+                .coverImage(shop.getImageName())
+                .riskFlag(false)
+                .riskScore(null)
+                .createdAt(now)
+                .build());
+
+        poi.setStatus(PoiStatus.DRAFT);
+        poi.setRejectionReason(null);
+        poi.setUpdatedAt(now);
+        var saved = poiRepository.save(poi);
+        saveHistory(shopId, saved.getId(), "pending", null, null);
+        return getApprovalSummaryByShopId(shopId);
     }
 
     public void delete(Integer id) {
@@ -142,9 +208,42 @@ public class PoiService {
                 .coverImage(poi.getCoverImage())
                 .riskFlag(Boolean.TRUE.equals(poi.getRiskFlag()))
                 .riskScore(poi.getRiskScore())
+                .rejectionReason(poi.getRejectionReason())
                 .status(poi.getStatus())
                 .createdAt(poi.getCreatedAt())
                 .updatedAt(poi.getUpdatedAt())
                 .build();
+    }
+
+    private PoiApprovalHistoryItemResponse toHistoryResponse(PoiApprovalHistory item) {
+        return PoiApprovalHistoryItemResponse.builder()
+                .id(item.getId())
+                .shopId(item.getShopId())
+                .poiId(item.getPoiId())
+                .status(item.getStatus())
+                .submittedAt(item.getSubmittedAt())
+                .reviewer(item.getReviewer())
+                .reviewedAt(item.getReviewedAt())
+                .reason(item.getReason())
+                .build();
+    }
+
+    private String mapToOwnerStatus(PoiStatus status) {
+        if (status == PoiStatus.DRAFT) return "pending";
+        if (status == PoiStatus.PUBLISHED) return "approved";
+        return "rejected";
+    }
+
+    private void saveHistory(Integer shopId, Integer poiId, String status, String reviewer, String reason) {
+        var now = LocalDateTime.now();
+        poiApprovalHistoryRepository.save(PoiApprovalHistory.builder()
+                .shopId(shopId)
+                .poiId(poiId)
+                .status(status)
+                .submittedAt(now)
+                .reviewer(reviewer)
+                .reviewedAt(reviewer != null ? now : null)
+                .reason(reason)
+                .build());
     }
 }

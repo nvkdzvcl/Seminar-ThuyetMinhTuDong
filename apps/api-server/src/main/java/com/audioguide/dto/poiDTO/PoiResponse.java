@@ -41,6 +41,8 @@ public class PoiResponse {
 
     Integer riskScore;
 
+    String rejectionReason;
+
     PoiStatus status;
 
     LocalDateTime createdAt;

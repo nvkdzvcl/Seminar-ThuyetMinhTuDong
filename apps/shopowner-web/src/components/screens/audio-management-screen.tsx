@@ -18,9 +18,11 @@ import {
   Edit3,
   Save
 } from "lucide-react"
+import type { PoiApprovalStatus } from "@/components/app-shell"
 
 interface AudioManagementScreenProps {
   onBack: () => void
+  poiApprovalStatus: PoiApprovalStatus
 }
 
 const languages = [
@@ -87,11 +89,12 @@ function getStatusBadge(status: "ready" | "missing" | "needs-review") {
   }
 }
 
-export function AudioManagementScreen({ onBack }: AudioManagementScreenProps) {
+export function AudioManagementScreen({ onBack, poiApprovalStatus }: AudioManagementScreenProps) {
   const [activeTab, setActiveTab] = useState("vi")
   const [isPlaying, setIsPlaying] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const isApproved = poiApprovalStatus === "approved"
 
   const activeLanguage = languages.find(l => l.code === activeTab)
 
@@ -117,6 +120,14 @@ export function AudioManagementScreen({ onBack }: AudioManagementScreenProps) {
       </div>
 
       <div className="px-4 py-6 space-y-6">
+        {!isApproved && (
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="p-3 text-sm text-muted-foreground">
+              POI chưa duyệt: nội dung audio đang ở trạng thái nháp, chưa public cho du khách.
+            </CardContent>
+          </Card>
+        )}
+
         {/* Language Status Overview */}
         <div className="grid grid-cols-5 gap-2">
           {languages.map((lang) => (

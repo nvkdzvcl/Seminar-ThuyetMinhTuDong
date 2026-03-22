@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -8,7 +8,6 @@ import {
   FileText,
   Settings,
   Menu,
-  X,
   Bell,
   ChevronDown,
   LogOut,
@@ -26,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { setAdminAuthenticated } from '@/lib/auth'
 
 const navigation = [
   { name: 'Tổng quan', href: '/dashboard', icon: LayoutDashboard },
@@ -36,16 +36,20 @@ const navigation = [
   { name: 'Cài đặt', href: '/settings', icon: Settings },
 ]
 
-function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
+function SidebarContent({
+  onNavClick,
+  onLogout,
+}: {
+  onNavClick?: () => void
+  onLogout?: () => void
+}) {
   const location = useLocation()
 
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
-          <MapPin className="h-5 w-5 text-sidebar-primary-foreground" />
-        </div>
+        <img src="/images/brand/logo.png" alt="Logo" className="h-9 w-9 rounded-lg object-cover" />
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-sidebar-foreground">POI Audio Guide</span>
           <span className="text-xs text-sidebar-foreground/60">Admin Panel</span>
@@ -106,7 +110,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
               Cài đặt tài khoản
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={onLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Đăng xuất
             </DropdownMenuItem>
@@ -119,18 +123,24 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
 
 export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    setAdminAuthenticated(false)
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar lg:block">
-        <SidebarContent />
+        <SidebarContent onLogout={handleLogout} />
       </aside>
 
       {/* Mobile Sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-64 bg-sidebar p-0">
-          <SidebarContent onNavClick={() => setMobileOpen(false)} />
+          <SidebarContent onNavClick={() => setMobileOpen(false)} onLogout={handleLogout} />
         </SheetContent>
       </Sheet>
 
@@ -179,7 +189,7 @@ export function AdminLayout() {
                 Hồ sơ cá nhân
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Đăng xuất
               </DropdownMenuItem>

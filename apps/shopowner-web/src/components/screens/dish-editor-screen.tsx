@@ -20,9 +20,11 @@ import {
   Trash2,
   Check
 } from "lucide-react"
+import type { PoiApprovalStatus } from "@/components/app-shell"
 
 interface DishEditorScreenProps {
   dishId: string | null
+  poiApprovalStatus: PoiApprovalStatus
   onBack: () => void
 }
 
@@ -33,8 +35,9 @@ const spicyLevels = [
   { value: 3, label: "Rất cay" },
 ]
 
-export function DishEditorScreen({ dishId, onBack }: DishEditorScreenProps) {
+export function DishEditorScreen({ dishId, poiApprovalStatus, onBack }: DishEditorScreenProps) {
   const isNew = dishId === "new"
+  const isApproved = poiApprovalStatus === "approved"
   const [spicyLevel, setSpicyLevel] = useState(1)
   const [isRecommended, setIsRecommended] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -67,6 +70,14 @@ export function DishEditorScreen({ dishId, onBack }: DishEditorScreenProps) {
       </div>
 
       <div className="px-4 py-6 pb-32 space-y-6">
+        {!isApproved && (
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="p-3 text-sm text-muted-foreground">
+              POI chưa duyệt: món ăn sẽ được lưu ở dạng nháp và chưa hiển thị public.
+            </CardContent>
+          </Card>
+        )}
+
         {/* Image Upload */}
         <div className="space-y-2">
           <Label className="text-foreground font-medium">Hình ảnh món ăn</Label>
@@ -280,7 +291,7 @@ export function DishEditorScreen({ dishId, onBack }: DishEditorScreenProps) {
         <div className="max-w-md mx-auto">
           <Button className="w-full h-12 text-base font-semibold gap-2">
             <Save className="w-5 h-5" />
-            {isNew ? "Thêm món ăn" : "Lưu thay đổi"}
+            {isApproved ? (isNew ? "Thêm món ăn" : "Lưu thay đổi") : "Lưu nháp"}
           </Button>
         </div>
       </div>

@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface PoiRepository extends JpaRepository<Poi, Integer> {
 
     @Query("""
@@ -28,4 +30,6 @@ public interface PoiRepository extends JpaRepository<Poi, Integer> {
             @Param("hasFlag") Boolean hasFlag,
             Pageable pageable
     );
+
+    Optional<Poi> findByShopId(Integer shopId);
 }

@@ -105,14 +105,6 @@ export async function fetchPoiById(id: string): Promise<POI> {
   return mapPoi(poi)
 }
 
-export async function createPoi(payload: PoiUpsertPayload): Promise<POI> {
-  const poi = await apiFetch<PoiApiModel>('/poi', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-  return mapPoi(poi)
-}
-
 export async function updatePoi(id: string, payload: PoiUpsertPayload): Promise<POI> {
   const poi = await apiFetch<PoiApiModel>(`/poi/${id}`, {
     method: 'PUT',

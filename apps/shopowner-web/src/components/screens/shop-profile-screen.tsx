@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 import { 
   ArrowLeft, 
   Camera, 
@@ -17,11 +18,21 @@ import {
   ImageIcon,
   Flame,
   Users,
-  Save
+  Save,
+  ShieldCheck,
+  ShieldX,
+  ShieldAlert,
+  Send,
+  History
 } from "lucide-react"
+import type { PoiApprovalStatus } from "@/components/app-shell"
 
 interface ShopProfileScreenProps {
   onBack: () => void
+  poiApprovalStatus: PoiApprovalStatus
+  rejectionReason: string
+  onSubmitPoiRegistration: () => void
+  onViewApprovalHistory: () => void
 }
 
 const touristTags = [
@@ -31,7 +42,13 @@ const touristTags = [
   { id: "family", label: "Chỗ ngồi gia đình", icon: Users },
 ]
 
-export function ShopProfileScreen({ onBack }: ShopProfileScreenProps) {
+export function ShopProfileScreen({
+  onBack,
+  poiApprovalStatus,
+  rejectionReason,
+  onSubmitPoiRegistration,
+  onViewApprovalHistory,
+}: ShopProfileScreenProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>(["english", "photo-menu"])
   const [isOpen, setIsOpen] = useState(true)
 
@@ -42,6 +59,42 @@ export function ShopProfileScreen({ onBack }: ShopProfileScreenProps) {
         : [...prev, tagId]
     )
   }
+
+  const getPoiStatusInfo = () => {
+    if (poiApprovalStatus === "approved") {
+      return {
+        label: "Đã duyệt",
+        description: "POI đã được duyệt, quán có thể hiển thị public.",
+        icon: ShieldCheck,
+        badgeClass: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
+      }
+    }
+    if (poiApprovalStatus === "pending") {
+      return {
+        label: "Chờ duyệt",
+        description: "Yêu cầu đăng ký POI đang được admin kiểm tra.",
+        icon: ShieldAlert,
+        badgeClass: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+      }
+    }
+    if (poiApprovalStatus === "rejected") {
+      return {
+        label: "Bị từ chối",
+        description: "Vui lòng chỉnh sửa thông tin và gửi lại yêu cầu duyệt.",
+        icon: ShieldX,
+        badgeClass: "bg-destructive/10 text-destructive border-destructive/30",
+      }
+    }
+    return {
+      label: "Chưa đăng ký",
+      description: "Quán chưa đăng ký POI. Nội dung chỉ ở trạng thái nháp.",
+      icon: ShieldAlert,
+      badgeClass: "bg-muted text-muted-foreground border-border",
+    }
+  }
+
+  const poiStatusInfo = getPoiStatusInfo()
+  const StatusIcon = poiStatusInfo.icon
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,6 +171,38 @@ export function ShopProfileScreen({ onBack }: ShopProfileScreenProps) {
               onCheckedChange={setIsOpen}
               className="data-[state=checked]:bg-emerald-500"
             />
+          </CardContent>
+        </Card>
+
+        {/* POI Approval Status */}
+        <Card className="bg-card border-border">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <StatusIcon className="w-4 h-4" />
+                <p className="font-medium text-foreground">Trạng thái POI</p>
+              </div>
+              <Badge className={poiStatusInfo.badgeClass}>{poiStatusInfo.label}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">{poiStatusInfo.description}</p>
+            {poiApprovalStatus === "rejected" && rejectionReason ? (
+              <div className="rounded-lg bg-muted p-3">
+                <p className="text-xs text-muted-foreground">Lý do từ chối</p>
+                <p className="text-sm">{rejectionReason}</p>
+              </div>
+            ) : null}
+            <div className="flex gap-2">
+              {(poiApprovalStatus === "unregistered" || poiApprovalStatus === "rejected") && (
+                <Button className="gap-2" onClick={onSubmitPoiRegistration}>
+                  <Send className="w-4 h-4" />
+                  {poiApprovalStatus === "rejected" ? "Gửi lại duyệt" : "Gửi đăng ký POI"}
+                </Button>
+              )}
+              <Button variant="outline" className="gap-2" onClick={onViewApprovalHistory}>
+                <History className="w-4 h-4" />
+                Lịch sử duyệt
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

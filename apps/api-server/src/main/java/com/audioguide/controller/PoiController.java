@@ -3,6 +3,7 @@ package com.audioguide.controller;
 import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.poiDTO.PoiCreateRequest;
+import com.audioguide.dto.poiDTO.PoiApprovalSummaryResponse;
 import com.audioguide.dto.poiDTO.PoiResponse;
 import com.audioguide.dto.poiDTO.PoiStatusUpdateRequest;
 import com.audioguide.dto.poiDTO.PoiUpdateRequest;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -45,7 +47,24 @@ public class PoiController {
                 .build();
     }
 
+    @GetMapping("/shop/{shopId}/approval")
+    ApiResponse<PoiApprovalSummaryResponse> getApprovalByShopId(@PathVariable Integer shopId) {
+        return ApiResponse.<PoiApprovalSummaryResponse>builder()
+                .message("Get POI approval summary successfully")
+                .result(poiService.getApprovalSummaryByShopId(shopId))
+                .build();
+    }
+
+    @PostMapping("/shop/{shopId}/submit")
+    ApiResponse<PoiApprovalSummaryResponse> submitRegistration(@PathVariable Integer shopId) {
+        return ApiResponse.<PoiApprovalSummaryResponse>builder()
+                .message("Submit POI registration successfully")
+                .result(poiService.submitRegistration(shopId))
+                .build();
+    }
+
     @PostMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
     ApiResponse<PoiResponse> create(@RequestBody @Valid PoiCreateRequest request) {
         return ApiResponse.<PoiResponse>builder()
                 .message("POI created successfully")
