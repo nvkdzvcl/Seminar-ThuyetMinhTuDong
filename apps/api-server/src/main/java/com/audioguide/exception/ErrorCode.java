@@ -57,6 +57,8 @@ public enum ErrorCode {
     UNAUTHORIZED( "UNAUTHORIZED", HttpStatus.FORBIDDEN, "You do not have permission"),
     TOKEN_INVALID( "TOKEN_INVALID", HttpStatus.BAD_REQUEST, "Token is invalid"),
     INVALID_CREDENTIALS( "INVALID_CREDENTIALS", HttpStatus.UNAUTHORIZED, "Invalid username or password"),
+    ADMIN_PERMISSION_REQUIRED("ADMIN_PERMISSION_REQUIRED", HttpStatus.FORBIDDEN, "Admin permission required"),
+    TOO_MANY_LOGIN_ATTEMPTS("TOO_MANY_LOGIN_ATTEMPTS", HttpStatus.TOO_MANY_REQUESTS, "Too many login attempts, please try again later"),
     METHOD_NOT_ALLOWED( "METHOD_NOT_ALLOWED", HttpStatus.METHOD_NOT_ALLOWED, "Method or endpoint not allowed"),
     NO_RESOURCE_FOUND("NO_RESOURCE_FOUND", HttpStatus.NOT_FOUND, "No resource found matching the request"),;
 

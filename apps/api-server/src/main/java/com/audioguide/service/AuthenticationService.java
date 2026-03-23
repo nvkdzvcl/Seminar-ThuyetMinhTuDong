@@ -3,8 +3,10 @@ package com.audioguide.service;
 
 import com.audioguide.dto.authDTO.LoginRequest;
 import com.audioguide.dto.authDTO.LoginResponse;
+import com.audioguide.dto.authDTO.RefreshTokenRequest;
 import com.audioguide.dto.userDTO.UserResponse;
 import com.audioguide.entity.User;
+import com.audioguide.enums.UserRole;
 import com.audioguide.enums.UserStatus;
 import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;
@@ -46,6 +48,7 @@ public class AuthenticationService {
 
     UserMapper userMapper;
     UserRepository userRepository;
+    TokenBlocklistService tokenBlocklistService;
 
 
 
@@ -78,10 +81,15 @@ public class AuthenticationService {
         SignedJWT signedJWT = SignedJWT.parse(token);
 
         Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+        String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
 
         var verified = signedJWT.verify(verifier);
         if (!(verified && expiryTime.after(new Date()))){
             log.error("token invalid or expired");
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        if (tokenBlocklistService.isRevoked(jwtId)) {
+            log.error("token is revoked");
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
@@ -110,8 +118,8 @@ public class AuthenticationService {
         }
         log.info("check id = {} and createdAt = {} ", user.getId(), user.getCreatedAt());
 
-        var accessToken = generateToken(user, 24*7);
-        var refreshToken = generateToken(user, 24*30);
+        var accessToken = generateToken(user, 24 * 7, "ACCESS");
+        var refreshToken = generateToken(user, 24 * 30, "REFRESH");
         UserResponse userResponse = userMapper.toUserResponseFromUser(user);
         log.info("check id = {} and createdAt = {} ", userResponse.getId(), userResponse.getCreatedAt());
 
@@ -125,9 +133,69 @@ public class AuthenticationService {
 
     }
 
+    public LoginResponse authenticateAdmin(LoginRequest request){
+        LoginResponse response = authenticate(request);
+        assertAdminRole(response.getUser().getRole());
+        return response;
+    }
+
+    public LoginResponse refreshAdminToken(RefreshTokenRequest request) throws ParseException, JOSEException {
+        SignedJWT signedRefreshToken = verifyToken(request.getRefreshToken());
+        String tokenType = signedRefreshToken.getJWTClaimsSet().getStringClaim("tokenType");
+        if (!"REFRESH".equals(tokenType)) {
+            throw new AppException(ErrorCode.TOKEN_INVALID);
+        }
+        Integer userId = Integer.valueOf(signedRefreshToken.getJWTClaimsSet().getSubject());
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        assertAdminRole(user.getRole().name());
+
+        tokenBlocklistService.revoke(signedRefreshToken);
+
+        return LoginResponse.builder()
+                .accessToken(generateToken(user, 24 * 7, "ACCESS"))
+                .refreshToken(generateToken(user, 24 * 30, "REFRESH"))
+                .user(userMapper.toUserResponseFromUser(user))
+                .authenticated(true)
+                .build();
+    }
+
+    public void logout(String bearerToken) throws ParseException, JOSEException {
+        if (bearerToken == null || bearerToken.isBlank()) {
+            return;
+        }
+
+        String token = bearerToken.replace("Bearer ", "").trim();
+        if (token.isBlank()) {
+            return;
+        }
+
+        SignedJWT signedJWT = verifyToken(token);
+        tokenBlocklistService.revoke(signedJWT);
+    }
+
+    public UserResponse getCurrentAdminUser() throws JOSEException, ParseException {
+        UserResponse user = getUserFromToken();
+        assertAdminRole(user.getRole());
+        return user;
+    }
+
+    private void assertAdminRole(String role) {
+        boolean isAdmin = UserRole.ADMIN.name().equals(role) || UserRole.SUPER_ADMIN.name().equals(role);
+        if (!isAdmin) {
+            throw new AppException(ErrorCode.ADMIN_PERMISSION_REQUIRED);
+        }
+    }
+
 
 
     public String generateToken(User user, int hours){
+        return generateToken(user, hours, "ACCESS");
+    }
+
+    public String generateToken(User user, int hours, String tokenType){
         JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet jwtClaimSet = new JWTClaimsSet.Builder()
                 .subject(user.getId().toString())
@@ -139,6 +207,7 @@ public class AuthenticationService {
                 .jwtID(UUID.randomUUID().toString())
                 .claim("scope", user.getRole().name())
                 .claim("email", user.getEmail())
+                .claim("tokenType", tokenType)
 //                .claim("scope", buildScope(user))
                 .build();
 

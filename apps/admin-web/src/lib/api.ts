@@ -1,3 +1,5 @@
+import { getAdminAccessToken } from '@/lib/auth'
+
 export interface ApiResponse<T> {
   code: string
   message?: string
@@ -16,9 +18,12 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/vinhkhanhfoodtour/api'
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const accessToken = getAdminAccessToken()
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(init?.headers ?? {}),
     },
     ...init,

@@ -32,4 +32,6 @@ public interface PoiRepository extends JpaRepository<Poi, Integer> {
     );
 
     Optional<Poi> findByShopId(Integer shopId);
+
+    long countByStatus(PoiStatus status);
 }

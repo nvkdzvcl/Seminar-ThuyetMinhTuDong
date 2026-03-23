@@ -33,7 +33,7 @@ public class User {
     String language;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 10)
+    @Column(length = 20)
     UserRole role;
 
     LocalDate createdAt;

@@ -1,43 +1,5 @@
 USE vinhkhanhfoodtour;
 
-CREATE TABLE IF NOT EXISTS poi (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    shop_id INT NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    description TEXT NULL,
-    address VARCHAR(255) NOT NULL,
-    lat DOUBLE NULL,
-    lng DOUBLE NULL,
-    region VARCHAR(255) NULL,
-    category VARCHAR(255) NULL,
-    owner_id INT NULL,
-    owner_name VARCHAR(255) NULL,
-    cover_image VARCHAR(500) NULL,
-    risk_flag BIT(1) NOT NULL DEFAULT b'0',
-    risk_score INT NULL,
-    rejection_reason TEXT NULL,
-    status VARCHAR(50) NOT NULL,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
-);
-
-ALTER TABLE poi
-    ADD COLUMN IF NOT EXISTS shop_id INT NOT NULL DEFAULT 1;
-
-ALTER TABLE poi
-    ADD COLUMN IF NOT EXISTS rejection_reason TEXT NULL;
-
-CREATE TABLE IF NOT EXISTS poi_approval_history (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    shop_id INT NOT NULL,
-    poi_id INT NULL,
-    status VARCHAR(50) NOT NULL,
-    submitted_at DATETIME NOT NULL,
-    reviewer VARCHAR(255) NULL,
-    reviewed_at DATETIME NULL,
-    reason TEXT NULL
-);
-
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_SAFE_UPDATES = 0;
 
@@ -54,6 +16,9 @@ DELETE FROM language;
 DELETE FROM users;
 DELETE FROM poi;
 DELETE FROM poi_approval_history;
+DELETE FROM admin_audit_logs;
+DELETE FROM admin_jobs;
+DELETE FROM admin_settings;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -65,7 +30,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 INSERT INTO users
 (id, full_name, phone_number, email, password, language, role, created_at, status)
 VALUES
-(1, 'ADMIN',      '0901000001', 'admin@gmail.com',  '$$2a$10$lp2mMSvNgDO9oF8mQMSiAeoXsxkERpLiymZDwzti1aut3KDxmINNG', 'vi', 'ADMIN',   '2026-03-01', 'ACTIVE'),
+(1, 'ADMIN',      '0901000001', 'admin',  '$2a$10$InlLC0hKujhnwNGK45nqL.hUHZPNh4Azuhq05mB9xL7fTKFqWtnCK', 'vi', 'ADMIN',   '2026-03-01', 'ACTIVE'),
 (2, 'user123',     '0901000002', 'user123@gmail.com',      '$2a$10$InlLC0hKujhnwNGK45nqL.hUHZPNh4Azuhq05mB9xL7fTKFqWtnCK', 'vi', 'CUSTOMER', '2026-03-01', 'ACTIVE'),
 (3, 'owner',     '0901000003', 'owner@gmail.com',    '$2a$10$MiWdfWi2Af4vK6hwSzboQuu6Ydtj0LxGUdYCbBjgU5/5o8uNEL1za', 'vi', 'OWNER_SHOP', '2026-03-01', 'ACTIVE'),
 (4, 'owner2',     '0901000004', 'owner2@gmail.com',   '$2a$10$MiWdfWi2Af4vK6hwSzboQuu6Ydtj0LxGUdYCbBjgU5/5o8uNEL1za', 'en', 'OWNER_SHOP', '2026-03-01', 'ACTIVE'),
@@ -321,3 +286,27 @@ ALTER TABLE tour_stop AUTO_INCREMENT = 13;
 ALTER TABLE tour_stop_item AUTO_INCREMENT = 17;
 ALTER TABLE poi AUTO_INCREMENT = 6;
 ALTER TABLE poi_approval_history AUTO_INCREMENT = 4;
+ALTER TABLE admin_jobs AUTO_INCREMENT = 1;
+ALTER TABLE admin_settings AUTO_INCREMENT = 1;
+
+INSERT INTO admin_jobs
+(job_code, type, status, related_poi_id, related_user_id, retry_count, error_message, created_at, started_at, ended_at)
+VALUES
+('JOB-20260323-0001', 'AUDIO_GENERATION', 'DONE', 1, 1, 0, NULL, '2026-03-22 08:00:00', '2026-03-22 08:01:00', '2026-03-22 08:03:00'),
+('JOB-20260323-0002', 'CONTENT_MODERATION', 'FAILED', 3, 1, 1, 'AI moderation timeout', '2026-03-22 09:00:00', '2026-03-22 09:01:00', '2026-03-22 09:04:00'),
+('JOB-20260323-0003', 'DATA_SYNC', 'PROCESSING', NULL, 1, 0, NULL, '2026-03-22 10:00:00', '2026-03-22 10:00:30', NULL),
+('JOB-20260323-0004', 'IMAGE_PROCESSING', 'QUEUED', 5, 1, 0, NULL, '2026-03-22 11:00:00', NULL, NULL),
+('JOB-20260323-0005', 'CONTENT_MODERATION', 'CANCELED', 4, 1, 0, 'Canceled by admin', '2026-03-22 12:00:00', '2026-03-22 12:01:00', '2026-03-22 12:02:00');
+
+INSERT INTO admin_settings
+(setting_key, setting_value, updated_at)
+VALUES
+('request_timeout_seconds', '30', NOW()),
+('default_language', 'vi', NOW()),
+('max_upload_size_mb', '10', NOW()),
+('maintenance_mode', 'false', NOW()),
+('debug_mode', 'false', NOW()),
+('risk_threshold_low', '30', NOW()),
+('risk_threshold_high', '70', NOW()),
+('auto_flag_enabled', 'true', NOW()),
+('require_approval_above_threshold', 'true', NOW());

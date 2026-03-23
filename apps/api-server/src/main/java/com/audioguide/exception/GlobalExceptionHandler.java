@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -152,6 +153,21 @@ public class GlobalExceptionHandler {
         log.error("User: {}", username);
         log.error("Authorities: {}", authorities);
         log.error("Reason: {}", exception.getMessage());
+
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setCode(ErrorCode.FORBIDDEN.getCode());
+        apiResponse.setMessage(ErrorCode.FORBIDDEN.getMessage());
+
+        return ResponseEntity
+                .status(ErrorCode.FORBIDDEN.getStatusCode())
+                .body(apiResponse);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse> handleAccessDenied(
+            AccessDeniedException exception
+    ) {
+        log.error("Access denied: {}", exception.getMessage());
 
         ApiResponse apiResponse = new ApiResponse();
         apiResponse.setCode(ErrorCode.FORBIDDEN.getCode());

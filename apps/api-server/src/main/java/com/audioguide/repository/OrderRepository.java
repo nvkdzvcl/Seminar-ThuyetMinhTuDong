@@ -1,6 +1,7 @@
 package com.audioguide.repository;
 
 import com.audioguide.entity.Order;
+import com.audioguide.enums.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,5 +26,6 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
             @Param("toDate") LocalDate toDate
     );
 
+    long countByStatus(Status status);
 
 }

@@ -22,6 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -173,6 +174,14 @@ public class PoiService {
         var saved = poiRepository.save(poi);
         saveHistory(shopId, saved.getId(), "pending", null, null);
         return getApprovalSummaryByShopId(shopId);
+    }
+
+    public List<PoiApprovalHistoryItemResponse> getApprovalHistoryByPoiId(Integer poiId) {
+        findByIdOrThrow(poiId);
+        return poiApprovalHistoryRepository.findByPoiIdOrderBySubmittedAtDesc(poiId)
+                .stream()
+                .map(this::toHistoryResponse)
+                .toList();
     }
 
     public void delete(Integer id) {

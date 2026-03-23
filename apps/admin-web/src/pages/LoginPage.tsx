@@ -1,9 +1,16 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Lock, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { isAdminAuthenticated, setAdminAuthenticated } from '@/lib/auth'
+import { apiFetch } from '@/lib/api'
+import { isAdminAuthenticated, setAdminSession } from '@/lib/auth'
+
+interface AdminLoginResponse {
+  accessToken: string
+  refreshToken: string
+  authenticated: boolean
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -17,20 +24,43 @@ export default function LoginPage() {
     return from && from !== '/login' ? from : '/dashboard'
   }, [location.state])
 
+  useEffect(() => {
+    document.body.style.pointerEvents = ''
+    document.body.style.overflow = ''
+  }, [])
+
   if (isAdminAuthenticated()) {
     return <Navigate to={redirectTo} replace />
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setError('')
 
     if (!username.trim() || !password.trim()) {
       setError('Vui lòng nhập đầy đủ tài khoản và mật khẩu')
       return
     }
 
-    setAdminAuthenticated(true)
-    navigate(redirectTo, { replace: true })
+    try {
+      const result = await apiFetch<AdminLoginResponse>('/admin/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: username.trim(),
+          password: password.trim(),
+        }),
+      })
+
+      if (!result.authenticated || !result.accessToken) {
+        setError('Đăng nhập thất bại, vui lòng kiểm tra lại thông tin')
+        return
+      }
+
+      setAdminSession(result.accessToken, result.refreshToken)
+      navigate(redirectTo, { replace: true })
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Đăng nhập thất bại')
+    }
   }
 
   return (
@@ -64,7 +94,7 @@ export default function LoginPage() {
                 <Input
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
-                  placeholder="Nhập tài khoản admin"
+                  placeholder="Nhập tài khoản (admin)"
                   className="h-11 border-white/25 bg-black/45 pl-10 text-white placeholder:text-white/45 focus-visible:ring-emerald-400/60"
                 />
               </div>

@@ -29,6 +29,8 @@ public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINTS = {
             "/auth/**",
             "/login/**",
+            "/admin/auth/login",
+            "/admin/auth/refresh",
 
             "/user/**",
             "/poi/**",
@@ -54,6 +56,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers("/admin/**").hasAnyAuthority("ADMIN", "SUPER_ADMIN")
                         .anyRequest().authenticated()
 
                 )

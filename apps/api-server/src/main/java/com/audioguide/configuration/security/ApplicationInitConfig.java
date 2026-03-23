@@ -27,20 +27,19 @@ public class ApplicationInitConfig {
     @Bean
     ApplicationRunner applicationRunner(UserRepository userRepository){
         return args -> {
-            if( !userRepository.existsByEmail("admin@gmail.com") && !userRepository.existsByPhoneNumber("0123456789")){
-                User user = User.builder()
-                        .password(passwordEncoder.encode("admin"))
-                        .role(UserRole.ADMIN)
-                        .email("admin@gmail.com")
-                        .fullName("System Administrator")
-                        .phoneNumber("0123456789")
-                        .language("vi")
-                        .createdAt(LocalDate.now())
-                        .status(UserStatus.ACTIVE)
-                        .build();
-                userRepository.save(user);
-                log.info("admin has been created with default password : admin");
-            }
+            User adminUser = userRepository.findByEmail("admin").orElseGet(() -> User.builder()
+                    .email("admin")
+                    .phoneNumber("0123456789")
+                    .fullName("System Administrator")
+                    .language("vi")
+                    .createdAt(LocalDate.now())
+                    .build());
+
+            adminUser.setPassword(passwordEncoder.encode("admin123"));
+            adminUser.setRole(UserRole.ADMIN);
+            adminUser.setStatus(UserStatus.ACTIVE);
+            userRepository.save(adminUser);
+            log.info("admin account is ready with credentials admin/admin123");
 
             if(!userRepository.existsByEmail("user123@gmail.com") && !userRepository.existsByPhoneNumber("012345678910")){
                 User user = User.builder()

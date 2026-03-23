@@ -24,8 +24,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { setAdminAuthenticated } from '@/lib/auth'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { clearAdminSession } from '@/lib/auth'
 
 const navigation = [
   { name: 'Tổng quan', href: '/dashboard', icon: LayoutDashboard },
@@ -126,7 +126,8 @@ export function AdminLayout() {
   const navigate = useNavigate()
 
   const handleLogout = () => {
-    setAdminAuthenticated(false)
+    setMobileOpen(false)
+    clearAdminSession()
     navigate('/login', { replace: true })
   }
 
@@ -140,6 +141,7 @@ export function AdminLayout() {
       {/* Mobile Sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-64 bg-sidebar p-0">
+          <SheetTitle className="sr-only">Menu điều hướng admin</SheetTitle>
           <SidebarContent onNavClick={() => setMobileOpen(false)} onLogout={handleLogout} />
         </SheetContent>
       </Sheet>
@@ -149,19 +151,15 @@ export function AdminLayout() {
         {/* Top Header */}
         <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-card px-4 lg:px-6">
           {/* Mobile Menu Button */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                onClick={() => setMobileOpen(true)}
-              >
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-          </Sheet>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={() => setMobileOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle menu</span>
+          </Button>
 
           {/* Page Title - can be dynamic */}
           <div className="flex-1" />
