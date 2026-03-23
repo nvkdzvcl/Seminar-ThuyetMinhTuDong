@@ -41,7 +41,7 @@ export function formatRelativeTime(dateString: string): string {
 export function getRoleName(role: string): string {
   const roleNames: Record<string, string> = {
     super_admin: 'Super Admin',
-    staff: 'Nhân viên',
+    customer: 'Khách hàng',
     store_owner: 'Chủ cửa hàng',
   }
   return roleNames[role] || role

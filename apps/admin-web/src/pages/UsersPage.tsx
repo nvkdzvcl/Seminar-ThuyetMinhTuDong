@@ -10,6 +10,7 @@ import {
   Store,
   Clock,
   Mail,
+  Phone,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -55,7 +56,7 @@ const PAGE_SIZE = 10
 
 const roleOptions = [
   { value: 'super_admin', label: 'Super Admin' },
-  { value: 'staff', label: 'Nhân viên' },
+  { value: 'customer', label: 'Khách hàng' },
   { value: 'store_owner', label: 'Chủ cửa hàng' },
 ]
 
@@ -68,7 +69,7 @@ function getRoleIcon(role: UserRole) {
   switch (role) {
     case 'super_admin':
       return Shield
-    case 'staff':
+    case 'customer':
       return UserCog
     case 'store_owner':
       return Store
@@ -99,7 +100,8 @@ export function UsersPage() {
         const searchLower = search.toLowerCase()
         if (
           !user.name.toLowerCase().includes(searchLower) &&
-          !user.email.toLowerCase().includes(searchLower)
+          !user.email.toLowerCase().includes(searchLower) &&
+          !user.phoneNumber.toLowerCase().includes(searchLower)
         ) {
           return false
         }
@@ -179,7 +181,7 @@ export function UsersPage() {
       />
 
       <FilterBar
-        searchPlaceholder="Tìm theo tên, email..."
+        searchPlaceholder="Tìm theo tên, email, số điện thoại..."
         searchValue={search}
         onSearchChange={setSearch}
         filters={filterConfigs}
@@ -206,6 +208,7 @@ export function UsersPage() {
                 <TableRow>
                   <TableHead>Người dùng</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Số điện thoại</TableHead>
                   <TableHead>Vai trò</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Ngày tạo</TableHead>
@@ -233,6 +236,7 @@ export function UsersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                      <TableCell className="text-muted-foreground">{user.phoneNumber}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <RoleIcon className="h-4 w-4 text-muted-foreground" />
@@ -360,6 +364,10 @@ export function UsersPage() {
                 <div className="flex items-center gap-3 text-sm">
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <span>{selectedUser.email}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>{selectedUser.phoneNumber}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Clock className="h-4 w-4 text-muted-foreground" />

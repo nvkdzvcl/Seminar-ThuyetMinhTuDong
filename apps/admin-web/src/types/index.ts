@@ -1,11 +1,12 @@
 // User Types
-export type UserRole = 'super_admin' | 'staff' | 'store_owner'
+export type UserRole = 'super_admin' | 'customer' | 'store_owner'
 export type UserStatus = 'active' | 'suspended'
 
 export interface User {
   id: string
   name: string
   email: string
+  phoneNumber: string
   role: UserRole
   status: UserStatus
   createdAt: string
@@ -30,6 +31,7 @@ export interface POI {
   ownerId?: string
   ownerName?: string
   coverImage?: string
+  qrCode?: string
   riskFlag: boolean
   riskScore?: number
   updatedAt: string

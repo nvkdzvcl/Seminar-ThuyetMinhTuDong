@@ -421,7 +421,7 @@ export default function SettingsPage() {
                       <SelectContent>
                         <SelectItem value="all">Tất cả người dùng</SelectItem>
                         <SelectItem value="super_admin">Super Admin</SelectItem>
-                        <SelectItem value="staff">Nhân viên</SelectItem>
+                        <SelectItem value="customer">Khách hàng</SelectItem>
                         <SelectItem value="store_owner">Chủ cửa hàng</SelectItem>
                       </SelectContent>
                     </Select>

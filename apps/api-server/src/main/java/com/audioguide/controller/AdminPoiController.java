@@ -4,6 +4,9 @@ import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.poiDTO.PoiApprovalHistoryItemResponse;
 import com.audioguide.dto.poiDTO.PoiCreateRequest;
+import com.audioguide.dto.poiDTO.PoiDetailResponse;
+import com.audioguide.dto.poiDTO.PoiMenuItemResponse;
+import com.audioguide.dto.poiDTO.PoiMenuItemUpsertRequest;
 import com.audioguide.dto.poiDTO.PoiResponse;
 import com.audioguide.dto.poiDTO.PoiStatusUpdateRequest;
 import com.audioguide.dto.poiDTO.PoiUpdateRequest;
@@ -56,11 +59,27 @@ public class AdminPoiController {
                 .build();
     }
 
+    @GetMapping("/{id}/detail")
+    ApiResponse<PoiDetailResponse> getDetailById(@PathVariable Integer id) {
+        return ApiResponse.<PoiDetailResponse>builder()
+                .message("Get admin POI detail successfully")
+                .result(poiService.getDetailById(id))
+                .build();
+    }
+
     @GetMapping("/{id}/approval-history")
     ApiResponse<List<PoiApprovalHistoryItemResponse>> getApprovalHistory(@PathVariable Integer id) {
         return ApiResponse.<List<PoiApprovalHistoryItemResponse>>builder()
                 .message("Get POI approval history successfully")
                 .result(poiService.getApprovalHistoryByPoiId(id))
+                .build();
+    }
+
+    @GetMapping("/{id}/menu-items")
+    ApiResponse<List<PoiMenuItemResponse>> getMenuItems(@PathVariable Integer id) {
+        return ApiResponse.<List<PoiMenuItemResponse>>builder()
+                .message("Get POI menu items successfully")
+                .result(poiService.getMenuItemsByPoiId(id))
                 .build();
     }
 
@@ -72,11 +91,34 @@ public class AdminPoiController {
                 .build();
     }
 
+    @PostMapping("/{id}/menu-items")
+    ApiResponse<PoiMenuItemResponse> createMenuItem(
+            @PathVariable Integer id,
+            @RequestBody @Valid PoiMenuItemUpsertRequest request
+    ) {
+        return ApiResponse.<PoiMenuItemResponse>builder()
+                .message("Create POI menu item successfully")
+                .result(poiService.createMenuItem(id, request))
+                .build();
+    }
+
     @PutMapping("/{id}")
     ApiResponse<PoiResponse> update(@PathVariable Integer id, @RequestBody @Valid PoiUpdateRequest request) {
         return ApiResponse.<PoiResponse>builder()
                 .message("Admin updated POI successfully")
                 .result(poiService.update(id, request))
+                .build();
+    }
+
+    @PutMapping("/{id}/menu-items/{itemId}")
+    ApiResponse<PoiMenuItemResponse> updateMenuItem(
+            @PathVariable Integer id,
+            @PathVariable Integer itemId,
+            @RequestBody @Valid PoiMenuItemUpsertRequest request
+    ) {
+        return ApiResponse.<PoiMenuItemResponse>builder()
+                .message("Update POI menu item successfully")
+                .result(poiService.updateMenuItem(id, itemId, request))
                 .build();
     }
 

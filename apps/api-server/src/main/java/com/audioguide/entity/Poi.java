@@ -46,6 +46,9 @@ public class Poi {
 
     String coverImage;
 
+    @Column(unique = true)
+    String qrCode;
+
     @Column(nullable = false)
     Boolean riskFlag;
 

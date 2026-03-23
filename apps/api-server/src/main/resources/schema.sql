@@ -81,12 +81,50 @@ CREATE TABLE IF NOT EXISTS poi (
     owner_id INT NULL,
     owner_name VARCHAR(255) NULL,
     cover_image VARCHAR(500) NULL,
+    qr_code VARCHAR(100) NULL UNIQUE,
     risk_flag BIT(1) NOT NULL DEFAULT b'0',
     risk_score INT NULL,
     rejection_reason TEXT NULL,
     status VARCHAR(50) NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS poi_menu_item (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    poi_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description_text TEXT NULL,
+    price INT NULL,
+    rating DECIMAL(2,1) NULL,
+    moderation_status VARCHAR(30) NULL,
+    is_signature BIT(1) NULL,
+    image_url VARCHAR(500) NULL,
+    audio_script_text TEXT NULL,
+    risk_score INT NULL,
+    risk_flags VARCHAR(255) NULL,
+    status VARCHAR(20) NULL,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+    CONSTRAINT fk_poi_menu_item_poi FOREIGN KEY (poi_id) REFERENCES poi(id)
+);
+
+CREATE TABLE IF NOT EXISTS poi_moderation_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    poi_id INT NOT NULL,
+    menu_item_id INT NULL,
+    field_name VARCHAR(100) NOT NULL,
+    text_snapshot TEXT NULL,
+    risk_score INT NULL,
+    labels VARCHAR(255) NULL,
+    matched_terms VARCHAR(255) NULL,
+    suggested_rewrite TEXT NULL,
+    model_version VARCHAR(100) NULL,
+    status VARCHAR(20) NULL,
+    reviewed_by VARCHAR(255) NULL,
+    reviewed_at DATETIME NULL,
+    created_at DATETIME NULL,
+    CONSTRAINT fk_poi_moderation_poi FOREIGN KEY (poi_id) REFERENCES poi(id)
 );
 
 CREATE TABLE IF NOT EXISTS poi_approval_history (

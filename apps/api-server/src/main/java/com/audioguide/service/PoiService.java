@@ -3,16 +3,23 @@ package com.audioguide.service;
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.poiDTO.PoiCreateRequest;
 import com.audioguide.dto.poiDTO.PoiApprovalHistoryItemResponse;
+import com.audioguide.dto.poiDTO.PoiDetailResponse;
+import com.audioguide.dto.poiDTO.PoiMenuItemResponse;
+import com.audioguide.dto.poiDTO.PoiMenuItemUpsertRequest;
+import com.audioguide.dto.poiDTO.PoiModerationLogResponse;
 import com.audioguide.dto.poiDTO.PoiApprovalSummaryResponse;
 import com.audioguide.dto.poiDTO.PoiResponse;
 import com.audioguide.dto.poiDTO.PoiStatusUpdateRequest;
 import com.audioguide.dto.poiDTO.PoiUpdateRequest;
 import com.audioguide.entity.PoiApprovalHistory;
 import com.audioguide.entity.Poi;
+import com.audioguide.entity.PoiMenuItem;
 import com.audioguide.enums.PoiStatus;
 import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;
 import com.audioguide.repository.PoiApprovalHistoryRepository;
+import com.audioguide.repository.PoiMenuItemRepository;
+import com.audioguide.repository.PoiModerationLogRepository;
 import com.audioguide.repository.PoiRepository;
 import com.audioguide.repository.ShopRepository;
 import lombok.AccessLevel;
@@ -31,6 +38,8 @@ public class PoiService {
 
     PoiRepository poiRepository;
     PoiApprovalHistoryRepository poiApprovalHistoryRepository;
+    PoiMenuItemRepository poiMenuItemRepository;
+    PoiModerationLogRepository poiModerationLogRepository;
     ShopRepository shopRepository;
 
     public PagingDto<PoiResponse> getAll(
@@ -63,6 +72,39 @@ public class PoiService {
         return toResponse(findByIdOrThrow(id));
     }
 
+    public PoiDetailResponse getDetailById(Integer id) {
+        Poi poi = findByIdOrThrow(id);
+        var menuItems = poiMenuItemRepository.findByPoi_IdOrderByCreatedAtDesc(id)
+                .stream()
+                .map(this::toMenuItemResponse)
+                .toList();
+        var moderationLogs = poiModerationLogRepository.findByPoi_IdOrderByCreatedAtDesc(id)
+                .stream()
+                .map(item -> PoiModerationLogResponse.builder()
+                        .id(item.getId())
+                        .menuItemId(item.getMenuItemId())
+                        .fieldName(item.getFieldName())
+                        .textSnapshot(item.getTextSnapshot())
+                        .riskScore(item.getRiskScore())
+                        .labels(item.getLabels())
+                        .matchedTerms(item.getMatchedTerms())
+                        .suggestedRewrite(item.getSuggestedRewrite())
+                        .modelVersion(item.getModelVersion())
+                        .status(item.getStatus())
+                        .reviewedBy(item.getReviewedBy())
+                        .reviewedAt(item.getReviewedAt())
+                        .createdAt(item.getCreatedAt())
+                        .build())
+                .toList();
+
+        return PoiDetailResponse.builder()
+                .poi(toResponse(poi))
+                .menuItems(menuItems)
+                .moderationLogs(moderationLogs)
+                .approvalHistory(getApprovalHistoryByPoiId(id))
+                .build();
+    }
+
     public PoiResponse create(PoiCreateRequest request) {
         var shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
@@ -70,15 +112,17 @@ public class PoiService {
         var poi = Poi.builder()
                 .shopId(shop.getId())
                 .name(shop.getName())
-                .description(null)
+                .description(request.getDescription())
                 .address(shop.getAddress())
                 .lat(shop.getLat())
                 .lng(shop.getLng())
-                .region(null)
-                .category(shop.getShopType() != null ? shop.getShopType().getName() : null)
+                .region(request.getRegion())
+                .category(request.getCategory() != null ? request.getCategory() :
+                        (shop.getShopType() != null ? shop.getShopType().getName() : null))
                 .ownerId(shop.getOwner() != null ? shop.getOwner().getId() : null)
                 .ownerName(shop.getOwner() != null ? shop.getOwner().getFullName() : null)
                 .coverImage(shop.getImageName())
+                .qrCode(null)
                 .riskFlag(Boolean.TRUE.equals(request.getRiskFlag()))
                 .riskScore(request.getRiskScore())
                 .rejectionReason(null)
@@ -97,13 +141,17 @@ public class PoiService {
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
         poi.setShopId(shop.getId());
         poi.setName(shop.getName());
+        poi.setDescription(request.getDescription());
         poi.setAddress(shop.getAddress());
         poi.setLat(shop.getLat());
         poi.setLng(shop.getLng());
-        poi.setCategory(shop.getShopType() != null ? shop.getShopType().getName() : null);
+        poi.setRegion(request.getRegion());
+        poi.setCategory(request.getCategory() != null ? request.getCategory() :
+                (shop.getShopType() != null ? shop.getShopType().getName() : null));
         poi.setOwnerId(shop.getOwner() != null ? shop.getOwner().getId() : null);
         poi.setOwnerName(shop.getOwner() != null ? shop.getOwner().getFullName() : null);
         poi.setCoverImage(shop.getImageName());
+        poi.setQrCode(request.getQrCode());
         poi.setRiskFlag(Boolean.TRUE.equals(request.getRiskFlag()));
         poi.setRiskScore(request.getRiskScore());
         poi.setUpdatedAt(LocalDateTime.now());
@@ -154,7 +202,7 @@ public class PoiService {
         var poi = poiRepository.findByShopId(shopId).orElseGet(() -> Poi.builder()
                 .shopId(shop.getId())
                 .name(shop.getName())
-                .description(null)
+                .description(shop.getDescription())
                 .address(shop.getAddress())
                 .lat(shop.getLat())
                 .lng(shop.getLng())
@@ -163,6 +211,7 @@ public class PoiService {
                 .ownerId(shop.getOwner() != null ? shop.getOwner().getId() : null)
                 .ownerName(shop.getOwner() != null ? shop.getOwner().getFullName() : null)
                 .coverImage(shop.getImageName())
+                .qrCode(null)
                 .riskFlag(false)
                 .riskScore(null)
                 .createdAt(now)
@@ -182,6 +231,55 @@ public class PoiService {
                 .stream()
                 .map(this::toHistoryResponse)
                 .toList();
+    }
+
+    public List<PoiMenuItemResponse> getMenuItemsByPoiId(Integer poiId) {
+        findByIdOrThrow(poiId);
+        return poiMenuItemRepository.findByPoi_IdOrderByCreatedAtDesc(poiId)
+                .stream()
+                .map(this::toMenuItemResponse)
+                .toList();
+    }
+
+    public PoiMenuItemResponse createMenuItem(Integer poiId, PoiMenuItemUpsertRequest request) {
+        Poi poi = findByIdOrThrow(poiId);
+        var now = LocalDateTime.now();
+        PoiMenuItem item = PoiMenuItem.builder()
+                .poi(poi)
+                .name(request.getName())
+                .descriptionText(request.getDescriptionText())
+                .price(request.getPrice())
+                .rating(request.getRating())
+                .moderationStatus(request.getModerationStatus() != null ? request.getModerationStatus() : "AN_TOAN")
+                .isSignature(Boolean.TRUE.equals(request.getIsSignature()))
+                .imageUrl(request.getImageUrl())
+                .audioScriptText(request.getAudioScriptText())
+                .riskScore(null)
+                .riskFlags(null)
+                .status("ACTIVE")
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        return toMenuItemResponse(poiMenuItemRepository.save(item));
+    }
+
+    public PoiMenuItemResponse updateMenuItem(Integer poiId, Integer itemId, PoiMenuItemUpsertRequest request) {
+        findByIdOrThrow(poiId);
+        PoiMenuItem item = poiMenuItemRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.NO_RESOURCE_FOUND));
+        if (!item.getPoi().getId().equals(poiId)) {
+            throw new AppException(ErrorCode.NO_RESOURCE_FOUND);
+        }
+        item.setName(request.getName());
+        item.setDescriptionText(request.getDescriptionText());
+        item.setPrice(request.getPrice());
+        item.setRating(request.getRating());
+        item.setModerationStatus(request.getModerationStatus() != null ? request.getModerationStatus() : "AN_TOAN");
+        item.setIsSignature(Boolean.TRUE.equals(request.getIsSignature()));
+        item.setImageUrl(request.getImageUrl());
+        item.setAudioScriptText(request.getAudioScriptText());
+        item.setUpdatedAt(LocalDateTime.now());
+        return toMenuItemResponse(poiMenuItemRepository.save(item));
     }
 
     public void delete(Integer id) {
@@ -215,12 +313,32 @@ public class PoiService {
                 .ownerId(poi.getOwnerId())
                 .ownerName(poi.getOwnerName())
                 .coverImage(poi.getCoverImage())
+                .qrCode(poi.getQrCode())
                 .riskFlag(Boolean.TRUE.equals(poi.getRiskFlag()))
                 .riskScore(poi.getRiskScore())
                 .rejectionReason(poi.getRejectionReason())
                 .status(poi.getStatus())
                 .createdAt(poi.getCreatedAt())
                 .updatedAt(poi.getUpdatedAt())
+                .build();
+    }
+
+    private PoiMenuItemResponse toMenuItemResponse(PoiMenuItem item) {
+        return PoiMenuItemResponse.builder()
+                .id(item.getId())
+                .name(item.getName())
+                .descriptionText(item.getDescriptionText())
+                .price(item.getPrice())
+                .rating(item.getRating())
+                .moderationStatus(item.getModerationStatus())
+                .isSignature(item.getIsSignature())
+                .imageUrl(item.getImageUrl())
+                .audioScriptText(item.getAudioScriptText())
+                .riskScore(item.getRiskScore())
+                .riskFlags(item.getRiskFlags())
+                .status(item.getStatus())
+                .createdAt(item.getCreatedAt())
+                .updatedAt(item.getUpdatedAt())
                 .build();
     }
 

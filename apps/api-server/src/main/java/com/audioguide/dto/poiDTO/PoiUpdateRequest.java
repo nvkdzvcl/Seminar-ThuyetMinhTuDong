@@ -14,6 +14,11 @@ public class PoiUpdateRequest {
     @NotNull(message = "REQUEST_BODY_INVALID")
     Integer shopId;
 
+    String description;
+    String region;
+    String category;
+    String qrCode;
+
     Boolean riskFlag;
 
     Integer riskScore;

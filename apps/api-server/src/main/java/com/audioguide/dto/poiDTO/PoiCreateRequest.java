@@ -14,6 +14,10 @@ public class PoiCreateRequest {
     @NotNull(message = "REQUEST_BODY_INVALID")
     Integer shopId;
 
+    String description;
+    String region;
+    String category;
+
     Boolean riskFlag;
 
     Integer riskScore;

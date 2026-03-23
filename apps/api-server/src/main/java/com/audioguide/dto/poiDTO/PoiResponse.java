@@ -37,6 +37,8 @@ public class PoiResponse {
 
     String coverImage;
 
+    String qrCode;
+
     Boolean riskFlag;
 
     Integer riskScore;

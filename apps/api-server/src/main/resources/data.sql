@@ -14,6 +14,8 @@ DELETE FROM shop;
 DELETE FROM shop_type;
 DELETE FROM language;
 DELETE FROM users;
+DELETE FROM poi_moderation_log;
+DELETE FROM poi_menu_item;
 DELETE FROM poi;
 DELETE FROM poi_approval_history;
 DELETE FROM admin_audit_logs;
@@ -41,13 +43,26 @@ VALUES
 -- status: DRAFT, PUBLISHED, FLAGGED, HIDDEN
 -- =========================
 INSERT INTO poi
-(id, shop_id, name, description, address, lat, lng, region, category, owner_id, owner_name, cover_image, risk_flag, risk_score, rejection_reason, status, created_at, updated_at)
+(id, shop_id, name, description, address, lat, lng, region, category, owner_id, owner_name, cover_image, qr_code, risk_flag, risk_score, rejection_reason, status, created_at, updated_at)
 VALUES
-(1, 1, 'Oc Dao Vinh Khanh', NULL, '15 Vinh Khanh, Quan 4, TP.HCM', 10.7607194, 106.7007169, NULL, 'SEAFOOD', 2, 'user123', 'shop1.jpg', b'0', NULL, NULL, 'PUBLISHED', '2026-03-01 08:00:00', '2026-03-20 10:00:00'),
-(2, 2, 'Banh Canh Cua Co Dung', NULL, '25 Vinh Khanh, Quan 4, TP.HCM', 10.7612809, 106.7033943, NULL, 'NOODLE', 3, 'owner', 'shop2.jpg', b'0', NULL, NULL, 'PUBLISHED', '2026-03-01 09:00:00', '2026-03-19 14:30:00'),
-(3, 3, 'An Vat Cua Pho', NULL, '39 Vinh Khanh, Quan 4, TP.HCM', 10.7611719, 106.7033665, NULL, 'SNACK', 4, 'owner2', 'shop3.jpg', b'1', 75, 'Ảnh biển hiệu chưa rõ, vui lòng cập nhật lại.', 'FLAGGED', '2026-03-02 10:00:00', '2026-03-20 09:00:00'),
-(4, 4, 'Tra Sua Dem Sai Gon', NULL, '52 Vinh Khanh, Quan 4, TP.HCM', 10.7617836, 106.7036373, NULL, 'DRINK', 5, 'user124', 'shop4.jpg', b'0', NULL, NULL, 'DRAFT', '2026-03-10 08:00:00', '2026-03-19 11:00:00'),
-(5, 5, 'Hai San Nuong 1995', NULL, '66 Vinh Khanh, Quan 4, TP.HCM', 10.7615518,106.7023348, NULL, 'SEAFOOD', 1, 'ADMIN', 'shop5.jpg', b'1', 85, 'Thiếu thông tin giờ mở cửa.', 'HIDDEN', '2026-03-03 10:00:00', '2026-03-12 16:00:00');
+(1, 1, 'Oc Dao Vinh Khanh', NULL, '15 Vinh Khanh, Quan 4, TP.HCM', 10.7607194, 106.7007169, NULL, 'SEAFOOD', 2, 'user123', 'shop1.jpg', 'QR-POI-0001', b'0', NULL, NULL, 'PUBLISHED', '2026-03-01 08:00:00', '2026-03-20 10:00:00'),
+(2, 2, 'Banh Canh Cua Co Dung', NULL, '25 Vinh Khanh, Quan 4, TP.HCM', 10.7612809, 106.7033943, NULL, 'NOODLE', 3, 'owner', 'shop2.jpg', 'QR-POI-0002', b'0', NULL, NULL, 'PUBLISHED', '2026-03-01 09:00:00', '2026-03-19 14:30:00'),
+(3, 3, 'An Vat Cua Pho', NULL, '39 Vinh Khanh, Quan 4, TP.HCM', 10.7611719, 106.7033665, NULL, 'SNACK', 4, 'owner2', 'shop3.jpg', 'QR-POI-0003', b'1', 75, 'Ảnh biển hiệu chưa rõ, vui lòng cập nhật lại.', 'FLAGGED', '2026-03-02 10:00:00', '2026-03-20 09:00:00'),
+(4, 4, 'Tra Sua Dem Sai Gon', NULL, '52 Vinh Khanh, Quan 4, TP.HCM', 10.7617836, 106.7036373, NULL, 'DRINK', 5, 'user124', 'shop4.jpg', NULL, b'0', NULL, NULL, 'DRAFT', '2026-03-10 08:00:00', '2026-03-19 11:00:00'),
+(5, 5, 'Hai San Nuong 1995', NULL, '66 Vinh Khanh, Quan 4, TP.HCM', 10.7615518,106.7023348, NULL, 'SEAFOOD', 1, 'ADMIN', 'shop5.jpg', 'QR-POI-0005', b'1', 85, 'Thiếu thông tin giờ mở cửa.', 'HIDDEN', '2026-03-03 10:00:00', '2026-03-12 16:00:00');
+
+INSERT INTO poi_menu_item
+(id, poi_id, name, description_text, price, rating, moderation_status, is_signature, image_url, audio_script_text, risk_score, risk_flags, status, created_at, updated_at)
+VALUES
+(1, 1, 'Ốc hương rang muối', 'Ốc hương tươi rang muối ớt, vị cay nhẹ.', 90000, 4.8, 'AN_TOAN', b'1', 'dish1.jpg', 'Món ốc hương rang muối là đặc sản nổi bật của quán.', 5, NULL, 'ACTIVE', '2026-03-01 08:00:00', '2026-03-20 10:00:00'),
+(2, 1, 'Nghêu hấp sả', 'Nghêu hấp nóng với sả và lá chanh.', 70000, 4.5, 'AN_TOAN', b'0', 'dish2.jpg', 'Nghêu hấp sả mang hương thơm dịu và vị ngọt tự nhiên.', 3, NULL, 'ACTIVE', '2026-03-01 08:10:00', '2026-03-20 10:05:00'),
+(3, 3, 'Xiên que tổng hợp', 'Các loại xiên nướng ăn kèm sốt.', 45000, 3.9, 'CAN_XEM_LAI', b'1', 'dish3.jpg', 'Xiên que tổng hợp phù hợp nhóm bạn ăn tối.', 62, 'toxic_term', 'FLAGGED', '2026-03-02 10:10:00', '2026-03-20 09:10:00');
+
+INSERT INTO poi_moderation_log
+(id, poi_id, menu_item_id, field_name, text_snapshot, risk_score, labels, matched_terms, suggested_rewrite, model_version, status, reviewed_by, reviewed_at, created_at)
+VALUES
+(1, 3, NULL, 'poi.description_text', 'Mô tả quán có vài cụm từ không phù hợp...', 75, 'abusive', 'xấu|tục', 'Gợi ý thay bằng mô tả trung tính hơn.', 'moderation-v1', 'REVIEW_REQUIRED', NULL, NULL, '2026-03-20 09:00:00'),
+(2, 3, 3, 'menu_item.description_text', 'Nội dung mô tả món có từ nhạy cảm.', 62, 'abusive', 'tục', 'Viết lại mô tả món rõ ràng, không từ nhạy cảm.', 'moderation-v1', 'REVIEW_REQUIRED', NULL, NULL, '2026-03-20 09:05:00');
 
 INSERT INTO poi_approval_history
 (id, shop_id, poi_id, status, submitted_at, reviewer, reviewed_at, reason)
@@ -285,6 +300,8 @@ ALTER TABLE tour_plan AUTO_INCREMENT = 6;
 ALTER TABLE tour_stop AUTO_INCREMENT = 13;
 ALTER TABLE tour_stop_item AUTO_INCREMENT = 17;
 ALTER TABLE poi AUTO_INCREMENT = 6;
+ALTER TABLE poi_menu_item AUTO_INCREMENT = 4;
+ALTER TABLE poi_moderation_log AUTO_INCREMENT = 3;
 ALTER TABLE poi_approval_history AUTO_INCREMENT = 4;
 ALTER TABLE admin_jobs AUTO_INCREMENT = 1;
 ALTER TABLE admin_settings AUTO_INCREMENT = 1;
