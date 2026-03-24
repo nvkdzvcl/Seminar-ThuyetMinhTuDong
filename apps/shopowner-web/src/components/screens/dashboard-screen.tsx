@@ -3,6 +3,14 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { 
   QrCode, 
   Headphones, 
@@ -14,7 +22,10 @@ import {
   Eye,
   TrendingUp,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  UserCircle2,
+  Settings,
+  LogOut
 } from "lucide-react"
 import type { PoiApprovalStatus } from "@/components/app-shell"
 
@@ -24,9 +35,19 @@ interface DashboardScreenProps {
   onNavigate: (screen: Screen) => void
   poiApprovalStatus: PoiApprovalStatus
   rejectionReason: string
+  onLogout: () => void
+  shopName?: string
+  shopAddress?: string
 }
 
-export function DashboardScreen({ onNavigate, poiApprovalStatus, rejectionReason }: DashboardScreenProps) {
+export function DashboardScreen({
+  onNavigate,
+  poiApprovalStatus,
+  rejectionReason,
+  onLogout,
+  shopName = "Quán của tôi",
+  shopAddress = "",
+}: DashboardScreenProps) {
   const isOpen = true
   const isApproved = poiApprovalStatus === "approved"
 
@@ -39,19 +60,53 @@ export function DashboardScreen({ onNavigate, poiApprovalStatus, rejectionReason
             <Utensils className="w-7 h-7 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Quán Ốc Bà Sáu</h1>
-            <p className="text-sm text-muted-foreground">Vĩnh Khánh, Quận 4</p>
+            <h1 className="text-xl font-bold text-foreground">{shopName}</h1>
+            <p className="text-sm text-muted-foreground">{shopAddress || "Chưa cập nhật địa chỉ"}</p>
           </div>
         </div>
-        <Badge 
-          variant={isOpen ? "default" : "secondary"}
-          className={isOpen 
-            ? "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/30" 
-            : "bg-muted text-muted-foreground"
-          }
-        >
-          {isOpen ? "Đang mở" : "Đã đóng"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant={isOpen ? "default" : "secondary"}
+            className={
+              isOpen
+                ? "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/30"
+                : "bg-muted text-muted-foreground"
+            }
+          >
+            {isOpen ? "Đang mở" : "Đã đóng"}
+          </Badge>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl">
+                <UserCircle2 className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>Tài khoản chủ quán</DropdownMenuLabel>
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault()
+                  onNavigate("shop-profile")
+                }}
+              >
+                <Settings className="h-4 w-4" />
+                Hồ sơ & cài đặt quán
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={(event) => {
+                  event.preventDefault()
+                  onLogout()
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+                Đăng xuất
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Stats Grid */}

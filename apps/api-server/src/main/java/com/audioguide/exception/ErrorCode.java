@@ -27,6 +27,7 @@ public enum ErrorCode {
     ACCOUNT_DISABLED( "ACCOUNT_DISABLED", HttpStatus.FORBIDDEN, "Account is disabled"),
 
     SHOP_NOT_FOUND( "SHOP_NOT_FOUND", HttpStatus.NOT_FOUND, "Shop not found"),
+    SHOP_TYPE_NOT_FOUND( "SHOP_TYPE_NOT_FOUND", HttpStatus.NOT_FOUND, "Shop type not found"),
     POI_NOT_FOUND( "POI_NOT_FOUND", HttpStatus.NOT_FOUND, "POI not found"),
 
     FORBIDDEN( "FORBIDDEN", HttpStatus.FORBIDDEN, "You do not have permission to access this resource"),

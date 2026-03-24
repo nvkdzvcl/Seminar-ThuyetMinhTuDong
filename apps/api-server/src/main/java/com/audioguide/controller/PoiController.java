@@ -48,6 +48,7 @@ public class PoiController {
     }
 
     @GetMapping("/shop/{shopId}/approval")
+    @PreAuthorize("@securityService.isOwnerOrAmin(#shopId)")
     ApiResponse<PoiApprovalSummaryResponse> getApprovalByShopId(@PathVariable Integer shopId) {
         return ApiResponse.<PoiApprovalSummaryResponse>builder()
                 .message("Get POI approval summary successfully")
@@ -56,6 +57,7 @@ public class PoiController {
     }
 
     @PostMapping("/shop/{shopId}/submit")
+    @PreAuthorize("@securityService.isOwnerOrAmin(#shopId)")
     ApiResponse<PoiApprovalSummaryResponse> submitRegistration(@PathVariable Integer shopId) {
         return ApiResponse.<PoiApprovalSummaryResponse>builder()
                 .message("Submit POI registration successfully")

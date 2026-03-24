@@ -42,4 +42,6 @@ public class ShopCreationRequest {
     @NotNull(message = "SHOP_AVG_EAT_TIME_BLANK")
     Integer avgEatTimeMin;
 
+    Integer shopTypeId;
+
 }

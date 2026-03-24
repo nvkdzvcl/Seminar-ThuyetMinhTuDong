@@ -260,10 +260,7 @@ export function DishEditorScreen({ dishId, poiApprovalStatus, onBack }: DishEdit
               </div>
             </Button>
 
-            <Button
-              variant="outline"
-              className="h-auto py-4 justify-start gap-3 border-border"
-            >
+            <div className="h-auto py-4 px-4 flex items-center gap-3 border border-border rounded-md bg-background">
               <div className="w-10 h-10 rounded-full bg-[oklch(0.7_0.16_55)]/10 flex items-center justify-center shrink-0">
                 <Volume2 className="w-5 h-5 text-[oklch(0.7_0.16_55)]" />
               </div>
@@ -273,15 +270,14 @@ export function DishEditorScreen({ dishId, poiApprovalStatus, onBack }: DishEdit
                   Nghe thử thuyết minh AI
                 </p>
               </div>
-              <Button 
-                size="icon" 
-                variant="secondary" 
+              <Button
+                size="icon"
+                variant="secondary"
                 className="ml-auto h-8 w-8"
-                onClick={(e) => e.stopPropagation()}
               >
                 <Play className="w-4 h-4" />
               </Button>
-            </Button>
+            </div>
           </div>
         </div>
       </div>

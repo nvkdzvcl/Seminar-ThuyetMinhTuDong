@@ -11,6 +11,7 @@ import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;
 import com.audioguide.mapper.ShopMapper;
 import com.audioguide.repository.ShopRepository;
+import com.audioguide.repository.ShopTypeRepository;
 import com.audioguide.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ import java.time.LocalDate;
 public class ShopService {
 
     ShopRepository shopRepository;
+    ShopTypeRepository shopTypeRepository;
     ShopMapper shopMapper;
     UserRepository userRepository;
 
@@ -52,9 +54,17 @@ public class ShopService {
             log.error("User {} already has a shop", ownerId);
             throw new AppException(ErrorCode.USER_ALREADY_HAS_SHOP);
         }
-                var shop = shopMapper.toShopFromShopCreateRequest(request);
+
+        var shopType = request.getShopTypeId() != null
+                ? shopTypeRepository.findById(request.getShopTypeId())
+                    .orElseThrow(() -> new AppException(ErrorCode.SHOP_TYPE_NOT_FOUND))
+                : shopTypeRepository.findFirstByOrderByIdAsc()
+                    .orElseThrow(() -> new AppException(ErrorCode.SHOP_TYPE_NOT_FOUND));
+
+        var shop = shopMapper.toShopFromShopCreateRequest(request);
 
         shop.setOwner(owner);
+        shop.setShopType(shopType);
         shop.setCreatedAt(LocalDate.now());
         shop.setStatus(Status.ACTIVE);
 
@@ -91,6 +101,16 @@ public class ShopService {
         return shopMapper.toShopResponseFromShop(shop);
     }
 
+    public ShopResponse getMyShop() {
+        Integer ownerId = getCurrentUserId();
+        var shop = shopRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> {
+                    log.error("Shop for owner {} not found", ownerId);
+                    return new AppException(ErrorCode.SHOP_NOT_FOUND);
+                });
+        return shopMapper.toShopResponseFromShop(shop);
+    }
+
 
     public ShopResponse updateShop(Integer shopId,  ShopUpdateRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -109,6 +129,26 @@ public class ShopService {
         shopMapper.updateShopInfo(shop, request);
         var updatedShop = shopRepository.save(shop);
         log.info("Shop {} updated successfully", shopId);
+        return shopMapper.toShopResponseFromShop(updatedShop);
+    }
+
+    public ShopResponse updateMyShop(ShopUpdateRequest request) {
+        Integer ownerId = getCurrentUserId();
+        userRepository.findById(ownerId)
+                .orElseThrow(() -> {
+                    log.error("User {} not found", ownerId);
+                    return new AppException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        var shop = shopRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> {
+                    log.error("Shop for owner {} not found", ownerId);
+                    return new AppException(ErrorCode.SHOP_NOT_FOUND);
+                });
+
+        shopMapper.updateShopInfo(shop, request);
+        var updatedShop = shopRepository.save(shop);
+        log.info("Shop {} updated successfully by owner {}", updatedShop.getId(), ownerId);
         return shopMapper.toShopResponseFromShop(updatedShop);
     }
 
@@ -208,6 +248,18 @@ public class ShopService {
                 .totalItems(shopPage.getTotalElements())
                 .totalPages(shopPage.getTotalPages())
                 .build();
+    }
+
+    private Integer getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        try {
+            return Integer.parseInt(authentication.getName());
+        } catch (NumberFormatException exception) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
     }
 
 

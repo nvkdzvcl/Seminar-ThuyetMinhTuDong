@@ -1,6 +1,7 @@
 package com.audioguide.service;
 
 
+import com.audioguide.enums.UserRole;
 import com.audioguide.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,15 +23,24 @@ public class SecurityService {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
+        if (authentication == null || authentication.getName() == null) {
+            return false;
+        }
+
         String ownerId = authentication.getName();
 
         boolean isAdmin = authentication.getAuthorities()
                 .stream()
-                .anyMatch(a -> a.getAuthority().equals("ADMIN"));
+                .anyMatch(a -> a.getAuthority().equals(UserRole.ADMIN.name())
+                        || a.getAuthority().equals(UserRole.SUPER_ADMIN.name()));
 
         if (isAdmin) return true;
 
-        return shopRepository.existsByIdAndOwnerId(shopId, Integer.parseInt(ownerId) );
+        try {
+            return shopRepository.existsByIdAndOwnerId(shopId, Integer.parseInt(ownerId));
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 
 

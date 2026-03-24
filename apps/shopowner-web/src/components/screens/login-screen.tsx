@@ -8,20 +8,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Phone, Mail, Eye, EyeOff, Store, Utensils, Volume2, QrCode, Globe } from "lucide-react"
 
 interface LoginScreenProps {
-  onLogin: () => void
+  onLogin: (email: string, password: string) => Promise<void>
+  isLoading: boolean
+  errorMessage?: string | null
 }
 
-export function LoginScreen({ onLogin }: LoginScreenProps) {
+export function LoginScreen({ onLogin, isLoading, errorMessage }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [registerNotice, setRegisterNotice] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    // Simulate login
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsLoading(false)
-    onLogin()
+    if (!email.trim() || !password.trim()) {
+      return
+    }
+    await onLogin(email.trim(), password)
+  }
+
+  const handleRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setRegisterNotice("Tạm thời dùng tài khoản được cấp sẵn để đăng nhập.")
   }
 
   return (
@@ -84,16 +92,18 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           <TabsContent value="login">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-foreground font-medium">
-                  Số điện thoại
+                <Label htmlFor="email" className="text-foreground font-medium">
+                  Email
                 </Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="0912 345 678"
+                    id="email"
+                    type="email"
+                    placeholder="owner@gmail.com"
                     className="pl-10 h-12 text-base"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                   />
                 </div>
               </div>
@@ -108,6 +118,8 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                     type={showPassword ? "text" : "password"}
                     placeholder="Nhập mật khẩu"
                     className="pr-10 h-12 text-base"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
                   />
                   <button
                     type="button"
@@ -128,15 +140,19 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               <Button 
                 type="submit" 
                 className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90"
-                disabled={isLoading}
+                disabled={isLoading || !email.trim() || !password.trim()}
               >
                 {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
               </Button>
+
+              {errorMessage ? (
+                <p className="text-sm text-destructive">{errorMessage}</p>
+              ) : null}
             </form>
           </TabsContent>
 
           <TabsContent value="register">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="shop-name" className="text-foreground font-medium">
                   Tên quán
@@ -206,10 +222,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               <Button 
                 type="submit" 
                 className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90"
-                disabled={isLoading}
               >
-                {isLoading ? "Đang đăng ký..." : "Đăng ký quán"}
+                Đăng ký quán
               </Button>
+
+              {registerNotice ? (
+                <p className="text-sm text-muted-foreground">{registerNotice}</p>
+              ) : null}
 
               <p className="text-xs text-center text-muted-foreground">
                 Bằng cách đăng ký, bạn đồng ý với{" "}

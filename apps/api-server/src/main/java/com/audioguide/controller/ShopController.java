@@ -30,6 +30,7 @@ public class ShopController {
     ShopService shopService;
 
     @PostMapping(value = "/create")
+    @PreAuthorize("hasAnyAuthority('OWNER_SHOP','ADMIN','SUPER_ADMIN')")
     ApiResponse<ShopResponse> createShop(@RequestBody @Valid ShopCreationRequest request) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -40,6 +41,24 @@ public class ShopController {
         return ApiResponse.<ShopResponse>builder()
                 .message("Shop created successfully")
                 .result(shopResponse)
+                .build();
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyAuthority('OWNER_SHOP','ADMIN','SUPER_ADMIN')")
+    ApiResponse<ShopResponse> getMyShop() {
+        return ApiResponse.<ShopResponse>builder()
+                .message("Get current owner shop successfully")
+                .result(shopService.getMyShop())
+                .build();
+    }
+
+    @PatchMapping("/me")
+    @PreAuthorize("hasAnyAuthority('OWNER_SHOP','ADMIN','SUPER_ADMIN')")
+    ApiResponse<ShopResponse> updateMyShop(@RequestBody @Valid ShopUpdateRequest request) {
+        return ApiResponse.<ShopResponse>builder()
+                .message("Update current owner shop successfully")
+                .result(shopService.updateMyShop(request))
                 .build();
     }
 
