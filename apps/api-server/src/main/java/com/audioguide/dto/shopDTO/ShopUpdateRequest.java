@@ -1,11 +1,8 @@
 package com.audioguide.dto.shopDTO;
 
-
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.web.multipart.MultipartFile;
 
 
 
@@ -29,9 +26,14 @@ public class ShopUpdateRequest {
 
     Double lng;
 
+    String coordinateRaw;
+
+    @Min(value = 1, message = "SHOP_AVG_COST_INVALID")
     Integer avgCostPerPerson;
 
+    @Min(value = 1, message = "SHOP_AVG_WAIT_TIME_INVALID")
     Integer avgWaitTimeMin;
 
+    @Min(value = 1, message = "SHOP_AVG_EAT_TIME_INVALID")
     Integer avgEatTimeMin;
 }

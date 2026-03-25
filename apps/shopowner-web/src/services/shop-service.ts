@@ -23,6 +23,7 @@ export interface UpdateMyShopPayload {
   description?: string
   lat?: number
   lng?: number
+  coordinateRaw?: string
   avgCostPerPerson?: number
   avgWaitTimeMin?: number
   avgEatTimeMin?: number
@@ -34,14 +35,25 @@ export interface CreateShopPayload {
   description: string
   lat: number
   lng: number
+  coordinateRaw?: string
   avgCostPerPerson: number
   avgWaitTimeMin: number
   avgEatTimeMin: number
   shopTypeId?: number
 }
 
+export interface ShopTypeOption {
+  id: number
+  name: string
+  description?: string
+}
+
 export function getMyShop(): Promise<OwnerShop> {
   return apiFetch<OwnerShop>("/shop/me")
+}
+
+export function getShopTypes(): Promise<ShopTypeOption[]> {
+  return apiFetch<ShopTypeOption[]>("/shop/types")
 }
 
 export function createShop(payload: CreateShopPayload): Promise<OwnerShop> {

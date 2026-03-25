@@ -4,6 +4,7 @@ package com.audioguide.service;
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.shopDTO.ShopCreationRequest;
 import com.audioguide.dto.shopDTO.ShopResponse;
+import com.audioguide.dto.shopDTO.ShopTypeResponse;
 import com.audioguide.dto.shopDTO.ShopUpdateRequest;
 import com.audioguide.enums.Status;
 import com.audioguide.enums.UserRole;
@@ -13,6 +14,7 @@ import com.audioguide.mapper.ShopMapper;
 import com.audioguide.repository.ShopRepository;
 import com.audioguide.repository.ShopTypeRepository;
 import com.audioguide.repository.UserRepository;
+import com.audioguide.utils.CoordinateParserUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -26,6 +28,7 @@ import com.audioguide.utils.FileStoreUtil;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.List;
 
 
 @Service
@@ -61,10 +64,13 @@ public class ShopService {
                 : shopTypeRepository.findFirstByOrderByIdAsc()
                     .orElseThrow(() -> new AppException(ErrorCode.SHOP_TYPE_NOT_FOUND));
 
+        var coordinates = resolveCoordinatesForCreate(request);
         var shop = shopMapper.toShopFromShopCreateRequest(request);
 
         shop.setOwner(owner);
         shop.setShopType(shopType);
+        shop.setLat(coordinates.lat());
+        shop.setLng(coordinates.lng());
         shop.setCreatedAt(LocalDate.now());
         shop.setStatus(Status.ACTIVE);
 
@@ -111,6 +117,17 @@ public class ShopService {
         return shopMapper.toShopResponseFromShop(shop);
     }
 
+    public List<ShopTypeResponse> getAllShopTypes() {
+        return shopTypeRepository.findAllByOrderByNameAsc()
+                .stream()
+                .map(shopType -> ShopTypeResponse.builder()
+                        .id(shopType.getId())
+                        .name(shopType.getName())
+                        .description(shopType.getDescription())
+                        .build())
+                .toList();
+    }
+
 
     public ShopResponse updateShop(Integer shopId,  ShopUpdateRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -126,6 +143,11 @@ public class ShopService {
                     return new AppException(ErrorCode.SHOP_NOT_FOUND);
                 });
 
+        var coordinates = resolveCoordinatesForUpdate(request);
+        if (coordinates != null) {
+            request.setLat(coordinates.lat());
+            request.setLng(coordinates.lng());
+        }
         shopMapper.updateShopInfo(shop, request);
         var updatedShop = shopRepository.save(shop);
         log.info("Shop {} updated successfully", shopId);
@@ -146,6 +168,11 @@ public class ShopService {
                     return new AppException(ErrorCode.SHOP_NOT_FOUND);
                 });
 
+        var coordinates = resolveCoordinatesForUpdate(request);
+        if (coordinates != null) {
+            request.setLat(coordinates.lat());
+            request.setLng(coordinates.lng());
+        }
         shopMapper.updateShopInfo(shop, request);
         var updatedShop = shopRepository.save(shop);
         log.info("Shop {} updated successfully by owner {}", updatedShop.getId(), ownerId);
@@ -260,6 +287,48 @@ public class ShopService {
         } catch (NumberFormatException exception) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
+    }
+
+    private CoordinateParserUtil.ParsedCoordinate resolveCoordinatesForCreate(ShopCreationRequest request) {
+        if (hasText(request.getCoordinateRaw())) {
+            return parseRawCoordinate(request.getCoordinateRaw());
+        }
+        if (request.getLat() == null || request.getLng() == null) {
+            throw new AppException(ErrorCode.INVALID_LAT_LNG);
+        }
+        if (!isValidRange(request.getLat(), request.getLng())) {
+            throw new AppException(ErrorCode.INVALID_LAT_LNG);
+        }
+        return new CoordinateParserUtil.ParsedCoordinate(request.getLat(), request.getLng());
+    }
+
+    private CoordinateParserUtil.ParsedCoordinate resolveCoordinatesForUpdate(ShopUpdateRequest request) {
+        if (hasText(request.getCoordinateRaw())) {
+            return parseRawCoordinate(request.getCoordinateRaw());
+        }
+        if (request.getLat() == null && request.getLng() == null) {
+            return null;
+        }
+        if (request.getLat() == null || request.getLng() == null) {
+            throw new AppException(ErrorCode.INVALID_LAT_LNG);
+        }
+        if (!isValidRange(request.getLat(), request.getLng())) {
+            throw new AppException(ErrorCode.INVALID_LAT_LNG);
+        }
+        return new CoordinateParserUtil.ParsedCoordinate(request.getLat(), request.getLng());
+    }
+
+    private CoordinateParserUtil.ParsedCoordinate parseRawCoordinate(String rawCoordinate) {
+        return CoordinateParserUtil.parseFlexible(rawCoordinate)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_LAT_LNG));
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private boolean isValidRange(Double lat, Double lng) {
+        return lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0;
     }
 
 

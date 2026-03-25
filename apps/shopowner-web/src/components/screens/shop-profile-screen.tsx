@@ -30,6 +30,7 @@ import {
   FileText,
 } from "lucide-react"
 import type { PoiApprovalStatus } from "@/components/app-shell"
+import { parseFlexibleCoordinates } from "@/lib/coordinates"
 
 interface ShopProfileScreenProps {
   onBack: () => void
@@ -41,8 +42,10 @@ interface ShopProfileScreenProps {
   initialShopName: string
   initialShopAddress: string
   initialShopDescription: string
+  initialShopLat?: number | null
+  initialShopLng?: number | null
   isSaving: boolean
-  onSaveShop: (payload: { name: string; address: string; description: string }) => Promise<void>
+  onSaveShop: (payload: { name: string; address: string; description: string; lat?: number; lng?: number }) => Promise<void>
 }
 
 const touristTags = [
@@ -65,6 +68,8 @@ export function ShopProfileScreen({
   initialShopName,
   initialShopAddress,
   initialShopDescription,
+  initialShopLat,
+  initialShopLng,
   isSaving,
   onSaveShop,
 }: ShopProfileScreenProps) {
@@ -79,6 +84,10 @@ export function ShopProfileScreen({
   const [detailedDescription, setDetailedDescription] = useState(
     "Quán ốc gia truyền 30 năm tại phố ẩm thực Vĩnh Khánh. Chuyên các món ốc tươi sống, hải sản nướng và lẩu. Không gian phù hợp nhóm bạn và gia đình, phục vụ nhanh vào khung giờ cao điểm tối.",
   )
+  const [latitude, setLatitude] = useState("")
+  const [longitude, setLongitude] = useState("")
+  const [coordinateRaw, setCoordinateRaw] = useState("")
+  const [coordinateError, setCoordinateError] = useState<string | null>(null)
   const [contactPhone] = useState("0901 000 003")
   const [contactEmail] = useState("owner@gmail.com")
 
@@ -126,16 +135,69 @@ export function ShopProfileScreen({
     setShopName(initialShopName || "Quán của tôi")
     setAddress(initialShopAddress || "")
     setDetailedDescription(initialShopDescription || "")
+    setLatitude(typeof initialShopLat === "number" ? String(initialShopLat) : "")
+    setLongitude(typeof initialShopLng === "number" ? String(initialShopLng) : "")
+    setCoordinateRaw("")
+    setCoordinateError(null)
     if (initialShopDescription) {
       setShortDescription(initialShopDescription.slice(0, SHORT_DESCRIPTION_LIMIT))
     }
-  }, [initialShopName, initialShopAddress, initialShopDescription])
+  }, [initialShopName, initialShopAddress, initialShopDescription, initialShopLat, initialShopLng])
 
   const handleSaveShopProfile = async () => {
+    const parseNumberInput = (value: string): number | null => {
+      if (!value.trim()) return null
+      const parsed = Number(value)
+      return Number.isNaN(parsed) ? null : parsed
+    }
+
+    let lat: number | undefined
+    let lng: number | undefined
+
+    if (coordinateRaw.trim()) {
+      const parsedCoordinates = parseFlexibleCoordinates(coordinateRaw)
+      if (!parsedCoordinates) {
+        setCoordinateError(
+          "Không đọc được tọa độ. Hãy nhập dạng DMS (N/E/W/S) hoặc dạng số thập phân `lat, lng`.",
+        )
+        return
+      }
+      lat = parsedCoordinates.lat
+      lng = parsedCoordinates.lng
+      setLatitude(parsedCoordinates.lat.toFixed(8))
+      setLongitude(parsedCoordinates.lng.toFixed(8))
+    } else {
+      const latValue = parseNumberInput(latitude)
+      const lngValue = parseNumberInput(longitude)
+
+      if ((latValue === null && lngValue !== null) || (latValue !== null && lngValue === null)) {
+        setCoordinateError("Vui lòng nhập đủ cả vĩ độ và kinh độ.")
+        return
+      }
+
+      if (latValue !== null && (latValue < -90 || latValue > 90)) {
+        setCoordinateError("Vĩ độ không hợp lệ. Giá trị hợp lệ từ -90 đến 90.")
+        return
+      }
+
+      if (lngValue !== null && (lngValue < -180 || lngValue > 180)) {
+        setCoordinateError("Kinh độ không hợp lệ. Giá trị hợp lệ từ -180 đến 180.")
+        return
+      }
+
+      if (latValue !== null && lngValue !== null) {
+        lat = latValue
+        lng = lngValue
+      }
+    }
+
+    setCoordinateError(null)
     await onSaveShop({
       name: shopName.trim(),
       address: address.trim(),
       description: detailedDescription.trim(),
+      lat,
+      lng,
     })
   }
 
@@ -211,6 +273,48 @@ export function ShopProfileScreen({
                 </Label>
                 <Input value={address} onChange={(event) => setAddress(event.target.value)} className="h-11" />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="coordinate-raw-mobile" className="text-foreground font-medium">
+                  Tọa độ dán nhanh
+                </Label>
+                <Input
+                  id="coordinate-raw-mobile"
+                  value={coordinateRaw}
+                  onChange={(event) => setCoordinateRaw(event.target.value)}
+                  placeholder={`Ví dụ: 10°46'42.0"N 106°39'47.8"E hoặc 10.7614867, 106.6809530`}
+                  className="h-11"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Hệ thống tự hiểu cả dạng điện thoại (N/E/W/S) và dạng số thập phân.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="latitude-mobile">Vĩ độ</Label>
+                  <Input
+                    id="latitude-mobile"
+                    type="number"
+                    step="any"
+                    value={latitude}
+                    onChange={(event) => setLatitude(event.target.value)}
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitude-mobile">Kinh độ</Label>
+                  <Input
+                    id="longitude-mobile"
+                    type="number"
+                    step="any"
+                    value={longitude}
+                    onChange={(event) => setLongitude(event.target.value)}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              {coordinateError ? <p className="text-sm text-destructive">{coordinateError}</p> : null}
 
               <div className="space-y-2">
                 <Label className="text-foreground font-medium flex items-center gap-2">
@@ -368,33 +472,40 @@ export function ShopProfileScreen({
 
       <div className="hidden md:block">
         <div className="mx-auto max-w-6xl px-6 py-8 lg:px-8">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <Button variant="outline" size="icon" onClick={onBack}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Shop Owner / Hồ sơ quán</p>
-                <h1 className="text-2xl font-bold text-foreground">Quản lý thông tin cửa hàng</h1>
+                <h1 className="text-2xl font-bold leading-tight text-foreground">Quản lý thông tin cửa hàng</h1>
               </div>
-              <Badge className={poiStatusInfo.badgeClass}>{poiStatusInfo.label}</Badge>
+              <Badge className={`shrink-0 ${poiStatusInfo.badgeClass}`}>{poiStatusInfo.label}</Badge>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" className="gap-2" onClick={onViewApprovalHistory}>
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+              <Button variant="outline" className="gap-2 whitespace-nowrap" onClick={onViewApprovalHistory}>
                 <History className="h-4 w-4" />
                 Lịch sử duyệt
               </Button>
               {(poiApprovalStatus === "unregistered" || poiApprovalStatus === "rejected") && (
-                <Button className="gap-2" onClick={onSubmitPoiRegistration}>
+                <Button className="gap-2 whitespace-nowrap" onClick={onSubmitPoiRegistration}>
                   <Send className="h-4 w-4" />
                   {poiApprovalStatus === "rejected" ? "Gửi lại duyệt" : "Gửi đăng ký POI"}
                 </Button>
               )}
-              <Button variant="secondary" className="gap-2" onClick={() => { void handleSaveShopProfile() }} disabled={isSaving}>
+              <Button
+                variant="secondary"
+                className="gap-2 whitespace-nowrap"
+                onClick={() => {
+                  void handleSaveShopProfile()
+                }}
+                disabled={isSaving}
+              >
                 <Save className="h-4 w-4" />
                 {isSaving ? "Đang lưu..." : "Lưu bản nháp"}
               </Button>
-              <Button variant="destructive" className="gap-2" onClick={onLogout}>
+              <Button variant="destructive" className="gap-2 whitespace-nowrap" onClick={onLogout}>
                 <LogOut className="h-4 w-4" />
                 Đăng xuất
               </Button>
@@ -461,6 +572,46 @@ export function ShopProfileScreen({
                     </Label>
                     <Input value={address} onChange={(event) => setAddress(event.target.value)} className="h-11" />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="coordinate-raw-desktop">Tọa độ dán nhanh</Label>
+                    <Input
+                      id="coordinate-raw-desktop"
+                      value={coordinateRaw}
+                      onChange={(event) => setCoordinateRaw(event.target.value)}
+                      placeholder={`Ví dụ: 10°46'42.0"N 106°39'47.8"E hoặc 10.7614867, 106.6809530`}
+                      className="h-11"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Hỗ trợ cả dạng điện thoại (N/E/W/S) và dạng số thập phân.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude-desktop">Vĩ độ</Label>
+                      <Input
+                        id="latitude-desktop"
+                        type="number"
+                        step="any"
+                        value={latitude}
+                        onChange={(event) => setLatitude(event.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude-desktop">Kinh độ</Label>
+                      <Input
+                        id="longitude-desktop"
+                        type="number"
+                        step="any"
+                        value={longitude}
+                        onChange={(event) => setLongitude(event.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+                  </div>
+                  {coordinateError ? <p className="text-sm text-destructive">{coordinateError}</p> : null}
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">

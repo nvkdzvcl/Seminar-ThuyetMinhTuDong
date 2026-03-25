@@ -5,6 +5,7 @@ import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.shopDTO.ShopCreationRequest;
 import com.audioguide.dto.shopDTO.ShopResponse;
+import com.audioguide.dto.shopDTO.ShopTypeResponse;
 import com.audioguide.dto.shopDTO.ShopUpdateRequest;
 import com.audioguide.enums.Status;
 import com.audioguide.service.ShopService;
@@ -19,6 +20,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/shop")
@@ -41,6 +44,15 @@ public class ShopController {
         return ApiResponse.<ShopResponse>builder()
                 .message("Shop created successfully")
                 .result(shopResponse)
+                .build();
+    }
+
+    @GetMapping("/types")
+    @PreAuthorize("hasAnyAuthority('OWNER_SHOP','ADMIN','SUPER_ADMIN')")
+    ApiResponse<List<ShopTypeResponse>> getShopTypes() {
+        return ApiResponse.<List<ShopTypeResponse>>builder()
+                .message("Get shop types successfully")
+                .result(shopService.getAllShopTypes())
                 .build();
     }
 

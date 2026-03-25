@@ -11,11 +11,12 @@ import { DishEditorScreen } from "./screens/dish-editor-screen"
 import { AudioManagementScreen } from "./screens/audio-management-screen"
 import { ApprovalHistoryScreen } from "./screens/approval-history-screen"
 import { getPoiApprovalSummary, submitPoiRegistration } from "@/services/poi-approval-service"
-import { createShop, getMyShop, updateMyShop } from "@/services/shop-service"
+import { createShop, getMyShop, getShopTypes, updateMyShop, type CreateShopPayload, type ShopTypeOption } from "@/services/shop-service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { parseFlexibleCoordinates } from "@/lib/coordinates"
 
 type Screen = 
   | "dashboard" 
@@ -60,6 +61,9 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const [shopName, setShopName] = useState("Quán của tôi")
   const [shopAddress, setShopAddress] = useState("")
   const [shopDescription, setShopDescription] = useState("")
+  const [shopLat, setShopLat] = useState<number | null>(null)
+  const [shopLng, setShopLng] = useState<number | null>(null)
+  const [dishReloadToken, setDishReloadToken] = useState(0)
   const [isSavingShop, setIsSavingShop] = useState(false)
   const [isCreatingShop, setIsCreatingShop] = useState(false)
   const [isLoadingOwnerContext, setIsLoadingOwnerContext] = useState(true)
@@ -67,6 +71,14 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const [createShopName, setCreateShopName] = useState("")
   const [createShopAddress, setCreateShopAddress] = useState("")
   const [createShopDescription, setCreateShopDescription] = useState("")
+  const [createShopTypeId, setCreateShopTypeId] = useState("")
+  const [createShopLat, setCreateShopLat] = useState("10.7612")
+  const [createShopLng, setCreateShopLng] = useState("106.7033")
+  const [createShopCoordinateRaw, setCreateShopCoordinateRaw] = useState("")
+  const [createShopAvgCost, setCreateShopAvgCost] = useState("90000")
+  const [createShopAvgWaitTime, setCreateShopAvgWaitTime] = useState("10")
+  const [createShopAvgEatTime, setCreateShopAvgEatTime] = useState("30")
+  const [shopTypes, setShopTypes] = useState<ShopTypeOption[]>([])
 
   const getErrorMessage = (error: unknown, fallback: string): string => {
     if (error instanceof Error && error.message) {
@@ -88,6 +100,28 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     }
   }
 
+  const loadShopTypes = async () => {
+    try {
+      const types = await getShopTypes()
+      setShopTypes(types)
+      setCreateShopTypeId((current) => current || (types[0] ? String(types[0].id) : ""))
+    } catch {
+      // Fallback: backend still accepts omitted shopTypeId and chooses default type.
+      setShopTypes([])
+    }
+  }
+
+  const parseNumberInput = (value: string): number | null => {
+    if (!value.trim()) {
+      return null
+    }
+    const parsed = Number(value)
+    if (Number.isNaN(parsed)) {
+      return null
+    }
+    return parsed
+  }
+
   const loadOwnerContext = async () => {
     setIsLoadingOwnerContext(true)
     try {
@@ -96,10 +130,14 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
       setShopName(shop.name || "Quán của tôi")
       setShopAddress(shop.address || "")
       setShopDescription(shop.description || "")
+      setShopLat(typeof shop.lat === "number" ? shop.lat : null)
+      setShopLng(typeof shop.lng === "number" ? shop.lng : null)
       await loadApprovalSummary(shop.id)
       setNotice(null)
     } catch (error) {
       setShopId(null)
+      setShopLat(null)
+      setShopLng(null)
       setPoiApprovalStatus("unregistered")
       setRejectionReason("")
       setApprovalHistory([])
@@ -130,6 +168,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
 
   useEffect(() => {
     void loadOwnerContext()
+    void loadShopTypes()
   }, [])
 
   const getActiveTab = (): Tab => {
@@ -186,19 +225,97 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
       return
     }
 
+    let lat: number | null = null
+    let lng: number | null = null
+
+    if (createShopCoordinateRaw.trim()) {
+      const parsedCoordinates = parseFlexibleCoordinates(createShopCoordinateRaw)
+      if (!parsedCoordinates) {
+        setNotice({
+          type: "error",
+          message:
+            "Không đọc được tọa độ. Hãy nhập dạng DMS (N/E/W/S) hoặc dạng số thập phân `lat, lng`.",
+        })
+        return
+      }
+      lat = parsedCoordinates.lat
+      lng = parsedCoordinates.lng
+      setCreateShopLat(parsedCoordinates.lat.toFixed(8))
+      setCreateShopLng(parsedCoordinates.lng.toFixed(8))
+    } else {
+      lat = parseNumberInput(createShopLat)
+      if (lat === null || lat < -90 || lat > 90) {
+        setNotice({
+          type: "error",
+          message: "Vĩ độ không hợp lệ. Giá trị hợp lệ từ -90 đến 90.",
+        })
+        return
+      }
+
+      lng = parseNumberInput(createShopLng)
+      if (lng === null || lng < -180 || lng > 180) {
+        setNotice({
+          type: "error",
+          message: "Kinh độ không hợp lệ. Giá trị hợp lệ từ -180 đến 180.",
+        })
+        return
+      }
+    }
+
+    if (lat === null || lng === null) {
+      setNotice({
+        type: "error",
+        message: "Không xác định được tọa độ cửa hàng.",
+      })
+      return
+    }
+
+    const avgCost = parseNumberInput(createShopAvgCost)
+    if (avgCost === null || !Number.isInteger(avgCost) || avgCost < 1) {
+      setNotice({
+        type: "error",
+        message: "Chi phí trung bình phải là số nguyên lớn hơn 0.",
+      })
+      return
+    }
+
+    const avgWaitTime = parseNumberInput(createShopAvgWaitTime)
+    if (avgWaitTime === null || !Number.isInteger(avgWaitTime) || avgWaitTime < 1) {
+      setNotice({
+        type: "error",
+        message: "Thời gian chờ trung bình phải là số nguyên lớn hơn 0.",
+      })
+      return
+    }
+
+    const avgEatTime = parseNumberInput(createShopAvgEatTime)
+    if (avgEatTime === null || !Number.isInteger(avgEatTime) || avgEatTime < 1) {
+      setNotice({
+        type: "error",
+        message: "Thời gian ăn trung bình phải là số nguyên lớn hơn 0.",
+      })
+      return
+    }
+
+    const payload: CreateShopPayload = {
+      name: createShopName.trim(),
+      address: createShopAddress.trim(),
+      description: createShopDescription.trim(),
+      lat,
+      lng,
+      avgCostPerPerson: avgCost,
+      avgWaitTimeMin: avgWaitTime,
+      avgEatTimeMin: avgEatTime,
+    }
+
+    const shopTypeId = parseNumberInput(createShopTypeId)
+    if (shopTypeId !== null && Number.isInteger(shopTypeId) && shopTypeId > 0) {
+      payload.shopTypeId = shopTypeId
+    }
+
     setIsCreatingShop(true)
     try {
-      await createShop({
-        name: createShopName.trim(),
-        address: createShopAddress.trim(),
-        description: createShopDescription.trim(),
-        lat: 10.7612,
-        lng: 106.7033,
-        avgCostPerPerson: 90000,
-        avgWaitTimeMin: 10,
-        avgEatTimeMin: 30,
-        shopTypeId: 1,
-      })
+      await createShop(payload)
       await loadOwnerContext()
       setCurrentScreen("dashboard")
       setNotice({
@@ -229,7 +346,14 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
           />
         )
       case "menu":
-        return <MenuScreen onNavigate={navigateTo} poiApprovalStatus={poiApprovalStatus} />
+        return (
+          <MenuScreen
+            onNavigate={navigateTo}
+            poiApprovalStatus={poiApprovalStatus}
+            shopId={shopId ?? 0}
+            reloadToken={dishReloadToken}
+          />
+        )
       case "qr":
         return <QRScreen onNavigate={navigateTo} />
       case "insights":
@@ -244,6 +368,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
             initialShopName={shopName}
             initialShopAddress={shopAddress}
             initialShopDescription={shopDescription}
+            initialShopLat={shopLat}
+            initialShopLng={shopLng}
             isSaving={isSavingShop}
             onSaveShop={async (payload) => {
               if (!payload.name.trim() || !payload.address.trim()) {
@@ -260,6 +386,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 setShopName(updatedShop.name || "Quán của tôi")
                 setShopAddress(updatedShop.address || "")
                 setShopDescription(updatedShop.description || "")
+                setShopLat(typeof updatedShop.lat === "number" ? updatedShop.lat : null)
+                setShopLng(typeof updatedShop.lng === "number" ? updatedShop.lng : null)
                 setNotice({
                   type: "success",
                   message: "Đã lưu thông tin cửa hàng.",
@@ -305,8 +433,23 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
         return (
           <DishEditorScreen 
             dishId={selectedDishId} 
+            shopId={shopId ?? 0}
             poiApprovalStatus={poiApprovalStatus}
-            onBack={() => setCurrentScreen("menu")} 
+            onBack={() => setCurrentScreen("menu")}
+            onSaved={(message) => {
+              setDishReloadToken((current) => current + 1)
+              setNotice({
+                type: "success",
+                message,
+              })
+            }}
+            onDeleted={(message) => {
+              setDishReloadToken((current) => current + 1)
+              setNotice({
+                type: "success",
+                message,
+              })
+            }}
           />
         )
       case "audio-management":
@@ -386,6 +529,100 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 placeholder="Nhập mô tả ngắn về quán..."
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-shop-type">Loại cửa hàng</Label>
+              <select
+                id="create-shop-type"
+                value={createShopTypeId}
+                onChange={(event) => setCreateShopTypeId(event.target.value)}
+                className="border-input bg-transparent h-10 w-full rounded-md border px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              >
+                <option value="">Mặc định (backend tự chọn)</option>
+                {shopTypes.map((type) => (
+                  <option key={type.id} value={String(type.id)}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+              {shopTypes.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Không tải được danh sách loại quán. Hệ thống sẽ dùng loại mặc định khi tạo.
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-shop-coordinate-raw">
+                Tọa độ dán nhanh (hỗ trợ DMS và số thập phân)
+              </Label>
+              <Input
+                id="create-shop-coordinate-raw"
+                value={createShopCoordinateRaw}
+                onChange={(event) => setCreateShopCoordinateRaw(event.target.value)}
+                placeholder={`Ví dụ: 10°46'42.0"N 106°39'47.8"E hoặc 10.761486715909173, 106.68095304761832`}
+              />
+              <p className="text-xs text-muted-foreground">
+                Nếu bạn điền ô này, hệ thống sẽ tự đổi ra vĩ độ/kinh độ bên dưới.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="create-shop-lat">Vĩ độ</Label>
+                <Input
+                  id="create-shop-lat"
+                  type="number"
+                  step="any"
+                  value={createShopLat}
+                  onChange={(event) => setCreateShopLat(event.target.value)}
+                  placeholder="10.7612"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="create-shop-lng">Kinh độ</Label>
+                <Input
+                  id="create-shop-lng"
+                  type="number"
+                  step="any"
+                  value={createShopLng}
+                  onChange={(event) => setCreateShopLng(event.target.value)}
+                  placeholder="106.7033"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="create-shop-cost">Chi phí trung bình/người (VNĐ)</Label>
+                <Input
+                  id="create-shop-cost"
+                  type="number"
+                  min="1"
+                  value={createShopAvgCost}
+                  onChange={(event) => setCreateShopAvgCost(event.target.value)}
+                  placeholder="90000"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="create-shop-wait">Thời gian chờ trung bình (phút)</Label>
+                <Input
+                  id="create-shop-wait"
+                  type="number"
+                  min="1"
+                  value={createShopAvgWaitTime}
+                  onChange={(event) => setCreateShopAvgWaitTime(event.target.value)}
+                  placeholder="10"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="create-shop-eat">Thời gian ăn trung bình (phút)</Label>
+                <Input
+                  id="create-shop-eat"
+                  type="number"
+                  min="1"
+                  value={createShopAvgEatTime}
+                  onChange={(event) => setCreateShopAvgEatTime(event.target.value)}
+                  placeholder="30"
+                />
+              </div>
+            </div>
             <Button className="w-full" onClick={() => { void handleCreateShop() }} disabled={isCreatingShop}>
               {isCreatingShop ? "Đang tạo cửa hàng..." : "Tạo cửa hàng mới"}
             </Button>
@@ -404,9 +641,14 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     )
   }
 
+  const usesWideDesktopLayout = currentScreen === "shop-profile"
+  const contentContainerClass = usesWideDesktopLayout
+    ? "relative mx-auto max-w-md pb-24 md:max-w-none"
+    : "relative mx-auto max-w-md pb-24"
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-md mx-auto relative pb-24">
+      <div className={contentContainerClass}>
         {notice ? (
           <div
             className={`mx-3 mt-3 rounded-lg border px-3 py-2 text-sm ${
