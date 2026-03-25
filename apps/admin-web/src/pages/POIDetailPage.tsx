@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -27,6 +27,8 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import type { POI } from '@/types'
 import {
   fetchPoiDetailById,
+  updatePoi,
+  updatePoiStatus,
   type PoiApprovalHistoryItemDetail,
   type PoiMenuItemDetail,
   type PoiModerationLogDetail,
@@ -68,27 +70,96 @@ export function POIDetailPage() {
   const [systemLogs, setSystemLogs] = useState<PoiModerationLogDetail[]>([])
   const [description, setDescription] = useState('')
   const [menuSearch, setMenuSearch] = useState('')
+  const [reviewReason, setReviewReason] = useState('')
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+
+  const loadDetail = useCallback(async () => {
+    if (!id) return
+    try {
+      setLoading(true)
+      const detail = await fetchPoiDetailById(id)
+      setPoi(detail.poi)
+      setDescription(detail.poi.description ?? '')
+      setMenuItems(detail.menuItems)
+      setApprovalEvents(detail.approvalHistory)
+      setSystemLogs(detail.moderationLogs)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không tải được POI')
+      setPoi(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
 
   useEffect(() => {
-    const loadDetail = async () => {
-      if (!id) return
-      try {
-        setLoading(true)
-        const detail = await fetchPoiDetailById(id)
-        setPoi(detail.poi)
-        setDescription(detail.poi.description ?? '')
-        setMenuItems(detail.menuItems)
-        setApprovalEvents(detail.approvalHistory)
-        setSystemLogs(detail.moderationLogs)
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Không tải được POI')
-        setPoi(null)
-      } finally {
-        setLoading(false)
-      }
-    }
     void loadDetail()
-  }, [id])
+  }, [loadDetail])
+
+  const handleSaveDraft = async () => {
+    if (!id || !poi?.shopId) return
+
+    setIsSavingDraft(true)
+    try {
+      const updatedPoi = await updatePoi(id, {
+        shopId: Number(poi.shopId),
+        description: description.trim(),
+        region: poi.region,
+        category: poi.category,
+        qrCode: poi.qrCode,
+        riskFlag: poi.riskFlag,
+        riskScore: poi.riskScore,
+      })
+      setPoi(updatedPoi)
+      setDescription(updatedPoi.description ?? '')
+      toast.success('Đã lưu bản nháp POI')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Lưu bản nháp thất bại')
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
+
+  const handleApprove = async () => {
+    if (!id) return
+
+    setIsUpdatingStatus(true)
+    try {
+      const updatedPoi = await updatePoiStatus(id, { status: 'published' })
+      setPoi(updatedPoi)
+      setReviewReason('')
+      toast.success(`Đã duyệt POI "${updatedPoi.name}"`)
+      await loadDetail()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Duyệt POI thất bại')
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
+  const handleReject = async () => {
+    if (!id) return
+    if (!reviewReason.trim()) {
+      toast.error('Vui lòng nhập lý do từ chối trước khi gửi')
+      return
+    }
+
+    setIsUpdatingStatus(true)
+    try {
+      const updatedPoi = await updatePoiStatus(id, {
+        status: 'flagged',
+        reason: reviewReason,
+      })
+      setPoi(updatedPoi)
+      setReviewReason('')
+      toast.success(`Đã từ chối POI "${updatedPoi.name}"`)
+      await loadDetail()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Từ chối POI thất bại')
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
 
   const filteredMenu = useMemo(() => {
     if (!menuSearch.trim()) return menuItems
@@ -136,17 +207,27 @@ export function POIDetailPage() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Quay lại
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => void handleSaveDraft()} disabled={isSavingDraft}>
             <Save className="mr-2 h-4 w-4" />
-            Lưu bản nháp
+            {isSavingDraft ? 'Đang lưu...' : 'Lưu bản nháp'}
           </Button>
-          <Button size="sm" variant="destructive">
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => void handleReject()}
+            disabled={isUpdatingStatus}
+          >
             <X className="mr-2 h-4 w-4" />
-            Từ chối
+            {isUpdatingStatus ? 'Đang xử lý...' : 'Từ chối'}
           </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-500">
+          <Button
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-500"
+            onClick={() => void handleApprove()}
+            disabled={isUpdatingStatus}
+          >
             <Check className="mr-2 h-4 w-4" />
-            Duyệt
+            {isUpdatingStatus ? 'Đang xử lý...' : 'Duyệt'}
           </Button>
         </div>
       </div>
@@ -220,6 +301,24 @@ export function POIDetailPage() {
                 value={description}
                 onChange={(event) => setDescription(event.target.value.slice(0, 500))}
                 rows={5}
+                className="bg-muted/40"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Ghi chú duyệt / từ chối
+                </h3>
+                <span className="text-xs text-muted-foreground">Bắt buộc khi từ chối</span>
+              </div>
+              <Textarea
+                value={reviewReason}
+                onChange={(event) => setReviewReason(event.target.value.slice(0, 500))}
+                rows={4}
+                placeholder="Nhập lý do nếu từ chối POI (ví dụ: thiếu mô tả rõ ràng, thông tin sai...)"
                 className="bg-muted/40"
               />
             </CardContent>
@@ -337,6 +436,7 @@ export function POIDetailPage() {
                   <p className="text-xs text-muted-foreground">
                     {new Date(event.submittedAt).toLocaleDateString('vi-VN')} - {event.reviewer || 'Hệ thống'}
                   </p>
+                  {event.reason ? <p className="text-xs text-muted-foreground">Lý do: {event.reason}</p> : null}
                 </div>
               ))}
               {approvalEvents.length === 0 && (

@@ -160,10 +160,11 @@ public class PoiService {
 
     public PoiResponse updateStatus(Integer id, PoiStatusUpdateRequest request) {
         var poi = findByIdOrThrow(id);
+        var normalizedReason = normalizeBlank(request.getReason());
         poi.setStatus(request.getStatus());
         if (request.getStatus() == PoiStatus.FLAGGED || request.getStatus() == PoiStatus.HIDDEN) {
-            poi.setRejectionReason(request.getReason());
-            saveHistory(poi.getShopId(), poi.getId(), "rejected", "Admin", request.getReason());
+            poi.setRejectionReason(normalizedReason);
+            saveHistory(poi.getShopId(), poi.getId(), "rejected", "Admin", normalizedReason);
         } else if (request.getStatus() == PoiStatus.PUBLISHED) {
             poi.setRejectionReason(null);
             saveHistory(poi.getShopId(), poi.getId(), "approved", "Admin", null);
@@ -200,23 +201,23 @@ public class PoiService {
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
         var now = LocalDateTime.now();
         var poi = poiRepository.findByShopId(shopId).orElseGet(() -> Poi.builder()
-                .shopId(shop.getId())
-                .name(shop.getName())
-                .description(shop.getDescription())
-                .address(shop.getAddress())
-                .lat(shop.getLat())
-                .lng(shop.getLng())
                 .region(null)
-                .category(shop.getShopType() != null ? shop.getShopType().getName() : null)
-                .ownerId(shop.getOwner() != null ? shop.getOwner().getId() : null)
-                .ownerName(shop.getOwner() != null ? shop.getOwner().getFullName() : null)
-                .coverImage(shop.getImageName())
                 .qrCode(null)
                 .riskFlag(false)
                 .riskScore(null)
                 .createdAt(now)
                 .build());
 
+        poi.setShopId(shop.getId());
+        poi.setName(shop.getName());
+        poi.setDescription(shop.getDescription());
+        poi.setAddress(shop.getAddress());
+        poi.setLat(shop.getLat());
+        poi.setLng(shop.getLng());
+        poi.setCategory(shop.getShopType() != null ? shop.getShopType().getName() : null);
+        poi.setOwnerId(shop.getOwner() != null ? shop.getOwner().getId() : null);
+        poi.setOwnerName(shop.getOwner() != null ? shop.getOwner().getFullName() : null);
+        poi.setCoverImage(shop.getImageName());
         poi.setStatus(PoiStatus.DRAFT);
         poi.setRejectionReason(null);
         poi.setUpdatedAt(now);

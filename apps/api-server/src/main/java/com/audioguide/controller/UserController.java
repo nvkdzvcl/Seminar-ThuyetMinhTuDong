@@ -78,4 +78,12 @@ public class UserController {
                 .result(userService.registerUser(request))
                 .build();
     }
+
+    @PostMapping("/register-owner")
+    ApiResponse<UserRegisterResponse> registerOwner(@RequestBody @Valid UserRegister request) {
+        return ApiResponse.<UserRegisterResponse>builder()
+                .message("Owner registered successfully")
+                .result(userService.registerOwner(request))
+                .build();
+    }
 }

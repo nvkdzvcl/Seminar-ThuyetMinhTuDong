@@ -51,6 +51,22 @@ type AppNotice = {
   message: string
 }
 
+const OWNER_DRAFT_SHOP_NAME_KEY = "owner_draft_shop_name"
+const DEFAULT_CREATE_SHOP_AVG_COST = 90000
+const DEFAULT_CREATE_SHOP_AVG_WAIT_TIME = 10
+const DEFAULT_CREATE_SHOP_AVG_EAT_TIME = 30
+
+function consumeDraftShopName(): string {
+  if (typeof window === "undefined") {
+    return ""
+  }
+  const draft = window.localStorage.getItem(OWNER_DRAFT_SHOP_NAME_KEY) || ""
+  if (draft) {
+    window.localStorage.removeItem(OWNER_DRAFT_SHOP_NAME_KEY)
+  }
+  return draft
+}
+
 export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProps) {
   const [currentScreen, setCurrentScreen] = useState<Screen>(initialScreen)
   const [selectedDishId, setSelectedDishId] = useState<string | null>(null)
@@ -68,16 +84,13 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const [isCreatingShop, setIsCreatingShop] = useState(false)
   const [isLoadingOwnerContext, setIsLoadingOwnerContext] = useState(true)
   const [notice, setNotice] = useState<AppNotice | null>(null)
-  const [createShopName, setCreateShopName] = useState("")
+  const [createShopName, setCreateShopName] = useState(() => consumeDraftShopName())
   const [createShopAddress, setCreateShopAddress] = useState("")
   const [createShopDescription, setCreateShopDescription] = useState("")
   const [createShopTypeId, setCreateShopTypeId] = useState("")
   const [createShopLat, setCreateShopLat] = useState("10.7612")
   const [createShopLng, setCreateShopLng] = useState("106.7033")
   const [createShopCoordinateRaw, setCreateShopCoordinateRaw] = useState("")
-  const [createShopAvgCost, setCreateShopAvgCost] = useState("90000")
-  const [createShopAvgWaitTime, setCreateShopAvgWaitTime] = useState("10")
-  const [createShopAvgEatTime, setCreateShopAvgEatTime] = useState("30")
   const [shopTypes, setShopTypes] = useState<ShopTypeOption[]>([])
 
   const getErrorMessage = (error: unknown, fallback: string): string => {
@@ -270,42 +283,15 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
       return
     }
 
-    const avgCost = parseNumberInput(createShopAvgCost)
-    if (avgCost === null || !Number.isInteger(avgCost) || avgCost < 1) {
-      setNotice({
-        type: "error",
-        message: "Chi phí trung bình phải là số nguyên lớn hơn 0.",
-      })
-      return
-    }
-
-    const avgWaitTime = parseNumberInput(createShopAvgWaitTime)
-    if (avgWaitTime === null || !Number.isInteger(avgWaitTime) || avgWaitTime < 1) {
-      setNotice({
-        type: "error",
-        message: "Thời gian chờ trung bình phải là số nguyên lớn hơn 0.",
-      })
-      return
-    }
-
-    const avgEatTime = parseNumberInput(createShopAvgEatTime)
-    if (avgEatTime === null || !Number.isInteger(avgEatTime) || avgEatTime < 1) {
-      setNotice({
-        type: "error",
-        message: "Thời gian ăn trung bình phải là số nguyên lớn hơn 0.",
-      })
-      return
-    }
-
     const payload: CreateShopPayload = {
       name: createShopName.trim(),
       address: createShopAddress.trim(),
       description: createShopDescription.trim(),
       lat,
       lng,
-      avgCostPerPerson: avgCost,
-      avgWaitTimeMin: avgWaitTime,
-      avgEatTimeMin: avgEatTime,
+      avgCostPerPerson: DEFAULT_CREATE_SHOP_AVG_COST,
+      avgWaitTimeMin: DEFAULT_CREATE_SHOP_AVG_WAIT_TIME,
+      avgEatTimeMin: DEFAULT_CREATE_SHOP_AVG_EAT_TIME,
     }
 
     const shopTypeId = parseNumberInput(createShopTypeId)
@@ -585,41 +571,6 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                   value={createShopLng}
                   onChange={(event) => setCreateShopLng(event.target.value)}
                   placeholder="106.7033"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="create-shop-cost">Chi phí trung bình/người (VNĐ)</Label>
-                <Input
-                  id="create-shop-cost"
-                  type="number"
-                  min="1"
-                  value={createShopAvgCost}
-                  onChange={(event) => setCreateShopAvgCost(event.target.value)}
-                  placeholder="90000"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="create-shop-wait">Thời gian chờ trung bình (phút)</Label>
-                <Input
-                  id="create-shop-wait"
-                  type="number"
-                  min="1"
-                  value={createShopAvgWaitTime}
-                  onChange={(event) => setCreateShopAvgWaitTime(event.target.value)}
-                  placeholder="10"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="create-shop-eat">Thời gian ăn trung bình (phút)</Label>
-                <Input
-                  id="create-shop-eat"
-                  type="number"
-                  min="1"
-                  value={createShopAvgEatTime}
-                  onChange={(event) => setCreateShopAvgEatTime(event.target.value)}
-                  placeholder="30"
                 />
               </div>
             </div>

@@ -5,6 +5,14 @@ export interface LoginPayload {
   password: string
 }
 
+export interface OwnerRegisterPayload {
+  fullName: string
+  phoneNumber: string
+  email: string
+  password: string
+  language?: string
+}
+
 export interface AuthUser {
   id: number
   fullName: string
@@ -23,8 +31,20 @@ export interface LoginResult {
   user: AuthUser
 }
 
+export interface OwnerRegisterResult {
+  isRegistered?: boolean
+  registered?: boolean
+}
+
 export function login(payload: LoginPayload): Promise<LoginResult> {
   return apiFetch<LoginResult>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export function registerOwner(payload: OwnerRegisterPayload): Promise<OwnerRegisterResult> {
+  return apiFetch<OwnerRegisterResult>("/user/register-owner", {
     method: "POST",
     body: JSON.stringify(payload),
   })

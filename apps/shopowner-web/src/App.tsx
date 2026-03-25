@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
-import { LoginScreen } from "@/components/screens/login-screen";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { LoginScreen, type OwnerRegisterFormInput } from "@/components/screens/login-screen";
 import { AppShell } from "@/components/app-shell";
 import { clearOwnerSession, isOwnerAuthenticated, setOwnerSession } from "@/lib/auth";
-import { getCurrentUser, login, logout } from "@/services/auth-service";
+import { getCurrentUser, login, logout, registerOwner } from "@/services/auth-service";
+
+const OWNER_DRAFT_SHOP_NAME_KEY = "owner_draft_shop_name";
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(isOwnerAuthenticated());
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -35,6 +40,7 @@ function App() {
   const handleLogin = async (email: string, password: string) => {
     setIsLoggingIn(true);
     setLoginError(null);
+    setRegisterError(null);
     try {
       const result = await login({ email, password });
       if (!result.authenticated || !result.accessToken) {
@@ -47,6 +53,38 @@ function App() {
       setIsLoggedIn(false);
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleRegister = async (payload: OwnerRegisterFormInput) => {
+    setIsRegistering(true);
+    setRegisterError(null);
+    setLoginError(null);
+    try {
+      await registerOwner({
+        fullName: payload.ownerName,
+        phoneNumber: payload.phoneNumber,
+        email: payload.email,
+        password: payload.password,
+        language: "vi",
+      });
+
+      const loginResult = await login({ email: payload.email, password: payload.password });
+      if (!loginResult.authenticated || !loginResult.accessToken) {
+        throw new Error("Đăng ký thành công nhưng đăng nhập tự động thất bại");
+      }
+
+      if (payload.shopName?.trim() && typeof window !== "undefined") {
+        window.localStorage.setItem(OWNER_DRAFT_SHOP_NAME_KEY, payload.shopName.trim());
+      }
+
+      setOwnerSession(loginResult.accessToken, loginResult.refreshToken);
+      setIsLoggedIn(true);
+    } catch (error) {
+      setRegisterError(error instanceof Error ? error.message : "Đăng ký tài khoản chủ quán thất bại");
+      setIsLoggedIn(false);
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -68,17 +106,49 @@ function App() {
     );
   }
 
-  if (!isLoggedIn) {
-    return (
-      <LoginScreen
-        onLogin={handleLogin}
-        isLoading={isLoggingIn}
-        errorMessage={loginError}
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={<Navigate to={isLoggedIn ? "/app" : "/login"} replace />}
       />
-    );
-  }
-
-  return <AppShell onLogout={() => { void handleLogout(); }} />;
+      <Route
+        path="/login"
+        element={
+          isLoggedIn ? (
+            <Navigate to="/app" replace />
+          ) : (
+            <LoginScreen
+              onLogin={handleLogin}
+              onRegister={handleRegister}
+              isLoading={isLoggingIn}
+              isRegistering={isRegistering}
+              errorMessage={loginError}
+              registerErrorMessage={registerError}
+            />
+          )
+        }
+      />
+      <Route
+        path="/app/*"
+        element={
+          isLoggedIn ? (
+            <AppShell
+              onLogout={() => {
+                void handleLogout();
+              }}
+            />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="*"
+        element={<Navigate to={isLoggedIn ? "/app" : "/login"} replace />}
+      />
+    </Routes>
+  );
 }
 
 export default App;

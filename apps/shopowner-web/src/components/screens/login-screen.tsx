@@ -7,17 +7,39 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Phone, Mail, Eye, EyeOff, Store, Utensils, Volume2, QrCode, Globe } from "lucide-react"
 
-interface LoginScreenProps {
-  onLogin: (email: string, password: string) => Promise<void>
-  isLoading: boolean
-  errorMessage?: string | null
+export interface OwnerRegisterFormInput {
+  ownerName: string
+  shopName?: string
+  phoneNumber: string
+  email: string
+  password: string
 }
 
-export function LoginScreen({ onLogin, isLoading, errorMessage }: LoginScreenProps) {
+interface LoginScreenProps {
+  onLogin: (email: string, password: string) => Promise<void>
+  onRegister: (payload: OwnerRegisterFormInput) => Promise<void>
+  isLoading: boolean
+  isRegistering: boolean
+  errorMessage?: string | null
+  registerErrorMessage?: string | null
+}
+
+export function LoginScreen({
+  onLogin,
+  onRegister,
+  isLoading,
+  isRegistering,
+  errorMessage,
+  registerErrorMessage,
+}: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [registerNotice, setRegisterNotice] = useState("")
+  const [registerOwnerName, setRegisterOwnerName] = useState("")
+  const [registerShopName, setRegisterShopName] = useState("")
+  const [registerPhone, setRegisterPhone] = useState("")
+  const [registerEmail, setRegisterEmail] = useState("")
+  const [registerPassword, setRegisterPassword] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,9 +49,19 @@ export function LoginScreen({ onLogin, isLoading, errorMessage }: LoginScreenPro
     await onLogin(email.trim(), password)
   }
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setRegisterNotice("Tạm thời dùng tài khoản được cấp sẵn để đăng nhập.")
+    if (!registerOwnerName.trim() || !registerPhone.trim() || !registerEmail.trim() || !registerPassword.trim()) {
+      return
+    }
+    const normalizedPhone = registerPhone.replace(/\s+/g, "")
+    await onRegister({
+      ownerName: registerOwnerName.trim(),
+      shopName: registerShopName.trim() || undefined,
+      phoneNumber: normalizedPhone,
+      email: registerEmail.trim(),
+      password: registerPassword,
+    })
   }
 
   return (
@@ -154,60 +186,90 @@ export function LoginScreen({ onLogin, isLoading, errorMessage }: LoginScreenPro
           <TabsContent value="register">
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="shop-name" className="text-foreground font-medium">
-                  Tên quán
+                <Label htmlFor="owner-name" className="text-foreground font-medium">
+                  Tên chủ quán
                 </Label>
                 <div className="relative">
                   <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    id="shop-name"
+                    id="owner-name"
                     type="text"
-                    placeholder="Quán Ốc Bà Sáu"
+                    placeholder="Ví dụ: Nguyễn Văn A"
                     className="pl-10 h-12 text-base"
+                    value={registerOwnerName}
+                    onChange={(event) => setRegisterOwnerName(event.target.value)}
+                    required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reg-phone" className="text-foreground font-medium">
+                <Label htmlFor="reg-shop-name" className="text-foreground font-medium">
+                  Tên quán (tùy chọn)
+                </Label>
+                <div className="relative">
+                  <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="reg-shop-name"
+                    type="text"
+                    placeholder="Ví dụ: Quán Ốc Bà Sáu"
+                    className="pl-10 h-12 text-base"
+                    value={registerShopName}
+                    onChange={(event) => setRegisterShopName(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="register-phone" className="text-foreground font-medium">
                   Số điện thoại
                 </Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    id="reg-phone"
+                    id="register-phone"
                     type="tel"
                     placeholder="0912 345 678"
                     className="pl-10 h-12 text-base"
+                    value={registerPhone}
+                    onChange={(event) => setRegisterPhone(event.target.value)}
+                    required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground font-medium">
-                  Email (tùy chọn)
+                <Label htmlFor="register-email" className="text-foreground font-medium">
+                  Email
                 </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    id="email"
+                    id="register-email"
                     type="email"
                     placeholder="quanoc@email.com"
                     className="pl-10 h-12 text-base"
+                    value={registerEmail}
+                    onChange={(event) => setRegisterEmail(event.target.value)}
+                    required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reg-password" className="text-foreground font-medium">
-                  Mật khẩu
+                <Label htmlFor="register-password" className="text-foreground font-medium">
+                  Mật khẩu (tối thiểu 8 ký tự)
                 </Label>
                 <div className="relative">
                   <Input
-                    id="reg-password"
+                    id="register-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Tạo mật khẩu"
                     className="pr-10 h-12 text-base"
+                    minLength={8}
+                    value={registerPassword}
+                    onChange={(event) => setRegisterPassword(event.target.value)}
+                    required
                   />
                   <button
                     type="button"
@@ -222,13 +284,22 @@ export function LoginScreen({ onLogin, isLoading, errorMessage }: LoginScreenPro
               <Button 
                 type="submit" 
                 className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90"
+                disabled={
+                  isRegistering ||
+                  !registerOwnerName.trim() ||
+                  !registerPhone.trim() ||
+                  !registerEmail.trim() ||
+                  registerPassword.length < 8
+                }
               >
-                Đăng ký quán
+                {isRegistering ? "Đang tạo tài khoản..." : "Đăng ký quán"}
               </Button>
 
-              {registerNotice ? (
-                <p className="text-sm text-muted-foreground">{registerNotice}</p>
-              ) : null}
+              {registerErrorMessage ? <p className="text-sm text-destructive">{registerErrorMessage}</p> : null}
+
+              <p className="text-xs text-muted-foreground">
+                Sau khi đăng ký thành công, hệ thống sẽ tự đăng nhập để bạn tạo hồ sơ quán.
+              </p>
 
               <p className="text-xs text-center text-muted-foreground">
                 Bằng cách đăng ký, bạn đồng ý với{" "}

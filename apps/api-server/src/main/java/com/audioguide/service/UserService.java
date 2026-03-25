@@ -131,6 +131,14 @@ public class UserService {
 
 
     public UserRegisterResponse registerUser(UserRegister register){
+        return registerWithRole(register, UserRole.CUSTOMER);
+    }
+
+    public UserRegisterResponse registerOwner(UserRegister register){
+        return registerWithRole(register, UserRole.OWNER_SHOP);
+    }
+
+    private UserRegisterResponse registerWithRole(UserRegister register, UserRole role) {
         if (userRepository.existsByEmail(register.getEmail())) {
             log.error("Email {} is already in use", register.getEmail());
             throw new AppException(ErrorCode.EMAIL_EXISTS);
@@ -144,10 +152,10 @@ public class UserService {
         var userEntity = userMapper.toUserFromUserRegister(register);
         userEntity.setPassword(passwordEncoder.encode(register.getPassword()));
         userEntity.setStatus(UserStatus.ACTIVE);
-        userEntity.setRole(UserRole.CUSTOMER);
+        userEntity.setRole(role);
         userEntity.setCreatedAt(LocalDate.now());
-        var savedUser = userRepository.save(userEntity);
-        log.info("User with email {} registered successfully", register.getEmail());
+        userRepository.save(userEntity);
+        log.info("User with email {} registered successfully as {}", register.getEmail(), role);
         return UserRegisterResponse.builder()
                 .isRegistered(true)
                 .build();

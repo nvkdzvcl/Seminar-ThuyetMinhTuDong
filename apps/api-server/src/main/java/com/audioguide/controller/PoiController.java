@@ -66,7 +66,7 @@ public class PoiController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     ApiResponse<PoiResponse> create(@RequestBody @Valid PoiCreateRequest request) {
         return ApiResponse.<PoiResponse>builder()
                 .message("POI created successfully")
@@ -75,6 +75,7 @@ public class PoiController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     ApiResponse<PoiResponse> update(@PathVariable Integer id, @RequestBody @Valid PoiUpdateRequest request) {
         return ApiResponse.<PoiResponse>builder()
                 .message("POI updated successfully")
@@ -83,6 +84,7 @@ public class PoiController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     ApiResponse<PoiResponse> updateStatus(@PathVariable Integer id, @RequestBody @Valid PoiStatusUpdateRequest request) {
         return ApiResponse.<PoiResponse>builder()
                 .message("POI status updated successfully")
@@ -91,6 +93,7 @@ public class PoiController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     ApiResponse<Void> delete(@PathVariable Integer id) {
         poiService.delete(id);
         return ApiResponse.<Void>builder()

@@ -1,6 +1,8 @@
 import type { POI, POIStatus } from '@/types'
 import { apiFetch, type PagingResponse } from '@/lib/api'
 
+const ADMIN_POI_BASE_PATH = '/admin/pois'
+
 interface PoiApiModel {
   id: number
   shopId?: number
@@ -97,6 +99,8 @@ export interface PoiApprovalHistoryItemDetail {
   status: string
   submittedAt: string
   reviewer?: string
+  reviewedAt?: string
+  reason?: string
 }
 
 export interface PoiDetail {
@@ -117,8 +121,17 @@ export interface PoiListParams {
 
 export interface PoiUpsertPayload {
   shopId: number
+  description?: string
+  region?: string
+  category?: string
+  qrCode?: string
   riskFlag?: boolean
   riskScore?: number
+}
+
+export interface PoiStatusUpdatePayload {
+  status: POIStatus
+  reason?: string
 }
 
 function mapStatus(status: PoiApiModel['status']): POIStatus {
@@ -191,7 +204,9 @@ export async function fetchPois(params: PoiListParams): Promise<PagingResponse<P
   if (params.region) query.set('region', params.region)
   if (typeof params.hasFlag === 'boolean') query.set('hasFlag', String(params.hasFlag))
 
-  const result = await apiFetch<PagingResponse<PoiApiModel>>(`/poi?${query.toString()}`)
+  const result = await apiFetch<PagingResponse<PoiApiModel>>(
+    `${ADMIN_POI_BASE_PATH}?${query.toString()}`
+  )
   return {
     ...result,
     items: result.items.map(mapPoi),
@@ -199,12 +214,12 @@ export async function fetchPois(params: PoiListParams): Promise<PagingResponse<P
 }
 
 export async function fetchPoiById(id: string): Promise<POI> {
-  const poi = await apiFetch<PoiApiModel>(`/poi/${id}`)
+  const poi = await apiFetch<PoiApiModel>(`${ADMIN_POI_BASE_PATH}/${id}`)
   return mapPoi(poi)
 }
 
 export async function fetchPoiDetailById(id: string): Promise<PoiDetail> {
-  const detail = await apiFetch<PoiDetailApiModel>(`/poi/${id}/detail`)
+  const detail = await apiFetch<PoiDetailApiModel>(`${ADMIN_POI_BASE_PATH}/${id}/detail`)
   return {
     poi: mapPoi(detail.poi),
     menuItems: detail.menuItems.map(mapPoiMenuItem),
@@ -221,26 +236,31 @@ export async function fetchPoiDetailById(id: string): Promise<PoiDetail> {
       status: item.status,
       submittedAt: item.submittedAt,
       reviewer: item.reviewer ?? undefined,
+      reviewedAt: item.reviewedAt ?? undefined,
+      reason: item.reason ?? undefined,
     })),
   }
 }
 
 export async function updatePoi(id: string, payload: PoiUpsertPayload): Promise<POI> {
-  const poi = await apiFetch<PoiApiModel>(`/poi/${id}`, {
+  const poi = await apiFetch<PoiApiModel>(`${ADMIN_POI_BASE_PATH}/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
   return mapPoi(poi)
 }
 
-export async function updatePoiStatus(id: string, status: POIStatus): Promise<POI> {
-  const poi = await apiFetch<PoiApiModel>(`/poi/${id}/status`, {
+export async function updatePoiStatus(id: string, payload: PoiStatusUpdatePayload): Promise<POI> {
+  const poi = await apiFetch<PoiApiModel>(`${ADMIN_POI_BASE_PATH}/${id}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status: mapToApiStatus(status) }),
+    body: JSON.stringify({
+      status: mapToApiStatus(payload.status),
+      reason: payload.reason?.trim() || undefined,
+    }),
   })
   return mapPoi(poi)
 }
 
 export async function deletePoi(id: string): Promise<void> {
-  await apiFetch<void>(`/poi/${id}`, { method: 'DELETE' })
+  await apiFetch<void>(`${ADMIN_POI_BASE_PATH}/${id}`, { method: 'DELETE' })
 }

@@ -31,7 +31,7 @@ import { deletePoi, fetchPois, updatePoiStatus } from '@/services/poiService'
 const PAGE_SIZE = 10
 
 const statusOptions = [
-  { value: 'draft', label: 'Nháp' },
+  { value: 'draft', label: 'Chờ duyệt' },
   { value: 'published', label: 'Công khai' },
   { value: 'flagged', label: 'Gắn cờ' },
   { value: 'hidden', label: 'Ẩn' },
@@ -101,9 +101,9 @@ export function POIPage() {
   const hasActiveFilters = Boolean(search) || Object.values(filters).some((v) => v && v !== 'all')
 
   const handleToggleVisibility = async (poi: POI) => {
-    const newStatus: POIStatus = poi.status === 'hidden' ? 'draft' : 'hidden'
+    const newStatus: POIStatus = poi.status === 'hidden' ? 'published' : 'hidden'
     try {
-      await updatePoiStatus(poi.id, newStatus)
+      await updatePoiStatus(poi.id, { status: newStatus })
       toast.success(`Đã ${newStatus === 'hidden' ? 'ẩn' : 'hiện'} POI "${poi.name}"`)
       await loadPois()
     } catch (error) {
