@@ -143,7 +143,7 @@ function HomePage() {
                         />
 
                         <div className="mt-4 ">
-                            <NearbyMap currentPosition={currentPosition} shops={shops} />
+                            <NearbyMap currentPosition={currentPosition} />
                         </div>
                     </section>
 

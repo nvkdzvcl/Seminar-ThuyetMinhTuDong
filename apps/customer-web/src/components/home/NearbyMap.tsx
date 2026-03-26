@@ -4,7 +4,8 @@ import L from "leaflet";
 
 
 import { icons } from "../../types/icons";
-import type { ShopResponse } from "../../types/shop";
+import { usePoiMapData } from "../../hooks/usePoiMapData";
+import { getPoiCategoryLabel, getPoiMarkerIcon, getPoiStatusLabel } from "../../utils/poiMap";
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 
@@ -18,16 +19,25 @@ L.Icon.Default.mergeOptions({
 
 type NearbyMapProps = {
     currentPosition: [number, number];
-    shops: ShopResponse[];
 };
 
-function NearbyMap({ currentPosition, shops }: NearbyMapProps) {
+function NearbyMap({ currentPosition }: NearbyMapProps) {
+    const { pois, error } = usePoiMapData();
+
     return (
         <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm w-full">
             <div className="border-b border-slate-100 px-4 py-3">
                 <h3 className="text-base font-bold text-slate-900">Bản đồ quán gần đây</h3>
-                <p className="text-sm text-slate-500">Vị trí hiện tại và các quán quanh bạn</p>
+                <p className="text-sm text-slate-500">
+                    Vị trí hiện tại và các POI ({pois.length})
+                </p>
             </div>
+
+            {error ? (
+                <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+                    {error}
+                </div>
+            ) : null}
 
             <div className="h-[280px] w-full sm:h-[360px]">
                 <MapContainer
@@ -42,17 +52,26 @@ function NearbyMap({ currentPosition, shops }: NearbyMapProps) {
                     />
 
                     <Marker position={currentPosition} icon={icons.locationHumanMarker}>
-                        
                         <Popup>Vị trí hiện tại của bạn</Popup>
                     </Marker>
 
-                    {shops.map((shop) => (
-                        <Marker key={shop.id} icon={icons.shopIconMarker} position={[shop.lat, shop.lng]}>
+                    {pois.map((poi) => (
+                        <Marker
+                            key={`poi-${poi.id}`}
+                            icon={getPoiMarkerIcon(poi)}
+                            position={[poi.lat, poi.lng]}
+                        >
                             <Popup>
-                                <div className="min-w-[160px]">
-                                    <div className="font-semibold">{shop.name}</div>
+                                <div className="min-w-[180px]">
+                                    <div className="font-semibold">{poi.name}</div>
                                     <div className="mt-1 text-sm text-slate-500">
-                                        {shop.address}
+                                        {poi.address || "Chưa có địa chỉ"}
+                                    </div>
+                                    <div className="mt-2 text-xs text-slate-500">
+                                        Loại quán: {getPoiCategoryLabel(poi.categoryKey)}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                        Trạng thái: {getPoiStatusLabel(poi.status)}
                                     </div>
                                 </div>
                             </Popup>

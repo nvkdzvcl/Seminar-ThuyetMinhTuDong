@@ -56,6 +56,51 @@ const DEFAULT_CREATE_SHOP_AVG_COST = 90000
 const DEFAULT_CREATE_SHOP_AVG_WAIT_TIME = 10
 const DEFAULT_CREATE_SHOP_AVG_EAT_TIME = 30
 
+type ShopCategoryKey = "hai_san" | "lau" | "do_nuong" | "com" | "pho" | "giai_khat"
+
+const SHOP_CATEGORIES: Array<{ key: ShopCategoryKey; label: string; matchers: string[] }> = [
+  { key: "hai_san", label: "Hải sản", matchers: ["hai san", "seafood", "oc"] },
+  { key: "lau", label: "Lẩu", matchers: ["lau", "hotpot", "hot pot"] },
+  { key: "do_nuong", label: "Đồ nướng", matchers: ["do nuong", "nuong", "bbq", "grill"] },
+  { key: "com", label: "Cơm", matchers: ["com", "rice"] },
+  { key: "pho", label: "Phở", matchers: ["pho", "noodle", "bun", "hu tieu", "mi"] },
+  { key: "giai_khat", label: "Giải khát", matchers: ["giai khat", "drink", "beverage", "tra", "coffee"] },
+]
+
+function normalizeCategoryText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function createEmptyShopTypeIdByCategory(): Record<ShopCategoryKey, number | null> {
+  return {
+    hai_san: null,
+    lau: null,
+    do_nuong: null,
+    com: null,
+    pho: null,
+    giai_khat: null,
+  }
+}
+
+function resolveShopTypeIdByCategory(shopTypes: ShopTypeOption[]): Record<ShopCategoryKey, number | null> {
+  const resolved = createEmptyShopTypeIdByCategory()
+
+  for (const category of SHOP_CATEGORIES) {
+    const matchedType = shopTypes.find((type) => {
+      const normalizedName = normalizeCategoryText(type.name || "")
+      return category.matchers.some((matcher) => normalizedName.includes(matcher))
+    })
+    resolved[category.key] = matchedType?.id ?? null
+  }
+
+  return resolved
+}
+
 function consumeDraftShopName(): string {
   if (typeof window === "undefined") {
     return ""
@@ -87,11 +132,14 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const [createShopName, setCreateShopName] = useState(() => consumeDraftShopName())
   const [createShopAddress, setCreateShopAddress] = useState("")
   const [createShopDescription, setCreateShopDescription] = useState("")
-  const [createShopTypeId, setCreateShopTypeId] = useState("")
+  const [createShopCategoryKey, setCreateShopCategoryKey] = useState<ShopCategoryKey>("hai_san")
+  const [shopTypeIdByCategory, setShopTypeIdByCategory] = useState<Record<ShopCategoryKey, number | null>>(
+    createEmptyShopTypeIdByCategory()
+  )
+  const [hasShopTypeLoadError, setHasShopTypeLoadError] = useState(false)
   const [createShopLat, setCreateShopLat] = useState("10.7612")
   const [createShopLng, setCreateShopLng] = useState("106.7033")
   const [createShopCoordinateRaw, setCreateShopCoordinateRaw] = useState("")
-  const [shopTypes, setShopTypes] = useState<ShopTypeOption[]>([])
 
   const getErrorMessage = (error: unknown, fallback: string): string => {
     if (error instanceof Error && error.message) {
@@ -116,11 +164,20 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const loadShopTypes = async () => {
     try {
       const types = await getShopTypes()
-      setShopTypes(types)
-      setCreateShopTypeId((current) => current || (types[0] ? String(types[0].id) : ""))
+      const resolved = resolveShopTypeIdByCategory(types)
+      setShopTypeIdByCategory(resolved)
+      setHasShopTypeLoadError(false)
+      setCreateShopCategoryKey((current) => {
+        if (resolved[current] !== null) {
+          return current
+        }
+        const fallbackCategory = SHOP_CATEGORIES.find((category) => resolved[category.key] !== null)
+        return fallbackCategory?.key ?? current
+      })
     } catch {
       // Fallback: backend still accepts omitted shopTypeId and chooses default type.
-      setShopTypes([])
+      setShopTypeIdByCategory(createEmptyShopTypeIdByCategory())
+      setHasShopTypeLoadError(true)
     }
   }
 
@@ -294,20 +351,58 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
       avgEatTimeMin: DEFAULT_CREATE_SHOP_AVG_EAT_TIME,
     }
 
-    const shopTypeId = parseNumberInput(createShopTypeId)
-    if (shopTypeId !== null && Number.isInteger(shopTypeId) && shopTypeId > 0) {
-      payload.shopTypeId = shopTypeId
+    const selectedShopTypeId = shopTypeIdByCategory[createShopCategoryKey]
+    if (selectedShopTypeId !== null) {
+      payload.shopTypeId = selectedShopTypeId
+    } else if (hasShopTypeLoadError) {
+      setNotice({
+        type: "error",
+        message: "Không tải được loại cửa hàng từ backend. Vui lòng thử lại.",
+      })
+      return
+    } else {
+      const selectedCategoryLabel =
+        SHOP_CATEGORIES.find((category) => category.key === createShopCategoryKey)?.label ?? "đã chọn"
+      setNotice({
+        type: "error",
+        message: `Loại cửa hàng "${selectedCategoryLabel}" chưa được cấu hình trên backend.`,
+      })
+      return
     }
 
     setIsCreatingShop(true)
     try {
-      await createShop(payload)
+      const createdShop = await createShop(payload)
+      let isSubmittedToAdmin = false
+      let submitWarningMessage: string | null = null
+      try {
+        await submitPoiRegistration(createdShop.id)
+        isSubmittedToAdmin = true
+      } catch (submitError) {
+        submitWarningMessage = getErrorMessage(
+          submitError,
+          "Đã tạo cửa hàng. Vui lòng vào Hồ sơ quán để gửi đăng ký POI.",
+        )
+      }
+
       await loadOwnerContext()
       setCurrentScreen("dashboard")
-      setNotice({
-        type: "success",
-        message: "Đã tạo cửa hàng thành công.",
-      })
+      if (isSubmittedToAdmin) {
+        setNotice({
+          type: "success",
+          message: "Đã tạo cửa hàng và gửi đăng ký POI. Admin có thể bắt đầu duyệt.",
+        })
+      } else if (submitWarningMessage) {
+        setNotice({
+          type: "info",
+          message: submitWarningMessage,
+        })
+      } else {
+        setNotice({
+          type: "success",
+          message: "Đã tạo cửa hàng thành công.",
+        })
+      }
     } catch (error) {
       setNotice({
         type: "error",
@@ -402,7 +497,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                   setApprovalHistory(summary.history)
                   setNotice({
                     type: "success",
-                    message: "Đã gửi yêu cầu duyệt POI.",
+                    message: "Đã gửi yêu cầu duyệt POI. Admin sẽ thấy mục này để xem xét.",
                   })
                 })
                 .catch((error) => {
@@ -519,20 +614,32 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
               <Label htmlFor="create-shop-type">Loại cửa hàng</Label>
               <select
                 id="create-shop-type"
-                value={createShopTypeId}
-                onChange={(event) => setCreateShopTypeId(event.target.value)}
+                value={createShopCategoryKey}
+                onChange={(event) => setCreateShopCategoryKey(event.target.value as ShopCategoryKey)}
                 className="border-input bg-transparent h-10 w-full rounded-md border px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
               >
-                <option value="">Mặc định (backend tự chọn)</option>
-                {shopTypes.map((type) => (
-                  <option key={type.id} value={String(type.id)}>
-                    {type.name}
+                {SHOP_CATEGORIES.map((category) => (
+                  <option
+                    key={category.key}
+                    value={category.key}
+                    disabled={shopTypeIdByCategory[category.key] === null}
+                  >
+                    {category.label}
+                    {shopTypeIdByCategory[category.key] === null ? " (chưa cấu hình)" : ""}
                   </option>
                 ))}
               </select>
-              {shopTypes.length === 0 ? (
+              {hasShopTypeLoadError ? (
                 <p className="text-xs text-muted-foreground">
-                  Không tải được danh sách loại quán. Hệ thống sẽ dùng loại mặc định khi tạo.
+                  Không tải được danh sách loại quán. Vui lòng bấm Tải lại hoặc kiểm tra backend.
+                </p>
+              ) : SHOP_CATEGORIES.some((category) => shopTypeIdByCategory[category.key] === null) ? (
+                <p className="text-xs text-muted-foreground">
+                  Một số loại quán chưa có trên backend:
+                  {" "}
+                  {SHOP_CATEGORIES.filter((category) => shopTypeIdByCategory[category.key] === null)
+                    .map((category) => category.label)
+                    .join(", ")}
                 </p>
               ) : null}
             </div>

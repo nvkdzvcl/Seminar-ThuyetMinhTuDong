@@ -29,3 +29,28 @@ body {
 .leaflet-routing-container {
   display: none !important;
 }
+
+.customer-poi-marker {
+  border-radius: 8px;
+  filter: drop-shadow(0 6px 12px rgba(2, 6, 23, 0.22));
+}
+
+.customer-poi-status-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.customer-poi-status-marker {
+  align-items: center;
+  background: var(--marker-color, #2563eb);
+  border: 2px solid white;
+  border-radius: 9999px;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.25);
+  color: white;
+  display: flex;
+  font-size: 14px;
+  font-weight: 700;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}

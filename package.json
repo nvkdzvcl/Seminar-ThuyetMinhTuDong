@@ -8,6 +8,7 @@
     "dev:api": "mvn -f apps/api-server/pom.xml spring-boot:run",
     "build:admin": "npm --prefix apps/admin-web run build",
     "build:customer": "npm --prefix apps/customer-web run build",
-    "build:shopowner": "npm --prefix apps/shopowner-web run build"
+    "build:shopowner": "npm --prefix apps/shopowner-web run build",
+    "collect:shops:google": "node scripts/collect-google-maps-shops.mjs"
   }
 }

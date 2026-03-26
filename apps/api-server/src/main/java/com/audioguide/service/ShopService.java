@@ -6,6 +6,7 @@ import com.audioguide.dto.shopDTO.ShopCreationRequest;
 import com.audioguide.dto.shopDTO.ShopResponse;
 import com.audioguide.dto.shopDTO.ShopTypeResponse;
 import com.audioguide.dto.shopDTO.ShopUpdateRequest;
+import com.audioguide.entity.ShopType;
 import com.audioguide.enums.Status;
 import com.audioguide.enums.UserRole;
 import com.audioguide.exception.AppException;
@@ -29,6 +30,7 @@ import com.audioguide.utils.FileStoreUtil;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 
 @Service
@@ -44,6 +46,14 @@ public class ShopService {
 
     Path IMAGE_DIR = Path.of("uploads/shop-images");
     Path AUDIO_DIR = Path.of("uploads/shop-audios");
+    static final List<RequiredShopType> REQUIRED_SHOP_TYPES = List.of(
+            new RequiredShopType("Hải sản", "Quán chuyên hải sản, ốc và các món biển."),
+            new RequiredShopType("Lẩu", "Quán lẩu và món nước dùng nóng."),
+            new RequiredShopType("Đồ nướng", "Quán nướng, BBQ, món nướng than/lửa."),
+            new RequiredShopType("Cơm", "Quán cơm bình dân, cơm văn phòng, cơm gà."),
+            new RequiredShopType("Phở", "Phở, bún, mì, hủ tiếu và món sợi."),
+            new RequiredShopType("Giải khát", "Trà sữa, cà phê, nước ép, đồ uống.")
+    );
 
     public ShopResponse createShop(Integer ownerId, ShopCreationRequest request) {
 
@@ -118,13 +128,11 @@ public class ShopService {
     }
 
     public List<ShopTypeResponse> getAllShopTypes() {
-        return shopTypeRepository.findAllByOrderByNameAsc()
-                .stream()
-                .map(shopType -> ShopTypeResponse.builder()
-                        .id(shopType.getId())
-                        .name(shopType.getName())
-                        .description(shopType.getDescription())
-                        .build())
+        ensureRequiredShopTypes();
+        return REQUIRED_SHOP_TYPES.stream()
+                .map(required -> shopTypeRepository.findByNameIgnoreCase(required.name()).orElse(null))
+                .filter(Objects::nonNull)
+                .map(this::toShopTypeResponse)
                 .toList();
     }
 
@@ -330,6 +338,28 @@ public class ShopService {
     private boolean isValidRange(Double lat, Double lng) {
         return lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0;
     }
+
+    private void ensureRequiredShopTypes() {
+        for (RequiredShopType required : REQUIRED_SHOP_TYPES) {
+            if (shopTypeRepository.findByNameIgnoreCase(required.name()).isPresent()) {
+                continue;
+            }
+            shopTypeRepository.save(ShopType.builder()
+                    .name(required.name())
+                    .description(required.description())
+                    .build());
+        }
+    }
+
+    private ShopTypeResponse toShopTypeResponse(ShopType shopType) {
+        return ShopTypeResponse.builder()
+                .id(shopType.getId())
+                .name(shopType.getName())
+                .description(shopType.getDescription())
+                .build();
+    }
+
+    private record RequiredShopType(String name, String description) {}
 
 
 

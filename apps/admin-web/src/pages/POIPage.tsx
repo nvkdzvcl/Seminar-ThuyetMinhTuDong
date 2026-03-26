@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MoreHorizontal, Eye, EyeOff, Trash2, AlertTriangle, Store, MapPinned } from 'lucide-react'
+import { MoreHorizontal, Eye, EyeOff, Trash2, AlertTriangle, Store, MapPinned, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -29,6 +29,7 @@ import { formatDateTime } from '@/lib/utils'
 import { deletePoi, fetchPois, updatePoiStatus } from '@/services/poiService'
 
 const PAGE_SIZE = 10
+const AUTO_REFRESH_MS = 15000
 
 const statusOptions = [
   { value: 'draft', label: 'Chờ duyệt' },
@@ -63,9 +64,12 @@ export function POIPage() {
     },
   ]
 
-  const loadPois = async () => {
+  const loadPois = useCallback(async (options?: { silent?: boolean }) => {
+    const shouldShowLoading = !options?.silent
     try {
-      setLoading(true)
+      if (shouldShowLoading) {
+        setLoading(true)
+      }
       const result = await fetchPois({
         page: currentPage,
         size: pageSize,
@@ -77,15 +81,27 @@ export function POIPage() {
       setTotalItems(result.totalItems)
       setTotalPages(result.totalPages || 1)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Không tải được danh sách POI')
+      if (!options?.silent) {
+        toast.error(error instanceof Error ? error.message : 'Không tải được danh sách POI')
+      }
     } finally {
-      setLoading(false)
+      if (shouldShowLoading) {
+        setLoading(false)
+      }
     }
-  }
+  }, [currentPage, filters.hasFlag, filters.status, pageSize, search])
 
   useEffect(() => {
     void loadPois()
-  }, [currentPage, pageSize, search, filters])
+  }, [loadPois])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void loadPois({ silent: true })
+    }, AUTO_REFRESH_MS)
+
+    return () => window.clearInterval(timer)
+  }, [loadPois])
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
@@ -130,6 +146,10 @@ export function POIPage() {
         title="Quản lý POI"
         description="POI hiện được giản lược theo tên cửa hàng"
       >
+        <Button variant="outline" size="sm" onClick={() => void loadPois()}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Tải lại
+        </Button>
         <Button variant="outline" size="sm" onClick={() => navigate('/poi-map')}>
           <MapPinned className="mr-2 h-4 w-4" />
           Xem bản đồ POI

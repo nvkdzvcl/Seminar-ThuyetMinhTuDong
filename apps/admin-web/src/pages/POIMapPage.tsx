@@ -10,23 +10,40 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { MANUAL_POI_SEEDS } from '@/data/manual-poi-seeds'
 import type { POI, POIStatus } from '@/types'
 import { fetchAllPois } from '@/services/poiService'
 import { fetchAdminSettings, upsertAdminSettings } from '@/services/adminSettingsService'
 import {
+  POI_CATEGORY_DEFAULT_ICON_URL,
+  POI_CATEGORY_KEYS,
+  POI_CATEGORY_META,
+  POI_MAP_CATEGORY_ICON_CONFIG_SETTING_KEY,
   POI_MAP_ICON_CONFIG_SETTING_KEY,
   POI_STATUS_META,
+  createDefaultPoiCategoryIconConfig,
   createDefaultPoiMapIconConfig,
+  parsePoiCategoryIconConfig,
   parsePoiMapIconConfig,
+  resolvePoiCategoryKey,
+  serializePoiCategoryIconConfig,
   serializePoiMapIconConfig,
+  type PoiCategoryKey,
+  type PoiMapCategoryIconConfig,
   type PoiMapIconConfig,
 } from '@/lib/poi-map-config'
 
 const FALLBACK_CENTER: [number, number] = [10.762622, 106.660172]
 const MAX_ICON_FILE_SIZE_BYTES = 512 * 1024
+const MAP_MARKER_SIZE = 30
 const POI_STATUSES: POIStatus[] = ['draft', 'published', 'flagged', 'hidden']
 
-type MappedPoi = POI & { lat: number; lng: number }
+type MappedPoi = POI & {
+  lat: number
+  lng: number
+  source: 'api' | 'manual'
+  categoryKey: PoiCategoryKey | null
+}
 
 function isValidCoordinate(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
@@ -40,26 +57,88 @@ function toMappedPoi(poi: POI): MappedPoi | null {
     ...poi,
     lat: poi.lat,
     lng: poi.lng,
+    source: 'api',
+    categoryKey: resolvePoiCategoryKey(poi.category, poi.name, poi.description),
   }
 }
 
-function buildDefaultDivIcon(status: POIStatus): L.DivIcon {
-  const meta = POI_STATUS_META[status]
+function toMappedManualPoi(seed: (typeof MANUAL_POI_SEEDS)[number]): MappedPoi {
+  const timestamp = new Date().toISOString()
+
+  return {
+    id: seed.id,
+    name: seed.name,
+    address: seed.address,
+    lat: seed.lat,
+    lng: seed.lng,
+    category: seed.category,
+    status: 'published',
+    source: 'manual',
+    categoryKey: seed.category,
+    riskFlag: false,
+    ownerName: 'Dữ liệu nhập tay',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }
+}
+
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function buildPoiIdentityKey(poi: Pick<MappedPoi, 'name' | 'lat' | 'lng'>): string {
+  return `${normalizeText(poi.name)}|${poi.lat.toFixed(6)}|${poi.lng.toFixed(6)}`
+}
+
+function mergePois(apiPois: MappedPoi[], manualPois: MappedPoi[]): MappedPoi[] {
+  const byIdentity = new Map<string, MappedPoi>()
+
+  for (const poi of apiPois) {
+    byIdentity.set(buildPoiIdentityKey(poi), poi)
+  }
+  for (const poi of manualPois) {
+    const key = buildPoiIdentityKey(poi)
+    if (!byIdentity.has(key)) {
+      byIdentity.set(key, poi)
+    }
+  }
+
+  return Array.from(byIdentity.values())
+}
+
+function buildDefaultMarkerIcon(color: string, emoji: string): L.DivIcon {
+  const halfSize = Math.round(MAP_MARKER_SIZE / 2)
   return L.divIcon({
     className: 'poi-status-marker-wrapper',
-    html: `<div class="poi-status-marker" style="--marker-color:${meta.color};"><span>${meta.emoji}</span></div>`,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -16],
+    html: `<div class="poi-status-marker" style="--marker-color:${color}; --marker-size:${MAP_MARKER_SIZE}px;"><span>${emoji}</span></div>`,
+    iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
+    iconAnchor: [halfSize, halfSize],
+    popupAnchor: [0, -Math.round(MAP_MARKER_SIZE * 0.45)],
   })
 }
 
-function buildCustomIcon(dataUrl: string): L.Icon {
+function buildDefaultStatusIcon(status: POIStatus): L.DivIcon {
+  const meta = POI_STATUS_META[status]
+  return buildDefaultMarkerIcon(meta.color, meta.emoji)
+}
+
+function buildDefaultCategoryIcon(category: PoiCategoryKey): L.DivIcon {
+  const meta = POI_CATEGORY_META[category]
+  return buildDefaultMarkerIcon(meta.color, meta.emoji)
+}
+
+function buildImageIcon(iconUrl: string): L.Icon {
+  const halfSize = Math.round(MAP_MARKER_SIZE / 2)
   return L.icon({
-    iconUrl: dataUrl,
-    iconSize: [40, 40],
-    iconAnchor: [20, 36],
-    popupAnchor: [0, -30],
+    iconUrl,
+    iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
+    iconAnchor: [halfSize, halfSize],
+    popupAnchor: [0, -Math.round(MAP_MARKER_SIZE * 0.45)],
     className: 'poi-upload-marker',
   })
 }
@@ -80,6 +159,16 @@ function MapViewportController({ pois }: { pois: MappedPoi[] }) {
   return null
 }
 
+function createEmptyCategoryCounts(): Record<PoiCategoryKey, number> {
+  return POI_CATEGORY_KEYS.reduce(
+    (accumulator, category) => {
+      accumulator[category] = 0
+      return accumulator
+    },
+    {} as Record<PoiCategoryKey, number>
+  )
+}
+
 export function POIMapPage() {
   const navigate = useNavigate()
 
@@ -91,9 +180,17 @@ export function POIMapPage() {
     flagged: true,
     hidden: true,
   })
-  const [iconConfig, setIconConfig] = useState<PoiMapIconConfig>(createDefaultPoiMapIconConfig())
-  const [savedIconConfigSerialized, setSavedIconConfigSerialized] = useState(
+  const [statusIconConfig, setStatusIconConfig] = useState<PoiMapIconConfig>(
+    createDefaultPoiMapIconConfig()
+  )
+  const [savedStatusIconConfigSerialized, setSavedStatusIconConfigSerialized] = useState(
     serializePoiMapIconConfig(createDefaultPoiMapIconConfig())
+  )
+  const [categoryIconConfig, setCategoryIconConfig] = useState<PoiMapCategoryIconConfig>(
+    createDefaultPoiCategoryIconConfig()
+  )
+  const [savedCategoryIconConfigSerialized, setSavedCategoryIconConfigSerialized] = useState(
+    serializePoiCategoryIconConfig(createDefaultPoiCategoryIconConfig())
   )
   const [isLoadingPois, setIsLoadingPois] = useState(true)
   const [isLoadingIconConfig, setIsLoadingIconConfig] = useState(true)
@@ -103,11 +200,12 @@ export function POIMapPage() {
     setIsLoadingPois(true)
     try {
       const allPois = await fetchAllPois({ pageSize: 100, maxPages: 50 })
-      const mappedPois = allPois.map(toMappedPoi).filter((item): item is MappedPoi => item !== null)
-      setPois(mappedPois)
+      const mappedApiPois = allPois.map(toMappedPoi).filter((item): item is MappedPoi => item !== null)
+      const manualPois = MANUAL_POI_SEEDS.map(toMappedManualPoi)
+      setPois(mergePois(mappedApiPois, manualPois))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không tải được dữ liệu POI cho bản đồ')
-      setPois([])
+      setPois(MANUAL_POI_SEEDS.map(toMappedManualPoi))
     } finally {
       setIsLoadingPois(false)
     }
@@ -117,17 +215,30 @@ export function POIMapPage() {
     setIsLoadingIconConfig(true)
     try {
       const settings = await fetchAdminSettings()
-      const rawSetting =
+
+      const rawStatusSetting =
         settings.find((item) => item.key === POI_MAP_ICON_CONFIG_SETTING_KEY)?.value ?? null
-      const parsed = parsePoiMapIconConfig(rawSetting)
-      const serialized = serializePoiMapIconConfig(parsed)
-      setIconConfig(parsed)
-      setSavedIconConfigSerialized(serialized)
+      const parsedStatus = parsePoiMapIconConfig(rawStatusSetting)
+      const serializedStatus = serializePoiMapIconConfig(parsedStatus)
+      setStatusIconConfig(parsedStatus)
+      setSavedStatusIconConfigSerialized(serializedStatus)
+
+      const rawCategorySetting =
+        settings.find((item) => item.key === POI_MAP_CATEGORY_ICON_CONFIG_SETTING_KEY)?.value ?? null
+      const parsedCategory = parsePoiCategoryIconConfig(rawCategorySetting)
+      const serializedCategory = serializePoiCategoryIconConfig(parsedCategory)
+      setCategoryIconConfig(parsedCategory)
+      setSavedCategoryIconConfigSerialized(serializedCategory)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không tải được cấu hình icon bản đồ')
-      const fallback = createDefaultPoiMapIconConfig()
-      setIconConfig(fallback)
-      setSavedIconConfigSerialized(serializePoiMapIconConfig(fallback))
+
+      const statusFallback = createDefaultPoiMapIconConfig()
+      const categoryFallback = createDefaultPoiCategoryIconConfig()
+
+      setStatusIconConfig(statusFallback)
+      setSavedStatusIconConfigSerialized(serializePoiMapIconConfig(statusFallback))
+      setCategoryIconConfig(categoryFallback)
+      setSavedCategoryIconConfigSerialized(serializePoiCategoryIconConfig(categoryFallback))
     } finally {
       setIsLoadingIconConfig(false)
     }
@@ -138,20 +249,33 @@ export function POIMapPage() {
     void loadIconConfig()
   }, [loadIconConfig, loadPois])
 
-  const markerIcons = useMemo<Record<POIStatus, L.Icon | L.DivIcon>>(
+  const statusMarkerIcons = useMemo<Record<POIStatus, L.Icon | L.DivIcon>>(
     () => ({
-      draft: iconConfig.draft ? buildCustomIcon(iconConfig.draft) : buildDefaultDivIcon('draft'),
-      published: iconConfig.published
-        ? buildCustomIcon(iconConfig.published)
-        : buildDefaultDivIcon('published'),
-      flagged: iconConfig.flagged ? buildCustomIcon(iconConfig.flagged) : buildDefaultDivIcon('flagged'),
-      hidden: iconConfig.hidden ? buildCustomIcon(iconConfig.hidden) : buildDefaultDivIcon('hidden'),
+      draft: statusIconConfig.draft ? buildImageIcon(statusIconConfig.draft) : buildDefaultStatusIcon('draft'),
+      published: statusIconConfig.published
+        ? buildImageIcon(statusIconConfig.published)
+        : buildDefaultStatusIcon('published'),
+      flagged: statusIconConfig.flagged
+        ? buildImageIcon(statusIconConfig.flagged)
+        : buildDefaultStatusIcon('flagged'),
+      hidden: statusIconConfig.hidden
+        ? buildImageIcon(statusIconConfig.hidden)
+        : buildDefaultStatusIcon('hidden'),
     }),
-    [iconConfig]
+    [statusIconConfig]
   )
 
+  const categoryMarkerIcons = useMemo<Record<PoiCategoryKey, L.Icon | L.DivIcon>>(() => {
+    const icons = {} as Record<PoiCategoryKey, L.Icon | L.DivIcon>
+    for (const category of POI_CATEGORY_KEYS) {
+      const iconUrl = categoryIconConfig[category] ?? POI_CATEGORY_DEFAULT_ICON_URL[category]
+      icons[category] = iconUrl ? buildImageIcon(iconUrl) : buildDefaultCategoryIcon(category)
+    }
+    return icons
+  }, [categoryIconConfig])
+
   const filteredPois = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase()
+    const normalizedSearch = normalizeText(search)
     return pois.filter((poi) => {
       if (!statusFilters[poi.status]) {
         return false
@@ -159,11 +283,13 @@ export function POIMapPage() {
       if (!normalizedSearch) {
         return true
       }
-      return (
-        poi.name.toLowerCase().includes(normalizedSearch) ||
-        (poi.address || '').toLowerCase().includes(normalizedSearch) ||
-        (poi.ownerName || '').toLowerCase().includes(normalizedSearch)
-      )
+
+      const categoryLabel = poi.categoryKey ? POI_CATEGORY_META[poi.categoryKey].label : ''
+      const searchable = [poi.name, poi.address, poi.ownerName, poi.category, categoryLabel]
+        .filter((item): item is string => Boolean(item))
+        .map((item) => normalizeText(item))
+
+      return searchable.some((item) => item.includes(normalizedSearch))
     })
   }, [pois, search, statusFilters])
 
@@ -177,16 +303,38 @@ export function POIMapPage() {
     )
   }, [pois])
 
-  const hasUnsavedIconChanges = useMemo(
-    () => serializePoiMapIconConfig(iconConfig) !== savedIconConfigSerialized,
-    [iconConfig, savedIconConfigSerialized]
-  )
+  const categoryCounts = useMemo(() => {
+    const counts = createEmptyCategoryCounts()
+    for (const poi of pois) {
+      if (poi.categoryKey) {
+        counts[poi.categoryKey] += 1
+      }
+    }
+    return counts
+  }, [pois])
+
+  const hasUnsavedIconChanges = useMemo(() => {
+    const hasStatusChanges =
+      serializePoiMapIconConfig(statusIconConfig) !== savedStatusIconConfigSerialized
+    const hasCategoryChanges =
+      serializePoiCategoryIconConfig(categoryIconConfig) !== savedCategoryIconConfigSerialized
+
+    return hasStatusChanges || hasCategoryChanges
+  }, [
+    categoryIconConfig,
+    savedCategoryIconConfigSerialized,
+    savedStatusIconConfigSerialized,
+    statusIconConfig,
+  ])
 
   const handleToggleStatusFilter = (status: POIStatus) => {
     setStatusFilters((current) => ({ ...current, [status]: !current[status] }))
   }
 
-  const handleIconFileChange = (status: POIStatus, file?: File | null) => {
+  const readIconFileAndApply = (
+    file: File | null | undefined,
+    onSuccess: (dataUrl: string) => void
+  ) => {
     if (!file) {
       return
     }
@@ -206,26 +354,49 @@ export function POIMapPage() {
         toast.error('Không đọc được file icon.')
         return
       }
-      setIconConfig((current) => ({ ...current, [status]: result }))
+      onSuccess(result)
     }
     reader.readAsDataURL(file)
   }
 
+  const handleStatusIconFileChange = (status: POIStatus, file?: File | null) => {
+    readIconFileAndApply(file, (dataUrl) => {
+      setStatusIconConfig((current) => ({ ...current, [status]: dataUrl }))
+    })
+  }
+
+  const handleCategoryIconFileChange = (category: PoiCategoryKey, file?: File | null) => {
+    readIconFileAndApply(file, (dataUrl) => {
+      setCategoryIconConfig((current) => ({ ...current, [category]: dataUrl }))
+    })
+  }
+
   const handleResetStatusIcon = (status: POIStatus) => {
-    setIconConfig((current) => ({ ...current, [status]: null }))
+    setStatusIconConfig((current) => ({ ...current, [status]: null }))
+  }
+
+  const handleResetCategoryIcon = (category: PoiCategoryKey) => {
+    setCategoryIconConfig((current) => ({ ...current, [category]: null }))
   }
 
   const handleSaveIconConfig = async () => {
-    const serialized = serializePoiMapIconConfig(iconConfig)
+    const serializedStatus = serializePoiMapIconConfig(statusIconConfig)
+    const serializedCategory = serializePoiCategoryIconConfig(categoryIconConfig)
+
     setIsSavingIconConfig(true)
     try {
       await upsertAdminSettings([
         {
           key: POI_MAP_ICON_CONFIG_SETTING_KEY,
-          value: serialized,
+          value: serializedStatus,
+        },
+        {
+          key: POI_MAP_CATEGORY_ICON_CONFIG_SETTING_KEY,
+          value: serializedCategory,
         },
       ])
-      setSavedIconConfigSerialized(serialized)
+      setSavedStatusIconConfigSerialized(serializedStatus)
+      setSavedCategoryIconConfigSerialized(serializedCategory)
       toast.success('Đã lưu cấu hình icon bản đồ POI.')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Lưu cấu hình icon thất bại')
@@ -235,7 +406,8 @@ export function POIMapPage() {
   }
 
   const handleResetAllIcons = () => {
-    setIconConfig(createDefaultPoiMapIconConfig())
+    setStatusIconConfig(createDefaultPoiMapIconConfig())
+    setCategoryIconConfig(createDefaultPoiCategoryIconConfig())
   }
 
   if (isLoadingPois && isLoadingIconConfig) {
@@ -251,7 +423,8 @@ export function POIMapPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-foreground">Bản Đồ POI</h1>
         <p className="text-sm text-muted-foreground">
-          Hiển thị toàn bộ POI có tọa độ. Bạn có thể upload icon riêng cho từng trạng thái POI.
+          Hiển thị POI theo vị trí. Marker ưu tiên icon theo loại quán, nếu không có sẽ fallback theo
+          trạng thái.
         </p>
       </div>
 
@@ -260,7 +433,7 @@ export function POIMapPage() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Tìm theo tên quán, địa chỉ, chủ quán..."
+            placeholder="Tìm theo tên quán, địa chỉ, chủ quán, category..."
           />
           <Button variant="outline" onClick={() => void loadPois()} className="gap-2">
             <RefreshCw className="h-4 w-4" />
@@ -269,6 +442,7 @@ export function POIMapPage() {
           <div className="flex items-center justify-end text-sm text-muted-foreground">
             {filteredPois.length}/{pois.length} POI
           </div>
+
           <div className="col-span-full flex flex-wrap gap-2">
             {POI_STATUSES.map((status) => {
               const meta = POI_STATUS_META[status]
@@ -289,6 +463,17 @@ export function POIMapPage() {
               )
             })}
           </div>
+
+          <div className="col-span-full flex flex-wrap gap-2">
+            {POI_CATEGORY_KEYS.map((category) => (
+              <Badge key={category} variant="outline" className="gap-1">
+                <span>{POI_CATEGORY_META[category].emoji}</span>
+                <span>
+                  {POI_CATEGORY_META[category].label}: {categoryCounts[category]}
+                </span>
+              </Badge>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -300,7 +485,7 @@ export function POIMapPage() {
                 <EmptyState
                   icon={MapPin}
                   title="Không có POI để hiển thị"
-                  description="Kiểm tra lại bộ lọc trạng thái hoặc dữ liệu lat/lng của POI."
+                  description="Kiểm tra bộ lọc hoặc dữ liệu lat/lng của POI."
                 />
               </div>
             ) : (
@@ -315,25 +500,46 @@ export function POIMapPage() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <MapViewportController pois={filteredPois} />
-                {filteredPois.map((poi) => (
-                  <Marker key={poi.id} position={[poi.lat, poi.lng]} icon={markerIcons[poi.status]}>
-                    <Popup>
-                      <div className="space-y-2 text-sm">
-                        <p className="text-base font-semibold">{poi.name}</p>
-                        <Badge variant="secondary">{POI_STATUS_META[poi.status].label}</Badge>
-                        <p className="text-muted-foreground">{poi.address || 'Chưa có địa chỉ'}</p>
-                        <p className="text-muted-foreground">Chủ quán: {poi.ownerName || 'N/A'}</p>
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          onClick={() => navigate(`/poi/${poi.id}`)}
-                        >
-                          Xem chi tiết POI
-                        </Button>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
+                {filteredPois.map((poi) => {
+                  const markerIcon = poi.categoryKey
+                    ? categoryMarkerIcons[poi.categoryKey]
+                    : statusMarkerIcons[poi.status]
+
+                  return (
+                    <Marker key={poi.id} position={[poi.lat, poi.lng]} icon={markerIcon}>
+                      <Popup>
+                        <div className="space-y-2 text-sm">
+                          <p className="text-base font-semibold">{poi.name}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant="secondary">{POI_STATUS_META[poi.status].label}</Badge>
+                            {poi.categoryKey ? (
+                              <Badge variant="outline">{POI_CATEGORY_META[poi.categoryKey].label}</Badge>
+                            ) : null}
+                            {poi.source === 'manual' ? (
+                              <Badge variant="outline">Nhập tay</Badge>
+                            ) : null}
+                          </div>
+                          <p className="text-muted-foreground">{poi.address || 'Chưa có địa chỉ'}</p>
+                          <p className="text-muted-foreground">Chủ quán: {poi.ownerName || 'N/A'}</p>
+
+                          {poi.source === 'api' ? (
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => navigate(`/poi/${poi.id}`)}
+                            >
+                              Xem chi tiết POI
+                            </Button>
+                          ) : (
+                            <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                              POI được thêm từ dữ liệu tay, chưa có bản ghi chi tiết trên backend.
+                            </p>
+                          )}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  )
+                })}
               </MapContainer>
             )}
           </CardContent>
@@ -343,64 +549,129 @@ export function POIMapPage() {
           <CardHeader>
             <CardTitle className="text-base">Tùy chỉnh icon POI</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {POI_STATUSES.map((status) => {
-              const meta = POI_STATUS_META[status]
-              const iconDataUrl = iconConfig[status]
-              return (
-                <div key={status} className="rounded-lg border p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{meta.label}</p>
-                    <Badge variant="outline">{statusCounts[status]} POI</Badge>
-                  </div>
+          <CardContent className="space-y-5">
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">Icon theo trạng thái</h3>
+              {POI_STATUSES.map((status) => {
+                const meta = POI_STATUS_META[status]
+                const iconDataUrl = statusIconConfig[status]
+                return (
+                  <div key={status} className="rounded-lg border p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">{meta.label}</p>
+                      <Badge variant="outline">{statusCounts[status]} POI</Badge>
+                    </div>
 
-                  <div className="mb-3 flex items-center gap-3">
-                    {iconDataUrl ? (
-                      <img
-                        src={iconDataUrl}
-                        alt={`Icon ${meta.label}`}
-                        className="h-10 w-10 rounded-md border object-contain p-1"
+                    <div className="mb-3 flex items-center gap-3">
+                      {iconDataUrl ? (
+                        <img
+                          src={iconDataUrl}
+                          alt={`Icon ${meta.label}`}
+                          className="h-10 w-10 rounded-md border object-contain p-1"
+                        />
+                      ) : (
+                        <div
+                          className="poi-status-marker preview"
+                          style={{ ['--marker-color' as string]: meta.color }}
+                        >
+                          <span>{meta.emoji}</span>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {iconDataUrl ? 'Đang dùng icon upload tùy chỉnh' : 'Đang dùng icon mặc định'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`status-icon-upload-${status}`} className="text-xs">
+                        Upload icon (PNG/JPG/SVG/WebP, tối đa 512KB)
+                      </Label>
+                      <Input
+                        id={`status-icon-upload-${status}`}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        onChange={(event) => handleStatusIconFileChange(status, event.target.files?.[0])}
                       />
-                    ) : (
-                      <div
-                        className="poi-status-marker preview"
-                        style={{ ['--marker-color' as string]: meta.color }}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={() => handleResetStatusIcon(status)}
+                        disabled={!iconDataUrl}
                       >
-                        <span>{meta.emoji}</span>
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {iconDataUrl
-                        ? 'Đang dùng icon upload tùy chỉnh'
-                        : 'Đang dùng icon mặc định của hệ thống'}
-                    </p>
+                        <X className="h-4 w-4" />
+                        Trả về icon mặc định
+                      </Button>
+                    </div>
                   </div>
+                )
+              })}
+            </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor={`icon-upload-${status}`} className="text-xs">
-                      Upload icon (PNG/JPG/SVG/WebP, tối đa 512KB)
-                    </Label>
-                    <Input
-                      id={`icon-upload-${status}`}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                      onChange={(event) => handleIconFileChange(status, event.target.files?.[0])}
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="w-full gap-2"
-                      onClick={() => handleResetStatusIcon(status)}
-                      disabled={!iconDataUrl}
-                    >
-                      <X className="h-4 w-4" />
-                      Trả về icon mặc định
-                    </Button>
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">Icon theo loại quán</h3>
+              {POI_CATEGORY_KEYS.map((category) => {
+                const meta = POI_CATEGORY_META[category]
+                const iconDataUrl = categoryIconConfig[category]
+                const previewIconUrl = iconDataUrl ?? POI_CATEGORY_DEFAULT_ICON_URL[category]
+                return (
+                  <div key={category} className="rounded-lg border p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">{meta.label}</p>
+                      <Badge variant="outline">{categoryCounts[category]} POI</Badge>
+                    </div>
+
+                    <div className="mb-3 flex items-center gap-3">
+                      {previewIconUrl ? (
+                        <img
+                          src={previewIconUrl}
+                          alt={`Icon ${meta.label}`}
+                          className="h-10 w-10 rounded-md border object-contain p-1"
+                        />
+                      ) : (
+                        <div
+                          className="poi-status-marker preview"
+                          style={{ ['--marker-color' as string]: meta.color }}
+                        >
+                          <span>{meta.emoji}</span>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {iconDataUrl
+                          ? 'Đang dùng icon upload tùy chỉnh'
+                          : 'Đang dùng icon mặc định từ thư mục public'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`category-icon-upload-${category}`} className="text-xs">
+                        Upload icon (PNG/JPG/SVG/WebP, tối đa 512KB)
+                      </Label>
+                      <Input
+                        id={`category-icon-upload-${category}`}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        onChange={(event) =>
+                          handleCategoryIconFileChange(category, event.target.files?.[0])
+                        }
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={() => handleResetCategoryIcon(category)}
+                        disabled={!iconDataUrl}
+                      >
+                        <X className="h-4 w-4" />
+                        Trả về icon mặc định
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
 
             <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
               Mẹo: icon vuông 64x64 hoặc 128x128 sẽ hiển thị đẹp nhất trên marker.
@@ -433,4 +704,3 @@ export function POIMapPage() {
     </div>
   )
 }
-

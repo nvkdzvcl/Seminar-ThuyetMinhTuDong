@@ -14,6 +14,8 @@ import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import ShopCard from "../../components/shop/ShopCard";
 import { icons } from "../../types/icons";
 import { resolveMediaUrl } from "../../utils/media";
+import { usePoiMapData } from "../../hooks/usePoiMapData";
+import { getPoiCategoryLabel, getPoiMarkerIcon, getPoiStatusLabel } from "../../utils/poiMap";
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -82,6 +84,7 @@ export default function NearbyShopPage() {
     const [currentPosition, setCurrentPosition] = useState<PositionTuple>([
         10.7130418, 106.6189652,
     ]);
+    const { pois, error: poiError } = usePoiMapData();
 
     const token = localStorage.getItem(import.meta.env.VITE_LS_ACCESS) || "";
     const currentShopIdRef = useRef<number | null>(null);
@@ -293,6 +296,12 @@ export default function NearbyShopPage() {
                     </div>
                 )}
 
+                {poiError && (
+                    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                        {poiError}
+                    </div>
+                )}
+
                 {currentShop ? (
                     <>
                         <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
@@ -301,8 +310,8 @@ export default function NearbyShopPage() {
                                     Bản đồ shop gần nhất
                                 </h2>
                                 <p className="text-sm text-slate-500">
-                                    Hiển thị vị trí hiện tại, shop hiện tại, các shop trong 2km và
-                                    đường đi
+                                    Hiển thị vị trí hiện tại, các POI và đường đi tới quán gần nhất.
+                                    POI: {pois.length}
                                 </p>
                             </div>
 
@@ -324,26 +333,23 @@ export default function NearbyShopPage() {
                                         <Popup>Vị trí hiện tại của bạn</Popup>
                                     </Marker>
 
-                                    <Marker icon={icons.locationShopMarker} position={[currentShop.lat, currentShop.lng]}>
-                                        <Popup>
-                                            <div>
-                                                <div className="font-semibold">
-                                                    {currentShop.name}
-                                                </div>
-                                                <div className="mt-1 text-sm text-slate-500">
-                                                    {currentShop.address}
-                                                </div>
-                                            </div>
-                                        </Popup>
-                                    </Marker>
-
-                                    {otherShops.map((shop) => (
-                                        <Marker key={shop.id} icon={icons.shopIconMarker} position={[shop.lat, shop.lng]}>
+                                    {pois.map((poi) => (
+                                        <Marker
+                                            key={`poi-${poi.id}`}
+                                            icon={getPoiMarkerIcon(poi)}
+                                            position={[poi.lat, poi.lng]}
+                                        >
                                             <Popup>
-                                                <div>
-                                                    <div className="font-semibold">{shop.name}</div>
+                                                <div className="min-w-[180px]">
+                                                    <div className="font-semibold">{poi.name}</div>
                                                     <div className="mt-1 text-sm text-slate-500">
-                                                        {shop.address}
+                                                        {poi.address || "Chưa có địa chỉ"}
+                                                    </div>
+                                                    <div className="mt-2 text-xs text-slate-500">
+                                                        Loại quán: {getPoiCategoryLabel(poi.categoryKey)}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">
+                                                        Trạng thái: {getPoiStatusLabel(poi.status)}
                                                     </div>
                                                 </div>
                                             </Popup>
