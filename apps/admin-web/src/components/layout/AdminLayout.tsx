@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   MapPin,
+  MapPinned,
   ListTodo,
   FileText,
   Settings,
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Tổng quan', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Người dùng', href: '/users', icon: Users },
   { name: 'POI', href: '/poi', icon: MapPin },
+  { name: 'Bản đồ POI', href: '/poi-map', icon: MapPinned },
   { name: 'Hàng đợi xử lý', href: '/jobs', icon: ListTodo },
   { name: 'Nhật ký hệ thống', href: '/audit-logs', icon: FileText },
   { name: 'Cài đặt', href: '/settings', icon: Settings },
@@ -60,8 +62,9 @@ function SidebarContent({
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href || 
-              (item.href !== '/dashboard' && location.pathname.startsWith(item.href))
+            const isActive =
+              location.pathname === item.href ||
+              location.pathname.startsWith(`${item.href}/`)
             return (
               <NavLink
                 key={item.name}

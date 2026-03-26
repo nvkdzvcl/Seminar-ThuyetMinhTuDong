@@ -152,3 +152,36 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+.poi-status-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.poi-status-marker {
+  align-items: center;
+  background: var(--marker-color, #2563eb);
+  border: 2px solid white;
+  border-radius: 9999px;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.25);
+  color: white;
+  display: flex;
+  font-size: 14px;
+  font-weight: 700;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.poi-status-marker.preview {
+  border-color: oklch(0.9 0 0);
+  box-shadow: none;
+  color: white;
+  height: 40px;
+  width: 40px;
+}
+
+.poi-upload-marker {
+  border-radius: 10px;
+  filter: drop-shadow(0 8px 16px rgba(2, 6, 23, 0.25));
+}

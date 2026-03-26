@@ -119,6 +119,15 @@ export interface PoiListParams {
   hasFlag?: boolean
 }
 
+export interface FetchAllPoisOptions {
+  search?: string
+  status?: POIStatus
+  region?: string
+  hasFlag?: boolean
+  pageSize?: number
+  maxPages?: number
+}
+
 export interface PoiUpsertPayload {
   shopId: number
   description?: string
@@ -211,6 +220,31 @@ export async function fetchPois(params: PoiListParams): Promise<PagingResponse<P
     ...result,
     items: result.items.map(mapPoi),
   }
+}
+
+export async function fetchAllPois(options?: FetchAllPoisOptions): Promise<POI[]> {
+  const pageSize = Math.max(1, Math.min(options?.pageSize ?? 100, 500))
+  const maxPages = Math.max(1, options?.maxPages ?? 20)
+
+  const collected: POI[] = []
+  let currentPage = 1
+  let totalPages = 1
+
+  while (currentPage <= totalPages && currentPage <= maxPages) {
+    const page = await fetchPois({
+      page: currentPage,
+      size: pageSize,
+      search: options?.search,
+      status: options?.status,
+      region: options?.region,
+      hasFlag: options?.hasFlag,
+    })
+    collected.push(...page.items)
+    totalPages = page.totalPages || 1
+    currentPage += 1
+  }
+
+  return collected
 }
 
 export async function fetchPoiById(id: string): Promise<POI> {

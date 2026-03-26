@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MoreHorizontal, Eye, EyeOff, Trash2, AlertTriangle, Store } from 'lucide-react'
+import { MoreHorizontal, Eye, EyeOff, Trash2, AlertTriangle, Store, MapPinned } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -129,7 +129,12 @@ export function POIPage() {
       <DataTableToolbar
         title="Quản lý POI"
         description="POI hiện được giản lược theo tên cửa hàng"
-      />
+      >
+        <Button variant="outline" size="sm" onClick={() => navigate('/poi-map')}>
+          <MapPinned className="mr-2 h-4 w-4" />
+          Xem bản đồ POI
+        </Button>
+      </DataTableToolbar>
 
       <FilterBar
         searchPlaceholder="Tìm theo tên cửa hàng..."
