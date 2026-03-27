@@ -1,5 +1,5 @@
 import axiosClient from "./axiosClient";
-import type { ShopCreationRequest, ShopResponse } from "../types/shop";
+import type { ShopCreationRequest, ShopNarrationResponse, ShopResponse } from "../types/shop";
 import type { ApiResponse, PagingDto } from "../types/api";
 
 export const shopService = {
@@ -16,6 +16,15 @@ export const shopService = {
 
     getShopById: async (shopId: number) => {
         const res = await axiosClient.get<ApiResponse<ShopResponse>>(`/shop/${shopId}`);
+        return res.data;
+    },
+
+    getShopNarration: async (shopId: number, lang?: string) => {
+        const res = await axiosClient.get<ApiResponse<ShopNarrationResponse>>(`/shop/${shopId}/narration`, {
+            params: {
+                lang,
+            },
+        });
         return res.data;
     },
 

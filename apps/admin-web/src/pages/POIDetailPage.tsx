@@ -5,17 +5,20 @@ import {
   Bot,
   Check,
   CircleAlert,
+  Copy,
+  Download,
+  ExternalLink,
   FileText,
   Filter,
   MapPin,
   QrCode,
   Save,
   Search,
-  Sparkles,
   Star,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import QRCode from 'qrcode'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -60,6 +63,15 @@ function toCurrency(value?: number) {
   return `${value.toLocaleString('vi-VN')}đ`
 }
 
+const DEFAULT_CUSTOMER_WEB_URL = 'http://localhost:5173'
+
+function resolveCustomerBaseUrl(rawBaseUrl?: string): string {
+  if (!rawBaseUrl?.trim()) {
+    return DEFAULT_CUSTOMER_WEB_URL
+  }
+  return rawBaseUrl.trim().replace(/\/+$/, '')
+}
+
 export function POIDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -73,6 +85,9 @@ export function POIDetailPage() {
   const [reviewReason, setReviewReason] = useState('')
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [shopQrDataUrl, setShopQrDataUrl] = useState('')
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false)
+  const [qrError, setQrError] = useState('')
 
   const loadDetail = useCallback(async () => {
     if (!id) return
@@ -170,6 +185,70 @@ export function POIDetailPage() {
         (item.descriptionText ?? '').toLowerCase().includes(needle)
     )
   }, [menuItems, menuSearch])
+
+  const shopQrTargetUrl = useMemo(() => {
+    if (!poi?.shopId) return ''
+    const customerBaseUrl = resolveCustomerBaseUrl(import.meta.env.VITE_CUSTOMER_WEB_URL)
+    return `${customerBaseUrl}/shop/${poi.shopId}?autoplay=1`
+  }, [poi?.shopId])
+
+  useEffect(() => {
+    if (!shopQrTargetUrl) {
+      setShopQrDataUrl('')
+      setQrError('POI chưa liên kết shopId, không tạo được QR.')
+      return
+    }
+
+    let cancelled = false
+    setIsGeneratingQr(true)
+    setQrError('')
+
+    void QRCode.toDataURL(shopQrTargetUrl, {
+      width: 512,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff',
+      },
+    })
+      .then((dataUrl) => {
+        if (cancelled) return
+        setShopQrDataUrl(dataUrl)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setShopQrDataUrl('')
+        setQrError('Không thể tạo mã QR cho quán.')
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsGeneratingQr(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [shopQrTargetUrl])
+
+  const handleDownloadQr = () => {
+    if (!shopQrDataUrl || !poi?.shopId) return
+    const link = document.createElement('a')
+    link.href = shopQrDataUrl
+    link.download = `shop-${poi.shopId}-qr.png`
+    link.click()
+  }
+
+  const handleCopyQrLink = async () => {
+    if (!shopQrTargetUrl) return
+    try {
+      await navigator.clipboard.writeText(shopQrTargetUrl)
+      toast.success('Đã copy link QR của quán')
+    } catch {
+      toast.error('Không thể copy link QR')
+    }
+  }
 
   if (loading) {
     return (
@@ -273,13 +352,48 @@ export function POIDetailPage() {
 
                 <div className="space-y-2 rounded-lg border bg-card p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mã QR định danh</p>
-                  <div className="flex items-center gap-2 rounded-md bg-muted/60 p-2">
-                    <QrCode className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-xs font-mono">{poi.qrCode || 'Chưa tạo'}</span>
+                  {isGeneratingQr ? (
+                    <div className="flex h-28 items-center justify-center rounded-md border bg-muted/30 text-xs text-muted-foreground">
+                      Đang tạo QR...
+                    </div>
+                  ) : shopQrDataUrl ? (
+                    <div className="rounded-md border bg-white p-2">
+                      <img src={shopQrDataUrl} alt={`QR quán ${poi.name}`} className="mx-auto h-28 w-28 object-contain" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-600">
+                      <QrCode className="h-4 w-4 shrink-0" />
+                      <span>{qrError || 'Không tạo được QR'}</span>
+                    </div>
+                  )}
+                  <div className="rounded-md bg-muted/60 p-2">
+                    <p className="text-[11px] font-semibold text-muted-foreground">Nội dung QR</p>
+                    <p className="mt-1 break-all font-mono text-[11px] text-foreground">
+                      {shopQrTargetUrl || poi.qrCode || 'Chưa có dữ liệu'}
+                    </p>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-8 w-full justify-start text-xs">
-                    <Sparkles className="mr-1 h-3 w-3" />
-                    Tạo mã QR (Soon)
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleDownloadQr} disabled={!shopQrDataUrl}>
+                      <Download className="mr-1 h-3.5 w-3.5" />
+                      Tải QR
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => void handleCopyQrLink()} disabled={!shopQrTargetUrl}>
+                      <Copy className="mr-1 h-3.5 w-3.5" />
+                      Copy link
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full justify-start text-xs"
+                    onClick={() => {
+                      if (!shopQrTargetUrl) return
+                      window.open(shopQrTargetUrl, '_blank', 'noopener,noreferrer')
+                    }}
+                    disabled={!shopQrTargetUrl}
+                  >
+                    <ExternalLink className="mr-1 h-3 w-3" />
+                    Mở trang customer
                   </Button>
                 </div>
               </div>

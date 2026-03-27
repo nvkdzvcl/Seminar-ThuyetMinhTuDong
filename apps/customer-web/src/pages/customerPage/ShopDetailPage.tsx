@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import axios from "axios";
 import DishCard from "../../components/ui/DishCard";
 import SectionTitle from "../../components/home/SectionTitle";
 import ShopMap from "../../components/shop/ShopMap";
@@ -11,10 +12,73 @@ import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import { resolveMediaUrl } from "../../utils/media";
 
+const LS_USER = "VINH_KHANH_FOOD_TOUR_USER";
+
+function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
+    if (!rawAudioPath) return undefined;
+    if (/^https?:\/\//i.test(rawAudioPath)) return rawAudioPath;
+
+    const base = (import.meta.env.VITE_BACKEND_API || "").replace(/\/+$/, "");
+    const normalizedPath = rawAudioPath.startsWith("/") ? rawAudioPath : `/${rawAudioPath}`;
+    return `${base}${normalizedPath}`;
+}
+
+function resolvePreferredLanguage(explicitLanguage?: string | null): string {
+    if (explicitLanguage && explicitLanguage.trim()) {
+        return explicitLanguage.trim();
+    }
+
+    try {
+        const rawUser = localStorage.getItem(LS_USER);
+        if (rawUser) {
+            const user = JSON.parse(rawUser) as { language?: string };
+            if (user.language && user.language.trim()) {
+                return user.language.trim();
+            }
+        }
+    } catch {
+        // ignore invalid localStorage payload
+    }
+
+    return navigator.language || "en-US";
+}
+
+function resolveRequestErrorMessage(error: unknown, fallback: string): string {
+    if (axios.isAxiosError(error)) {
+        const responseData = error.response?.data as { message?: string; code?: string } | undefined;
+        if (responseData?.message) {
+            return responseData.message;
+        }
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return fallback;
+}
+
+function isAutoplayBlockedError(error: unknown): boolean {
+    if (error instanceof DOMException && error.name === "NotAllowedError") {
+        return true;
+    }
+
+    if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        return message.includes("notallowederror") || message.includes("didn't interact");
+    }
+
+    return false;
+}
+
 function ShopDetailPage() {
     const { shopId } = useParams();
+    const [searchParams] = useSearchParams();
     const { currentAudio, isAudioPlaying, toggleAudio } = useAudioPlayer();
     const parsedShopId = Number(shopId);
+    const requestedLanguage = searchParams.get("lang");
+    const shouldAutoplayNarration = searchParams.get("autoplay") === "1";
+    const hasAutoplayTriggeredRef = useRef(false);
 
     const [shop, setShop] = useState<ShopResponse | null>(null);
     const [nearbyShops, setNearbyShops] = useState<ShopResponse[]>([]);
@@ -23,6 +87,9 @@ function ShopDetailPage() {
     const [dishPage, setDishPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [pageError, setPageError] = useState("");
+    const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
+    const [activeNarrationLanguage, setActiveNarrationLanguage] = useState("en-US");
+    const [needsUserGestureToPlay, setNeedsUserGestureToPlay] = useState(false);
     const shopImageSrc = resolveMediaUrl(
         shop?.imageName,
         import.meta.env.VITE_SHOP_IMAGE_API,
@@ -105,6 +172,59 @@ function ShopDetailPage() {
         console.log("Xem món", dishId);
     };
 
+    const playShopNarration = useCallback(async () => {
+        if (!shop) return;
+
+        const preferredLanguage = resolvePreferredLanguage(requestedLanguage);
+        setActiveNarrationLanguage(preferredLanguage);
+        setIsGeneratingNarration(true);
+
+        try {
+            const narrationRes = await shopService.getShopNarration(shop.id, preferredLanguage);
+            const narration = narrationRes.result;
+            const narrationAudioUrl = resolveBackendAudioUrl(narration?.audioUrl);
+
+            if (!narrationAudioUrl) {
+                alert("Không tạo được audio thuyết minh cho quán.");
+                return;
+            }
+
+            await toggleAudio({
+                id: shop.id,
+                type: "SHOP",
+                url: narrationAudioUrl,
+                title: shop.name,
+            });
+            setNeedsUserGestureToPlay(false);
+        } catch (error) {
+            console.error("Play shop narration failed", error);
+
+            if (isAutoplayBlockedError(error)) {
+                setNeedsUserGestureToPlay(true);
+                if (!shouldAutoplayNarration) {
+                    alert("Trình duyệt yêu cầu bạn tương tác trước khi phát. Hãy bấm lại nút phát audio.");
+                }
+                return;
+            }
+
+            const message = resolveRequestErrorMessage(
+                error,
+                "Không thể tạo audio theo ngôn ngữ đã chọn. Vui lòng thử lại."
+            );
+            alert(message);
+        } finally {
+            setIsGeneratingNarration(false);
+        }
+    }, [requestedLanguage, shop, shouldAutoplayNarration, toggleAudio]);
+
+    useEffect(() => {
+        if (!shop || !shouldAutoplayNarration || hasAutoplayTriggeredRef.current) {
+            return;
+        }
+        hasAutoplayTriggeredRef.current = true;
+        void playShopNarration();
+    }, [playShopNarration, shop, shouldAutoplayNarration]);
+
     if (loading && !shop) {
         return <div className="p-6 text-sm text-slate-500">Đang tải thông tin quán...</div>;
     }
@@ -172,7 +292,7 @@ function ShopDetailPage() {
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">Audio:</span>{" "}
-                                    {shop.audioURL ? "Có" : "Chưa có"}
+                                    Tạo động theo ngôn ngữ ({activeNarrationLanguage})
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">Tọa độ:</span>{" "}
@@ -181,20 +301,21 @@ function ShopDetailPage() {
                                 <div className="pt-2">
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            void toggleAudio({
-                                                id: shop.id,
-                                                type: "SHOP",
-                                                url: shop.audioURL,
-                                                title: shop.name,
-                                            })
-                                        }
+                                        onClick={() => void playShopNarration()}
+                                        disabled={isGeneratingNarration}
                                         className="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700"
                                     >
-                                        {isAudioPlaying && currentAudio?.type === "SHOP" && currentAudio.id === shop.id
+                                        {isGeneratingNarration
+                                            ? "Đang tạo audio..."
+                                            : isAudioPlaying && currentAudio?.type === "SHOP" && currentAudio.id === shop.id
                                             ? "Tắt audio quán"
                                             : "Phát audio quán"}
                                     </button>
+                                    {needsUserGestureToPlay ? (
+                                        <p className="mt-2 text-xs text-amber-600">
+                                            Trình duyệt đang chặn tự phát audio. Bạn bấm nút trên để phát thủ công.
+                                        </p>
+                                    ) : null}
                                 </div>
                             </div>
                         </div>

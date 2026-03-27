@@ -436,7 +436,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
           />
         )
       case "qr":
-        return <QRScreen onNavigate={navigateTo} />
+        return <QRScreen onNavigate={navigateTo} shopId={shopId ?? 0} shopName={shopName} />
       case "insights":
         return <InsightsScreen />
       case "shop-profile":

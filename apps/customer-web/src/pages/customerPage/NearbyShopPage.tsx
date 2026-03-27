@@ -28,10 +28,11 @@ type PositionTuple = [number, number];
 
 function RoutingMachine({ from, to }: { from: PositionTuple; to: PositionTuple }) {
     const map = useMap();
+    const routingRef = useRef<any>(null);
 
     useEffect(() => {
         const routingControl = (L as any).Routing.control({
-            waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
+            waypoints: [],
             routeWhileDragging: false,
             addWaypoints: false,
             draggableWaypoints: false,
@@ -43,12 +44,52 @@ function RoutingMachine({ from, to }: { from: PositionTuple; to: PositionTuple }
                 missingRouteTolerance: 10,
             },
             createMarker: () => null,
-        }).addTo(map);
+        });
+        routingControl.addTo(map);
+        routingRef.current = routingControl;
 
         return () => {
-            map.removeControl(routingControl);
+            const currentRouting = routingRef.current;
+            routingRef.current = null;
+
+            if (!currentRouting) {
+                return;
+            }
+
+            try {
+                currentRouting.off?.();
+            } catch {
+                // ignore cleanup errors from plugin internals
+            }
+
+            try {
+                currentRouting.getPlan?.().setWaypoints([]);
+            } catch {
+                // ignore when routing plan is already disposed
+            }
+
+            try {
+                if ((map as any)._loaded) {
+                    map.removeControl(currentRouting);
+                }
+            } catch {
+                // ignore remove errors when map/control already unmounted
+            }
         };
-    }, [map, from, to]);
+    }, [map]);
+
+    useEffect(() => {
+        const routingControl = routingRef.current;
+        if (!routingControl) {
+            return;
+        }
+
+        try {
+            routingControl.setWaypoints([L.latLng(from[0], from[1]), L.latLng(to[0], to[1])]);
+        } catch {
+            // avoid runtime crash if plugin is in transient disposal state
+        }
+    }, [from[0], from[1], to[0], to[1]]);
 
     return null;
 }

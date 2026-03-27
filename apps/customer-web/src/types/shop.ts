@@ -25,3 +25,11 @@ export type ShopCreationRequest = {
   avgWaitTimeMin: number;
   avgEatTimeMin: number;
 };
+
+export type ShopNarrationResponse = {
+  shopId: number;
+  language: string;
+  voice: string;
+  audioUrl: string;
+  cached: boolean;
+};

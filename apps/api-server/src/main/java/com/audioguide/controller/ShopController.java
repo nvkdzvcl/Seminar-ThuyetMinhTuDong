@@ -4,10 +4,12 @@ package com.audioguide.controller;
 import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.shopDTO.ShopCreationRequest;
+import com.audioguide.dto.shopDTO.ShopNarrationResponse;
 import com.audioguide.dto.shopDTO.ShopResponse;
 import com.audioguide.dto.shopDTO.ShopTypeResponse;
 import com.audioguide.dto.shopDTO.ShopUpdateRequest;
 import com.audioguide.enums.Status;
+import com.audioguide.service.ShopNarrationService;
 import com.audioguide.service.ShopService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -31,6 +33,7 @@ import java.util.List;
 public class ShopController {
 
     ShopService shopService;
+    ShopNarrationService shopNarrationService;
 
     @PostMapping(value = "/create")
     @PreAuthorize("hasAnyAuthority('OWNER_SHOP','ADMIN','SUPER_ADMIN')")
@@ -79,6 +82,17 @@ public class ShopController {
         return ApiResponse.<ShopResponse>builder()
                 .message("Get shop successfully")
                 .result(shopService.getShopById(shopId))
+                .build();
+    }
+
+    @GetMapping("/{shopId}/narration")
+    ApiResponse<ShopNarrationResponse> getShopNarration(
+            @PathVariable Integer shopId,
+            @RequestParam(required = false) String lang
+    ) {
+        return ApiResponse.<ShopNarrationResponse>builder()
+                .message("Get shop narration successfully")
+                .result(shopNarrationService.getOrCreateNarration(shopId, lang))
                 .build();
     }
 

@@ -24,6 +24,19 @@ const getAudioLabel = ({ type, title }: { type: AudioEntityType; title?: string 
     return `${prefix} ${title || "không rõ tên"}`;
 };
 
+const isAutoplayBlockedError = (error: unknown): boolean => {
+    if (error instanceof DOMException && error.name === "NotAllowedError") {
+        return true;
+    }
+
+    if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        return message.includes("notallowederror") || message.includes("didn't interact");
+    }
+
+    return false;
+};
+
 const stopGlobalAudio = () => {
     if (!globalAudio) return;
     globalAudio.pause();
@@ -111,7 +124,9 @@ export function useAudioPlayer() {
             } catch (error) {
                 dispatch(clearAudioState());
                 stopGlobalAudio();
-                alert(`Không thể phát audio của ${getAudioLabel({ type, title })}`);
+                if (!isAutoplayBlockedError(error)) {
+                    alert(`Không thể phát audio của ${getAudioLabel({ type, title })}`);
+                }
                 throw error;
             }
         },

@@ -137,7 +137,9 @@ function ScanShopQrPage() {
         if (!isMountedRef.current) return;
 
         alert(`Đã nhận QR quán #${shopId}. Đang chuyển tới trang quán.`);
-        navigate(routePath.ShopDetailPage.replace(":shopId", String(shopId)), { replace: true });
+        const preferredLanguage = navigator.language || "en-US";
+        const shopPath = routePath.ShopDetailPage.replace(":shopId", String(shopId));
+        navigate(`${shopPath}?autoplay=1&lang=${encodeURIComponent(preferredLanguage)}`, { replace: true });
     };
 
     const handleDetectedValue = async (decodedText: string) => {

@@ -14,14 +14,8 @@ axiosClient.interceptors.request.use(
         const token = localStorage.getItem(LS_ACCESS);
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-        }else{
+        } else if (config.headers) {
             delete config.headers.Authorization;
-            localStorage.removeItem(LS_ACCESS);
-            localStorage.removeItem(LS_REFRESH);
-            localStorage.removeItem(LS_USER);
-                if (window.location.pathname !== "/login") {
-                    window.location.href = "/login";
-                }
         }
         return config;
     },
@@ -32,7 +26,8 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        const hadToken = Boolean(localStorage.getItem(LS_ACCESS));
+        if (error.response?.status === 401 && hadToken) {
             localStorage.removeItem(LS_ACCESS);
             localStorage.removeItem(LS_REFRESH);
             localStorage.removeItem(LS_USER);

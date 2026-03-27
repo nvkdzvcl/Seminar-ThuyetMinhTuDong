@@ -327,3 +327,4 @@ VALUES
 ('risk_threshold_high', '70', NOW()),
 ('auto_flag_enabled', 'true', NOW()),
 ('require_approval_above_threshold', 'true', NOW());
+`

@@ -5,4 +5,5 @@ apps/*/node_modules/
 apps/*/dist/
 apps/api-server/target/
 apps/api-server/uploads/
+apps/api-server/.env
 backend/

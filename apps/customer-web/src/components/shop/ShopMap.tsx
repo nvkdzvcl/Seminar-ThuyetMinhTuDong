@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -24,10 +24,11 @@ type RoutingProps = {
 
 function RoutingMachine({ from, to }: RoutingProps) {
     const map = useMap();
+    const routingRef = useRef<any>(null);
 
     useEffect(() => {
         const routing = (L as any).Routing.control({
-            waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
+            waypoints: [],
             lineOptions: {
                 styles: [{ color: "#16a34a", weight: 5 }],
                 extendToWaypoints: true,
@@ -40,12 +41,52 @@ function RoutingMachine({ from, to }: RoutingProps) {
             show: false,
             collapsible: true,
             createMarker: () => null,
-        } as any).addTo(map);
+        } as any);
+        routing.addTo(map);
+        routingRef.current = routing;
 
         return () => {
-            map.removeControl(routing);
+            const currentRouting = routingRef.current;
+            routingRef.current = null;
+
+            if (!currentRouting) {
+                return;
+            }
+
+            try {
+                currentRouting.off?.();
+            } catch {
+                // ignore cleanup errors from plugin internals
+            }
+
+            try {
+                currentRouting.getPlan?.().setWaypoints([]);
+            } catch {
+                // ignore when routing plan is already disposed
+            }
+
+            try {
+                if ((map as any)._loaded) {
+                    map.removeControl(currentRouting);
+                }
+            } catch {
+                // ignore remove errors when map/control already unmounted
+            }
         };
-    }, [map, from, to]);
+    }, [map]);
+
+    useEffect(() => {
+        const routing = routingRef.current;
+        if (!routing) {
+            return;
+        }
+
+        try {
+            routing.setWaypoints([L.latLng(from[0], from[1]), L.latLng(to[0], to[1])]);
+        } catch {
+            // avoid runtime crash if plugin is in transient disposal state
+        }
+    }, [from[0], from[1], to[0], to[1]]);
 
     return null;
 }

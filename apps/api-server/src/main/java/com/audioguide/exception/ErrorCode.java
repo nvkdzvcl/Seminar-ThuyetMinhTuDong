@@ -44,6 +44,8 @@ public enum ErrorCode {
     AUDIO_LANGUAGE_ID_BLANK( "AUDIO_LANGUAGE_ID_BLANK", HttpStatus.BAD_REQUEST, "Language ID is required for audio upload"),
 
     AUDIO_ALREADY_EXISTS( "AUDIO_ALREADY_EXISTS", HttpStatus.BAD_REQUEST, "Audio for this dish and language already exists"),
+    AZURE_CONFIG_MISSING("AZURE_CONFIG_MISSING", HttpStatus.INTERNAL_SERVER_ERROR, "Azure configuration is missing"),
+    AZURE_TTS_FAILED("AZURE_TTS_FAILED", HttpStatus.BAD_GATEWAY, "Cannot generate narration audio right now"),
     DISH_NOT_FOUND( "DISH_NOT_FOUND", HttpStatus.NOT_FOUND, "Dish not found"),
     DISH_IDS_EMPTY( "DISH_IDS_EMPTY", HttpStatus.BAD_REQUEST, "Dish IDs list cannot be empty"),
     SHOP_ID_NOT_BLANK( "SHOP_ID_NOT_BLANK", HttpStatus.BAD_REQUEST, "Shop ID is required for dish creation"),

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MoreHorizontal, Eye, EyeOff, Trash2, AlertTriangle, Store, MapPinned, RefreshCw } from 'lucide-react'
+import { MoreHorizontal, Eye, EyeOff, Trash2, AlertTriangle, Store, MapPinned, RefreshCw, QrCode } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -185,6 +185,7 @@ export function POIPage() {
                   <TableHead>Tên cửa hàng (POI)</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Chủ cửa hàng</TableHead>
+                  <TableHead>QR quán</TableHead>
                   <TableHead>Cập nhật lần cuối</TableHead>
                   <TableHead>Cờ rủi ro</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -205,6 +206,21 @@ export function POIPage() {
                       <StatusBadge status={poi.status} />
                     </TableCell>
                     <TableCell>{poi.ownerName || '-'}</TableCell>
+                    <TableCell>
+                      {poi.shopId ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 px-2 text-xs"
+                          onClick={() => navigate(`/poi/${poi.id}`)}
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                          Xem QR
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDateTime(poi.updatedAt)}
                     </TableCell>
