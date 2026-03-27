@@ -40,38 +40,61 @@ npm run dev:shopowner
 npm run dev:api
 ```
 
+Backend co the chay truc tiep bang Maven:
+
+```bash
+# Tu repo root
+mvn -f apps/api-server/pom.xml -DskipTests spring-boot:run
+
+# Hoac neu dang o apps/api-server
+mvn -DskipTests spring-boot:run
+```
+
 ## Cau hinh backend
 
-Tao file `application.yml` trong `apps/api-server/src/main/resources` voi noi dung mau:
+File chinh la `apps/api-server/src/main/resources/application.yaml`.
+Backend mac dinh:
 
-```yml
-server:
-  port: 8080
-  servlet:
-    context-path: /<your-database-name>/api
+- port: `8080`
+- context path: `/vinhkhanhfoodtour/api`
 
-spring:
-  datasource:
-    url: "jdbc:mysql://localhost:3306/<your-database-name>"
-    username: <your-username>
-    password: <your-password>
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-  servlet:
-    multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
+## Azure narration (shop audio TTS)
 
-jwt:
-  signerKey: <your-secret-key>
+Backend narration endpoint (`/shop/{id}/narration`) can cau hinh Azure Translator + Speech.
+Khong nen hard-code key vao `application.yaml`.
 
-springdoc:
-  swagger-ui:
-    path: /swagger
-  api-docs:
-    path: /api-docs
+1. Tao file local env:
+
+```bash
+cp apps/api-server/.env.example apps/api-server/.env
+```
+
+2. Dien du cac bien trong `apps/api-server/.env`:
+
+- `AZURE_TRANSLATOR_KEY`
+- `AZURE_TRANSLATOR_REGION`
+- `AZURE_TRANSLATOR_ENDPOINT`
+- `AZURE_SPEECH_KEY`
+- `AZURE_SPEECH_REGION`
+- `AZURE_SPEECH_TTS_ENDPOINT`
+
+`application.yaml` da duoc cau hinh de tu dong nap `.env` tu:
+
+- `./.env`
+- `./apps/api-server/.env`
+
+## Troubleshooting nhanh
+
+- `Port 8080 is already in use`:
+
+```bash
+# CMD
+for /f "tokens=5" %p in ('netstat -aon ^| findstr :8080 ^| findstr LISTENING') do taskkill /F /PID %p
+```
+
+- `GET /shop/{id}/narration` tra `500` voi code `AZURE_CONFIG_MISSING`:
+  - Kiem tra `apps/api-server/.env` da co du 6 bien
+  - Restart backend sau khi cap nhat env
 ```
 
 Tai lieu yeu cau hien duoc dat trong `docs/requirements`.

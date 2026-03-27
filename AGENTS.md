@@ -39,6 +39,8 @@ Before coding, read these files first:
 9. `apps/api-server/src/main/java/com/audioguide/configuration/security/SecurityConfig.java` (CORS + auth)
 10. `apps/api-server/src/main/java/com/audioguide/service/ShopService.java` + DTOs in `dto/shopDTO` (shop create/update contract)
 11. `apps/api-server/src/main/java/com/audioguide/utils/CoordinateParserUtil.java` (flexible coordinate parser on BE)
+12. `apps/api-server/src/main/java/com/audioguide/service/ShopNarrationService.java` (Azure translate + TTS flow)
+13. `apps/api-server/.env.example` (required Azure env keys for narration)
 
 ## 3) Runtime Contracts (Do Not Break)
 
@@ -91,6 +93,22 @@ Allowed methods must include:
 
 If FE uses `PATCH` and CORS omits `PATCH`, preflight fails.
 
+### 3.5 Azure Narration Config (Customer QR Audio)
+
+- Narration endpoint: `GET /shop/{shopId}/narration?lang=<locale>`.
+- Backend reads Azure secrets from env vars (via `application.yaml` placeholders).
+- `application.yaml` also imports optional local env files:
+  - `./.env`
+  - `./apps/api-server/.env`
+- Required env keys:
+  - `AZURE_TRANSLATOR_KEY`
+  - `AZURE_TRANSLATOR_REGION`
+  - `AZURE_TRANSLATOR_ENDPOINT`
+  - `AZURE_SPEECH_KEY`
+  - `AZURE_SPEECH_REGION`
+  - `AZURE_SPEECH_TTS_ENDPOINT`
+- If missing, API returns `AZURE_CONFIG_MISSING` (HTTP 500).
+
 ## 4) Product Behavior Baseline (Shopowner)
 
 ### 4.1 Screen System
@@ -140,7 +158,8 @@ Rules:
 4. Do not create invalid DOM nesting (example: `button` inside `button`).
 5. Do not break mobile-first behavior when adding desktop features.
 6. Do not rename request/response fields without syncing FE + BE in same change.
-7. Do not commit real secrets (JWT signer keys, real DB passwords) in new files.
+7. Do not commit real secrets (JWT signer keys, DB passwords, Azure keys) in new files.
+8. Never commit `apps/api-server/.env`; keep it local-only.
 
 ## 6) Safe Change Workflow For Any Agent
 
@@ -158,6 +177,16 @@ From repo root:
 npm run build:shopowner
 mvn -f apps/api-server/pom.xml -DskipTests compile
 ```
+
+When touching narration/Azure flow, verify endpoint behavior:
+
+```bash
+curl -i "http://localhost:8080/vinhkhanhfoodtour/api/shop/8/narration?lang=vi-VN"
+```
+
+Expected:
+- `200` with `result.audioUrl`, or
+- explicit app error code (for example `AZURE_CONFIG_MISSING`) instead of generic uncategorized error.
 
 When touching CORS/security, verify preflight manually:
 
