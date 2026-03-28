@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 
@@ -7,6 +7,7 @@ import {routePath} from "../../routes/route";
 import { authService } from "../../services/authService";
 import type { LoginPayload, RegisterPayload } from "../../types/auth";
 import { notifyLanguageChanged } from "../../utils/language";
+import { resolveLanguageOptionValue, useSupportedLanguages } from "../../hooks/useSupportedLanguages";
 
 type Mode = "login" | "register";
 
@@ -29,11 +30,12 @@ const initialRegisterForm: RegisterPayload = {
     phoneNumber: "",
     email: "",
     password: "",
-    language: "en-US",
+    language: "en",
 };
 
 function LoginOrRegister() {
     const navigate = useNavigate();
+    const { options: languageOptions, loading: languageLoading } = useSupportedLanguages();
     const [mode, setMode] = useState<Mode>("login");
     const [loading, setLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
@@ -41,6 +43,14 @@ function LoginOrRegister() {
     const [loginForm, setLoginForm] = useState<LoginPayload>(initialLoginForm);
     const [registerForm, setRegisterForm] = useState<RegisterPayload>(initialRegisterForm);
     const [errors, setErrors] = useState<FormErrors>({});
+
+    useEffect(() => {
+        if (languageOptions.length === 0) return;
+
+        const resolvedValue = resolveLanguageOptionValue(languageOptions, registerForm.language);
+        if (!resolvedValue || resolvedValue === registerForm.language) return;
+        setRegisterForm((prev) => ({ ...prev, language: resolvedValue }));
+    }, [languageOptions, registerForm.language]);
 
     const title = useMemo(() => {
         return mode === "login" ? "Welcome back" : "Create a new account";
@@ -406,17 +416,21 @@ function LoginOrRegister() {
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
-                                            Language
+                                            Language {languageOptions.length > 0 ? `(${languageOptions.length})` : ""}
                                         </label>
                                         <select
                                             value={registerForm.language}
                                             onChange={(e) =>
                                                 handleRegisterChange("language", e.target.value)
                                             }
+                                            disabled={languageLoading || languageOptions.length === 0}
                                             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
                                         >
-                                            <option value="en-US">English</option>
-                                            <option value="vi-VN">Vietnamese (Tiếng Việt)</option>
+                                            {languageOptions.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
                                         </select>
                                         {errors.language && (
                                             <p className="mt-2 text-sm text-red-500">

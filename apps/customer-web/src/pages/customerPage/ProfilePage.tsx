@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { normalizeLocale, notifyLanguageChanged } from "../../utils/language";
+import { notifyLanguageChanged } from "../../utils/language";
+import { resolveLanguageOptionValue, useSupportedLanguages } from "../../hooks/useSupportedLanguages";
 
 const LS_ACCESS = "VINH_KHANH_FOOD_TOUR_ACCESS_TOKEN";
 const LS_REFRESH = "VINH_KHANH_FOOD_TOUR_REFRESH_TOKEN";
@@ -8,11 +9,19 @@ const LS_USER = "VINH_KHANH_FOOD_TOUR_USER";
 
 function ProfilePage() {
     const navigate = useNavigate();
+    const { options: languageOptions, loading: languageLoading } = useSupportedLanguages();
     const storedUser = localStorage.getItem(LS_USER);
     const user = storedUser ? JSON.parse(storedUser) : null;
     const [autoAudio, setAutoAudio] = useState(localStorage.getItem("autoTurnOnNearbyShopAudio") === "true");
     const [speed, setSpeed] = useState("1.0");
-    const [lang, setLang] = useState(normalizeLocale(user?.language || "en-US"));
+    const [lang, setLang] = useState(String(user?.language || "en"));
+
+    useEffect(() => {
+        if (languageOptions.length === 0) return;
+        const resolvedValue = resolveLanguageOptionValue(languageOptions, lang);
+        if (!resolvedValue || resolvedValue === lang) return;
+        setLang(resolvedValue);
+    }, [languageOptions, lang]);
 
     const handleLogout = () => {
         localStorage.removeItem(LS_ACCESS);
@@ -27,8 +36,8 @@ function ProfilePage() {
     };
 
     const handleLanguageChange = (value: string) => {
-        const normalized = normalizeLocale(value);
-        setLang(normalized);
+        const selectedLanguage = value.trim();
+        setLang(selectedLanguage);
 
         try {
             const rawUser = localStorage.getItem(LS_USER);
@@ -38,7 +47,7 @@ function ProfilePage() {
                 LS_USER,
                 JSON.stringify({
                     ...currentUser,
-                    language: normalized,
+                    language: selectedLanguage,
                 })
             );
             notifyLanguageChanged();
@@ -60,16 +69,20 @@ function ProfilePage() {
 
                 <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-slate-700">Ngôn ngữ mặc định</span>
+                        <span className="text-sm text-slate-700">
+                            Ngôn ngữ mặc định {languageOptions.length > 0 ? `(${languageOptions.length})` : ""}
+                        </span>
                         <select
                             value={lang}
                             onChange={(e) => handleLanguageChange(e.target.value)}
+                            disabled={languageLoading || languageOptions.length === 0}
                             className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                         >
-                            <option value="en-US">English</option>
-                            <option value="vi-VN">Tiếng Việt</option>
-                            <option value="ko-KR">한국어</option>
-                            <option value="ja-JP">日本語</option>
+                            {languageOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
                         </select>
                     </div>
 

@@ -2,6 +2,8 @@ package com.audioguide.service;
 
 import com.audioguide.dto.translationDTO.UiTranslationRequest;
 import com.audioguide.dto.translationDTO.UiTranslationResponse;
+import com.audioguide.dto.translationDTO.UiLanguageListResponse;
+import com.audioguide.dto.translationDTO.UiLanguageOption;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
@@ -20,11 +22,14 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @RequiredArgsConstructor
@@ -33,8 +38,12 @@ import java.util.UUID;
 public class UiTranslationService {
 
     static final Set<String> TRADITIONAL_CHINESE_COUNTRIES = Set.of("TW", "HK", "MO");
+    static final Duration UI_LANGUAGE_CACHE_TTL = Duration.ofHours(24);
 
     final ObjectMapper objectMapper;
+    final AtomicLong uiLanguageCacheLoadedAtMillis = new AtomicLong(0L);
+    final Object uiLanguageCacheLock = new Object();
+    volatile List<UiLanguageOption> cachedUiLanguages = List.of();
 
     @Value("${azure.translator.key:}")
     String translatorKey;
@@ -48,6 +57,14 @@ public class UiTranslationService {
     final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
+
+    public UiLanguageListResponse getSupportedUiLanguages() {
+        List<UiLanguageOption> items = getOrRefreshUiLanguages();
+        return UiLanguageListResponse.builder()
+                .items(items)
+                .total(items.size())
+                .build();
+    }
 
     public UiTranslationResponse translateUiTexts(UiTranslationRequest request) {
         List<String> sourceTexts = sanitizeInput(request == null ? null : request.getTexts());
@@ -133,6 +150,105 @@ public class UiTranslationService {
             log.warn("UI translator call failed unexpectedly", exception);
             return null;
         }
+    }
+
+    private List<UiLanguageOption> getOrRefreshUiLanguages() {
+        long now = System.currentTimeMillis();
+        long loadedAt = uiLanguageCacheLoadedAtMillis.get();
+        if (!cachedUiLanguages.isEmpty() && now - loadedAt < UI_LANGUAGE_CACHE_TTL.toMillis()) {
+            return cachedUiLanguages;
+        }
+
+        synchronized (uiLanguageCacheLock) {
+            now = System.currentTimeMillis();
+            loadedAt = uiLanguageCacheLoadedAtMillis.get();
+            if (!cachedUiLanguages.isEmpty() && now - loadedAt < UI_LANGUAGE_CACHE_TTL.toMillis()) {
+                return cachedUiLanguages;
+            }
+
+            List<UiLanguageOption> fresh = fetchUiLanguagesFromAzure();
+            if (!fresh.isEmpty()) {
+                cachedUiLanguages = fresh;
+                uiLanguageCacheLoadedAtMillis.set(now);
+                return cachedUiLanguages;
+            }
+
+            if (cachedUiLanguages.isEmpty()) {
+                cachedUiLanguages = getDefaultUiLanguages();
+                uiLanguageCacheLoadedAtMillis.set(now);
+            }
+            return cachedUiLanguages;
+        }
+    }
+
+    private List<UiLanguageOption> fetchUiLanguagesFromAzure() {
+        try {
+            String url = trimTrailingSlash(translatorEndpoint) + "/languages?api-version=3.0&scope=translation";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(20))
+                    .header("Accept-Language", "en")
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("Load translator languages failed. Status: {}, body: {}", response.statusCode(), response.body());
+                return List.of();
+            }
+
+            JsonNode translationNode = objectMapper.readTree(response.body()).path("translation");
+            if (!translationNode.isObject()) {
+                log.warn("Translator languages response missing 'translation' object");
+                return List.of();
+            }
+
+            List<UiLanguageOption> items = new ArrayList<>();
+            Iterator<Map.Entry<String, JsonNode>> iterator = translationNode.fields();
+            while (iterator.hasNext()) {
+                Map.Entry<String, JsonNode> entry = iterator.next();
+                String code = entry.getKey();
+                JsonNode detail = entry.getValue();
+                String displayName = detail.path("name").asText(code);
+                String nativeName = detail.path("nativeName").asText(displayName);
+                String direction = detail.path("dir").asText("ltr");
+
+                items.add(UiLanguageOption.builder()
+                        .code(code)
+                        .displayName(displayName)
+                        .nativeName(nativeName)
+                        .direction(direction)
+                        .build());
+            }
+
+            items.sort(Comparator.comparing(UiLanguageOption::getDisplayName, String.CASE_INSENSITIVE_ORDER));
+            return items;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            log.warn("Load translator languages interrupted", exception);
+            return List.of();
+        } catch (IOException exception) {
+            log.warn("Load translator languages failed unexpectedly", exception);
+            return List.of();
+        }
+    }
+
+    private List<UiLanguageOption> getDefaultUiLanguages() {
+        List<UiLanguageOption> defaults = new ArrayList<>();
+        defaults.add(UiLanguageOption.builder()
+                .code("en")
+                .displayName("English")
+                .nativeName("English")
+                .direction("ltr")
+                .build());
+        defaults.add(UiLanguageOption.builder()
+                .code("vi")
+                .displayName("Vietnamese")
+                .nativeName("Tiếng Việt")
+                .direction("ltr")
+                .build());
+        return defaults;
     }
 
     private List<String> sanitizeInput(List<String> texts) {
