@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import {routePath} from "../../routes/route";
 import { authService } from "../../services/authService";
 import type { LoginPayload, RegisterPayload } from "../../types/auth";
+import { notifyLanguageChanged } from "../../utils/language";
 
 type Mode = "login" | "register";
 
@@ -28,7 +29,7 @@ const initialRegisterForm: RegisterPayload = {
     phoneNumber: "",
     email: "",
     password: "",
-    language: "vi",
+    language: "en-US",
 };
 
 function LoginOrRegister() {
@@ -42,13 +43,13 @@ function LoginOrRegister() {
     const [errors, setErrors] = useState<FormErrors>({});
 
     const title = useMemo(() => {
-        return mode === "login" ? "Chào mừng quay lại" : "Tạo tài khoản mới";
+        return mode === "login" ? "Welcome back" : "Create a new account";
     }, [mode]);
 
     const subtitle = useMemo(() => {
         return mode === "login"
-            ? "Đăng nhập để tiếp tục sử dụng hệ thống."
-            : "Điền thông tin để tạo tài khoản.";
+            ? "Sign in to continue."
+            : "Fill in your information to create an account.";
     }, [mode]);
 
     const switchMode = (nextMode: Mode) => {
@@ -61,11 +62,11 @@ function LoginOrRegister() {
         const nextErrors: FormErrors = {};
 
         if (!loginForm.email.trim()) {
-            nextErrors.email = "Vui lòng nhập email";
+            nextErrors.email = "Please enter your email";
         }
 
         if (!loginForm.password.trim()) {
-            nextErrors.password = "Vui lòng nhập mật khẩu";
+            nextErrors.password = "Please enter your password";
         }
 
         setErrors(nextErrors);
@@ -76,29 +77,29 @@ function LoginOrRegister() {
         const nextErrors: FormErrors = {};
 
         if (!registerForm.fullName.trim()) {
-            nextErrors.fullName = "Vui lòng nhập họ tên";
+            nextErrors.fullName = "Please enter your full name";
         }
 
         if (!registerForm.phoneNumber.trim()) {
-            nextErrors.phoneNumber = "Vui lòng nhập số điện thoại";
+            nextErrors.phoneNumber = "Please enter your phone number";
         } else if (!/^[0-9]{9,11}$/.test(registerForm.phoneNumber.trim())) {
-            nextErrors.phoneNumber = "Số điện thoại không hợp lệ";
+            nextErrors.phoneNumber = "Invalid phone number";
         }
 
         if (!registerForm.email.trim()) {
-            nextErrors.email = "Vui lòng nhập email";
+            nextErrors.email = "Please enter your email";
         } else if (!/^\S+@\S+\.\S+$/.test(registerForm.email.trim())) {
-            nextErrors.email = "Email không hợp lệ";
+            nextErrors.email = "Invalid email address";
         }
 
         if (!registerForm.password.trim()) {
-            nextErrors.password = "Vui lòng nhập mật khẩu";
+            nextErrors.password = "Please enter your password";
         } else if (registerForm.password.length < 6) {
-            nextErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+            nextErrors.password = "Password must be at least 6 characters";
         }
 
         if (!registerForm.language.trim()) {
-            nextErrors.language = "Vui lòng chọn ngôn ngữ";
+            nextErrors.language = "Please select a language";
         }
 
         setErrors(nextErrors);
@@ -126,7 +127,7 @@ function LoginOrRegister() {
             const response = await authService.login(loginForm);
 
             if (!response?.result?.accessToken) {
-                setErrors({ general: response?.message || "Đăng nhập thất bại" });
+                setErrors({ general: response?.message || "Login failed" });
                 return;
             }
             localStorage.setItem(LS_ACCESS, response.result.accessToken);
@@ -134,10 +135,11 @@ function LoginOrRegister() {
                 localStorage.setItem(LS_REFRESH, response.result.refreshToken);
             }
             localStorage.setItem(LS_USER, JSON.stringify(response.result.user));
+            notifyLanguageChanged();
             
             navigate(routePath.HomeDishPage);
 
-            setSuccessMessage("Đăng nhập thành công");
+            setSuccessMessage("Login successful");
             setLoginForm(initialLoginForm);
 
 
@@ -146,7 +148,7 @@ function LoginOrRegister() {
                 general:
                     error?.response?.data?.message ||
                     error?.message ||
-                    "Có lỗi xảy ra khi đăng nhập",
+                    "An error occurred while signing in",
             });
         } finally {
             setLoading(false);
@@ -163,14 +165,14 @@ function LoginOrRegister() {
             setLoading(true);
             const response = await authService.register(registerForm);
 
-            setSuccessMessage(response?.message || "Đăng ký thành công");
+            setSuccessMessage(response?.message || "Registration successful");
             setRegisterForm(initialRegisterForm);
             setErrors({});
             setMode("login");
         } catch (error: any) {
             setErrors({
                 general:
-                    error?.response?.data?.message || error?.message || "Có lỗi xảy ra khi đăng ký",
+                    error?.response?.data?.message || error?.message || "An error occurred while registering",
             });
         } finally {
             setLoading(false);
@@ -187,35 +189,35 @@ function LoginOrRegister() {
                         </div>
 
                         <h1 className="text-4xl font-bold leading-tight text-slate-900 xl:text-5xl">
-                            Hệ thống khám phá ẩm thực với trải nghiệm{" "}
-                            <span className="text-green-600">nghe thuyết minh</span>, đặt món và gợi
-                            ý tour.
+                            Discover local food with{" "}
+                            <span className="text-green-600">AI narration</span>, ordering, and smart
+                            tour suggestions.
                         </h1>
 
                         <p className="mt-5 text-lg leading-8 text-slate-600">
-                            Giao diện hiện đại, dễ dùng, hỗ trợ khách hàng khám phá quán ăn, nghe
-                            audio nhiều ngôn ngữ và tạo tour ẩm thực nhanh chóng.
+                            A modern, easy-to-use experience for tourists to explore shops, listen
+                            in multiple languages, and build food tours quickly.
                         </p>
 
                         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-sm">
                                 <div className="text-2xl font-bold text-green-600">GPS</div>
                                 <p className="mt-2 text-sm text-slate-600">
-                                    Nghe audio theo vị trí
+                                    Location-based audio
                                 </p>
                             </div>
 
                             <div className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-sm">
                                 <div className="text-2xl font-bold text-green-600">Audio</div>
                                 <p className="mt-2 text-sm text-slate-600">
-                                    Đa ngôn ngữ cho món ăn
+                                    Multi-language guide
                                 </p>
                             </div>
 
                             <div className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-sm">
                                 <div className="text-2xl font-bold text-green-600">Tour</div>
                                 <p className="mt-2 text-sm text-slate-600">
-                                    Gợi ý lịch trình ăn uống
+                                    Smart food itinerary
                                 </p>
                             </div>
                         </div>
@@ -235,7 +237,7 @@ function LoginOrRegister() {
                                             : "text-slate-600 hover:text-slate-900"
                                     }`}
                                 >
-                                    Đăng nhập
+                                    Login
                                 </button>
 
                                 <button
@@ -247,7 +249,7 @@ function LoginOrRegister() {
                                             : "text-slate-600 hover:text-slate-900"
                                     }`}
                                 >
-                                    Đăng ký
+                                    Register
                                 </button>
                             </div>
 
@@ -282,7 +284,7 @@ function LoginOrRegister() {
                                             onChange={(e) =>
                                                 handleLoginChange("email", e.target.value)
                                             }
-                                            placeholder="Nhập email của bạn"
+                                            placeholder="Enter your email"
                                             className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
                                         />
                                         {errors.email && (
@@ -294,7 +296,7 @@ function LoginOrRegister() {
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
-                                            Mật khẩu
+                                            Password
                                         </label>
                                         <input
                                             type="password"
@@ -302,7 +304,7 @@ function LoginOrRegister() {
                                             onChange={(e) =>
                                                 handleLoginChange("password", e.target.value)
                                             }
-                                            placeholder="Nhập mật khẩu"
+                                            placeholder="Enter your password"
                                             className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
                                         />
                                         {errors.password && (
@@ -317,14 +319,14 @@ function LoginOrRegister() {
                                         disabled={loading}
                                         className="w-full rounded-2xl bg-green-600 px-4 py-3 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-70"
                                     >
-                                        {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+                                        {loading ? "Signing in..." : "Login"}
                                     </button>
                                 </form>
                             ) : (
                                 <form className="space-y-4" onSubmit={handleRegisterSubmit}>
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
-                                            Họ và tên
+                                            Full name
                                         </label>
                                         <input
                                             type="text"
@@ -332,7 +334,7 @@ function LoginOrRegister() {
                                             onChange={(e) =>
                                                 handleRegisterChange("fullName", e.target.value)
                                             }
-                                            placeholder="Nhập họ và tên"
+                                            placeholder="Enter your full name"
                                             className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
                                         />
                                         {errors.fullName && (
@@ -344,7 +346,7 @@ function LoginOrRegister() {
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
-                                            Số điện thoại
+                                            Phone number
                                         </label>
                                         <input
                                             type="text"
@@ -352,7 +354,7 @@ function LoginOrRegister() {
                                             onChange={(e) =>
                                                 handleRegisterChange("phoneNumber", e.target.value)
                                             }
-                                            placeholder="Nhập số điện thoại"
+                                            placeholder="Enter your phone number"
                                             className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
                                         />
                                         {errors.phoneNumber && (
@@ -372,7 +374,7 @@ function LoginOrRegister() {
                                             onChange={(e) =>
                                                 handleRegisterChange("email", e.target.value)
                                             }
-                                            placeholder="Nhập email"
+                                            placeholder="Enter your email"
                                             className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
                                         />
                                         {errors.email && (
@@ -384,7 +386,7 @@ function LoginOrRegister() {
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
-                                            Mật khẩu
+                                            Password
                                         </label>
                                         <input
                                             type="password"
@@ -392,7 +394,7 @@ function LoginOrRegister() {
                                             onChange={(e) =>
                                                 handleRegisterChange("password", e.target.value)
                                             }
-                                            placeholder="Nhập mật khẩu"
+                                            placeholder="Enter your password"
                                             className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
                                         />
                                         {errors.password && (
@@ -404,7 +406,7 @@ function LoginOrRegister() {
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
-                                            Ngôn ngữ
+                                            Language
                                         </label>
                                         <select
                                             value={registerForm.language}
@@ -413,8 +415,8 @@ function LoginOrRegister() {
                                             }
                                             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
                                         >
-                                            <option value="vi">Tiếng Việt</option>
-                                            <option value="en">English</option>
+                                            <option value="en-US">English</option>
+                                            <option value="vi-VN">Vietnamese (Tiếng Việt)</option>
                                         </select>
                                         {errors.language && (
                                             <p className="mt-2 text-sm text-red-500">
@@ -428,7 +430,7 @@ function LoginOrRegister() {
                                         disabled={loading}
                                         className="w-full rounded-2xl bg-green-600 px-4 py-3 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-70"
                                     >
-                                        {loading ? "Đang đăng ký..." : "Tạo tài khoản"}
+                                        {loading ? "Creating account..." : "Create account"}
                                     </button>
                                 </form>
                             )}
@@ -436,24 +438,24 @@ function LoginOrRegister() {
                             <div className="mt-6 text-center text-sm text-slate-500">
                                 {mode === "login" ? (
                                     <>
-                                        Chưa có tài khoản?{" "}
+                                        New here?{" "}
                                         <button
                                             type="button"
                                             onClick={() => switchMode("register")}
                                             className="font-semibold text-green-600 hover:text-green-700"
                                         >
-                                            Đăng ký ngay
+                                            Create account
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        Đã có tài khoản?{" "}
+                                        Already have an account?{" "}
                                         <button
                                             type="button"
                                             onClick={() => switchMode("login")}
                                             className="font-semibold text-green-600 hover:text-green-700"
                                         >
-                                            Đăng nhập
+                                            Login
                                         </button>
                                     </>
                                 )}

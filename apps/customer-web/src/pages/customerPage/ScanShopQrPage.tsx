@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
 import { routePath } from "../../routes/route";
+import { resolvePreferredLanguage } from "../../utils/language";
 
 const SHOP_ID_PATTERNS = [
     /(?:^|[/?#=&])shopId(?:=|\/)(\d+)(?:$|[/?#&])/i,
@@ -137,7 +138,7 @@ function ScanShopQrPage() {
         if (!isMountedRef.current) return;
 
         alert(`Đã nhận QR quán #${shopId}. Đang chuyển tới trang quán.`);
-        const preferredLanguage = navigator.language || "en-US";
+        const preferredLanguage = resolvePreferredLanguage();
         const shopPath = routePath.ShopDetailPage.replace(":shopId", String(shopId));
         navigate(`${shopPath}?autoplay=1&lang=${encodeURIComponent(preferredLanguage)}`, { replace: true });
     };

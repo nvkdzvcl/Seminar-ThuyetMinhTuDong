@@ -29,7 +29,9 @@ export type ShopCreationRequest = {
 export type ShopNarrationResponse = {
   shopId: number;
   language: string;
+  requestedLanguage?: string;
   voice: string;
   audioUrl: string;
   cached: boolean;
+  fallbackApplied?: boolean;
 };

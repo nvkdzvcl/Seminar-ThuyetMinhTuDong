@@ -10,9 +10,8 @@ import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
+import { resolvePreferredLanguage } from "../../utils/language";
 import { resolveMediaUrl } from "../../utils/media";
-
-const LS_USER = "VINH_KHANH_FOOD_TOUR_USER";
 
 function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
     if (!rawAudioPath) return undefined;
@@ -21,26 +20,6 @@ function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefine
     const base = (import.meta.env.VITE_BACKEND_API || "").replace(/\/+$/, "");
     const normalizedPath = rawAudioPath.startsWith("/") ? rawAudioPath : `/${rawAudioPath}`;
     return `${base}${normalizedPath}`;
-}
-
-function resolvePreferredLanguage(explicitLanguage?: string | null): string {
-    if (explicitLanguage && explicitLanguage.trim()) {
-        return explicitLanguage.trim();
-    }
-
-    try {
-        const rawUser = localStorage.getItem(LS_USER);
-        if (rawUser) {
-            const user = JSON.parse(rawUser) as { language?: string };
-            if (user.language && user.language.trim()) {
-                return user.language.trim();
-            }
-        }
-    } catch {
-        // ignore invalid localStorage payload
-    }
-
-    return navigator.language || "en-US";
 }
 
 function resolveRequestErrorMessage(error: unknown, fallback: string): string {
@@ -183,6 +162,7 @@ function ShopDetailPage() {
             const narrationRes = await shopService.getShopNarration(shop.id, preferredLanguage);
             const narration = narrationRes.result;
             const narrationAudioUrl = resolveBackendAudioUrl(narration?.audioUrl);
+            setActiveNarrationLanguage(narration?.language || preferredLanguage);
 
             if (!narrationAudioUrl) {
                 alert("Không tạo được audio thuyết minh cho quán.");

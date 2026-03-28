@@ -1,4 +1,4 @@
-package com.audioguide.dto.shopDTO;
+package com.audioguide.dto.translationDTO;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -7,17 +7,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ShopNarrationResponse {
-    Integer shopId;
-    String language;
-    String requestedLanguage;
-    String voice;
-    String audioUrl;
-    boolean cached;
-    boolean fallbackApplied;
+public class UiTranslationResponse {
+    String targetLanguage;
+    List<String> texts;
+    boolean translated;
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { normalizeLocale, notifyLanguageChanged } from "../../utils/language";
 
 const LS_ACCESS = "VINH_KHANH_FOOD_TOUR_ACCESS_TOKEN";
 const LS_REFRESH = "VINH_KHANH_FOOD_TOUR_REFRESH_TOKEN";
@@ -11,7 +12,7 @@ function ProfilePage() {
     const user = storedUser ? JSON.parse(storedUser) : null;
     const [autoAudio, setAutoAudio] = useState(localStorage.getItem("autoTurnOnNearbyShopAudio") === "true");
     const [speed, setSpeed] = useState("1.0");
-    const [lang, setLang] = useState(user?.language || "vi");
+    const [lang, setLang] = useState(normalizeLocale(user?.language || "en-US"));
 
     const handleLogout = () => {
         localStorage.removeItem(LS_ACCESS);
@@ -23,6 +24,27 @@ function ProfilePage() {
     const handleAutoAudio = (checked: boolean) => {
         setAutoAudio(checked);
         localStorage.setItem("autoTurnOnNearbyShopAudio", String(checked));
+    };
+
+    const handleLanguageChange = (value: string) => {
+        const normalized = normalizeLocale(value);
+        setLang(normalized);
+
+        try {
+            const rawUser = localStorage.getItem(LS_USER);
+            if (!rawUser) return;
+            const currentUser = JSON.parse(rawUser) as Record<string, unknown>;
+            localStorage.setItem(
+                LS_USER,
+                JSON.stringify({
+                    ...currentUser,
+                    language: normalized,
+                })
+            );
+            notifyLanguageChanged();
+        } catch {
+            // ignore invalid local user payload
+        }
     };
 
     return (
@@ -41,13 +63,13 @@ function ProfilePage() {
                         <span className="text-sm text-slate-700">Ngôn ngữ mặc định</span>
                         <select
                             value={lang}
-                            onChange={(e) => setLang(e.target.value)}
+                            onChange={(e) => handleLanguageChange(e.target.value)}
                             className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                         >
-                            <option value="vi">Tiếng Việt</option>
-                            <option value="en">English</option>
-                            <option value="ko">한국어</option>
-                            <option value="ja">日本語</option>
+                            <option value="en-US">English</option>
+                            <option value="vi-VN">Tiếng Việt</option>
+                            <option value="ko-KR">한국어</option>
+                            <option value="ja-JP">日本語</option>
                         </select>
                     </div>
 
