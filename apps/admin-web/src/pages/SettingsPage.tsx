@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Save, Bell, Shield, Upload, Globe, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,148 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import {
+  fetchAdminSettings,
+  upsertAdminSettings,
+  type AdminSetting,
+} from '@/services/adminSettingsService';
+import {
+  fetchSupportedLanguages,
+  type UiLanguageOption,
+} from '@/services/translationService';
+
+const ADMIN_SETTING_KEYS = {
+  REQUEST_TIMEOUT: 'request_timeout_seconds',
+  DEFAULT_LANGUAGE: 'default_language',
+  MAX_UPLOAD_SIZE: 'max_upload_size_mb',
+  MAINTENANCE_MODE: 'maintenance_mode',
+  DEBUG_MODE: 'debug_mode',
+  RISK_THRESHOLD_LOW: 'risk_threshold_low',
+  RISK_THRESHOLD_HIGH: 'risk_threshold_high',
+  AUTO_FLAG_ENABLED: 'auto_flag_enabled',
+  REQUIRE_APPROVAL_ABOVE_THRESHOLD: 'require_approval_above_threshold',
+} as const;
+
+type LanguageSelectOption = {
+  value: string;
+  code: string;
+  label: string;
+  direction: string;
+};
+
+const FALLBACK_LANGUAGES: UiLanguageOption[] = [
+  { code: 'en', displayName: 'English', nativeName: 'English', direction: 'ltr' },
+  { code: 'vi', displayName: 'Vietnamese', nativeName: 'Tiếng Việt', direction: 'ltr' },
+  { code: 'ko', displayName: 'Korean', nativeName: '한국어', direction: 'ltr' },
+  { code: 'ja', displayName: 'Japanese', nativeName: '日本語', direction: 'ltr' },
+];
+
+const FALLBACK_LANGUAGE_OPTIONS = toLanguageSelectOptions(FALLBACK_LANGUAGES);
+
+function buildLanguageLabel(item: UiLanguageOption): string {
+  const displayName = (item.displayName || item.code).trim();
+  const nativeName = (item.nativeName || '').trim();
+  if (!nativeName || nativeName.toLowerCase() === displayName.toLowerCase()) {
+    return displayName;
+  }
+  return `${displayName} - ${nativeName}`;
+}
+
+function normalizeLocale(rawLocale: string): string {
+  const trimmed = rawLocale.trim();
+  if (!trimmed) return 'en';
+
+  const normalized = trimmed.replace(/_/g, '-');
+  try {
+    const locale = new Intl.Locale(normalized);
+    return locale.baseName || 'en';
+  } catch {
+    return normalized;
+  }
+}
+
+function toLanguageSelectOptions(items: UiLanguageOption[]): LanguageSelectOption[] {
+  const unique = new Map<string, LanguageSelectOption>();
+
+  items.forEach((item) => {
+    const value = (item.code || '').trim();
+    if (!value) return;
+
+    const key = value.toLowerCase();
+    if (unique.has(key)) return;
+
+    unique.set(key, {
+      value,
+      code: value,
+      label: buildLanguageLabel(item),
+      direction: item.direction || 'ltr',
+    });
+  });
+
+  const options = Array.from(unique.values());
+  options.sort((a, b) => {
+    const aEnglish = a.code.toLowerCase() === 'en' || a.value.toLowerCase().startsWith('en-');
+    const bEnglish = b.code.toLowerCase() === 'en' || b.value.toLowerCase().startsWith('en-');
+    if (aEnglish && !bEnglish) return -1;
+    if (!aEnglish && bEnglish) return 1;
+    return a.label.localeCompare(b.label, 'en', { sensitivity: 'base' });
+  });
+
+  return options;
+}
+
+function resolveLanguageOptionValue(
+  options: LanguageSelectOption[],
+  language?: string | null
+): string {
+  if (options.length === 0) return 'en';
+
+  const raw = (language || '').trim();
+  if (raw) {
+    const exact = options.find((option) => option.value.toLowerCase() === raw.toLowerCase());
+    if (exact) return exact.value;
+
+    const canonical = normalizeLocale(raw);
+    const canonicalExact = options.find(
+      (option) => option.value.toLowerCase() === canonical.toLowerCase()
+    );
+    if (canonicalExact) return canonicalExact.value;
+
+    const base = canonical.split('-')[0].toLowerCase();
+    const baseOption =
+      options.find((option) => option.value.toLowerCase() === base) ||
+      options.find((option) => option.value.toLowerCase().startsWith(`${base}-`));
+    if (baseOption) return baseOption.value;
+  }
+
+  const english = options.find((option) => option.value.toLowerCase() === 'en');
+  if (english) return english.value;
+
+  return options[0].value;
+}
+
+function getSettingValue(settings: AdminSetting[], key: string): string | undefined {
+  return settings.find((item) => item.key === key)?.value;
+}
+
+function parseIntegerSetting(
+  rawValue: string | undefined,
+  fallbackValue: number,
+  min: number,
+  max: number
+): number {
+  const parsed = Number.parseInt(rawValue ?? '', 10);
+  if (!Number.isFinite(parsed)) return fallbackValue;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function parseBooleanSetting(rawValue: string | undefined, fallbackValue: boolean): boolean {
+  if (!rawValue) return fallbackValue;
+  const normalized = rawValue.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return fallbackValue;
+}
 
 export default function SettingsPage() {
   const [systemSettings, setSystemSettings] = useState({
@@ -41,12 +183,182 @@ export default function SettingsPage() {
     scheduledAt: '',
   });
 
-  const handleSaveSystemSettings = () => {
-    toast.success('Cài đặt hệ thống đã được lưu');
+  const [languageOptions, setLanguageOptions] = useState<LanguageSelectOption[]>(
+    FALLBACK_LANGUAGE_OPTIONS
+  );
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isSavingSystemSettings, setIsSavingSystemSettings] = useState(false);
+  const [isSavingModerationSettings, setIsSavingModerationSettings] = useState(false);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const applySettings = (settings: AdminSetting[], options: LanguageSelectOption[]) => {
+      const resolvedLanguage = resolveLanguageOptionValue(
+        options,
+        getSettingValue(settings, ADMIN_SETTING_KEYS.DEFAULT_LANGUAGE)
+      );
+
+      setSystemSettings({
+        requestTimeout: parseIntegerSetting(
+          getSettingValue(settings, ADMIN_SETTING_KEYS.REQUEST_TIMEOUT),
+          30,
+          5,
+          120
+        ),
+        defaultLanguage: resolvedLanguage,
+        maxUploadSize: parseIntegerSetting(
+          getSettingValue(settings, ADMIN_SETTING_KEYS.MAX_UPLOAD_SIZE),
+          10,
+          1,
+          100
+        ),
+        maintenanceMode: parseBooleanSetting(
+          getSettingValue(settings, ADMIN_SETTING_KEYS.MAINTENANCE_MODE),
+          false
+        ),
+        debugMode: parseBooleanSetting(getSettingValue(settings, ADMIN_SETTING_KEYS.DEBUG_MODE), false),
+      });
+
+      setModerationSettings({
+        riskScoreThresholdLow: parseIntegerSetting(
+          getSettingValue(settings, ADMIN_SETTING_KEYS.RISK_THRESHOLD_LOW),
+          30,
+          0,
+          100
+        ),
+        riskScoreThresholdHigh: parseIntegerSetting(
+          getSettingValue(settings, ADMIN_SETTING_KEYS.RISK_THRESHOLD_HIGH),
+          70,
+          0,
+          100
+        ),
+        autoFlagEnabled: parseBooleanSetting(
+          getSettingValue(settings, ADMIN_SETTING_KEYS.AUTO_FLAG_ENABLED),
+          true
+        ),
+        requireApprovalAboveThreshold: parseBooleanSetting(
+          getSettingValue(settings, ADMIN_SETTING_KEYS.REQUIRE_APPROVAL_ABOVE_THRESHOLD),
+          true
+        ),
+      });
+    };
+
+    const loadSettings = async () => {
+      setIsLoadingSettings(true);
+
+      const [settingsResult, languagesResult] = await Promise.allSettled([
+        fetchAdminSettings(),
+        fetchSupportedLanguages(),
+      ]);
+
+      const nextLanguageOptions =
+        languagesResult.status === 'fulfilled'
+          ? toLanguageSelectOptions(languagesResult.value.items ?? [])
+          : [];
+      const effectiveLanguageOptions =
+        nextLanguageOptions.length > 0 ? nextLanguageOptions : FALLBACK_LANGUAGE_OPTIONS;
+
+      if (languagesResult.status === 'rejected') {
+        toast.error('Không tải được danh sách ngôn ngữ Azure, đang dùng danh sách dự phòng.');
+      }
+
+      if (disposed) {
+        return;
+      }
+
+      setLanguageOptions(effectiveLanguageOptions);
+
+      if (settingsResult.status === 'fulfilled') {
+        applySettings(settingsResult.value, effectiveLanguageOptions);
+      } else {
+        toast.error('Không tải được cài đặt hệ thống hiện tại.');
+        setSystemSettings((current) => ({
+          ...current,
+          defaultLanguage: resolveLanguageOptionValue(
+            effectiveLanguageOptions,
+            current.defaultLanguage
+          ),
+        }));
+      }
+
+      setIsLoadingSettings(false);
+    };
+
+    void loadSettings();
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  const handleSaveSystemSettings = async () => {
+    setIsSavingSystemSettings(true);
+    try {
+      const updated = await upsertAdminSettings([
+        {
+          key: ADMIN_SETTING_KEYS.REQUEST_TIMEOUT,
+          value: String(systemSettings.requestTimeout),
+        },
+        {
+          key: ADMIN_SETTING_KEYS.DEFAULT_LANGUAGE,
+          value: systemSettings.defaultLanguage,
+        },
+        {
+          key: ADMIN_SETTING_KEYS.MAX_UPLOAD_SIZE,
+          value: String(systemSettings.maxUploadSize),
+        },
+        {
+          key: ADMIN_SETTING_KEYS.MAINTENANCE_MODE,
+          value: String(systemSettings.maintenanceMode),
+        },
+        {
+          key: ADMIN_SETTING_KEYS.DEBUG_MODE,
+          value: String(systemSettings.debugMode),
+        },
+      ]);
+
+      setSystemSettings((current) => ({
+        ...current,
+        defaultLanguage: resolveLanguageOptionValue(
+          languageOptions,
+          getSettingValue(updated, ADMIN_SETTING_KEYS.DEFAULT_LANGUAGE) ?? current.defaultLanguage
+        ),
+      }));
+      toast.success('Cài đặt hệ thống đã được lưu');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không lưu được cài đặt hệ thống');
+    } finally {
+      setIsSavingSystemSettings(false);
+    }
   };
 
-  const handleSaveModerationSettings = () => {
-    toast.success('Cài đặt kiểm duyệt đã được lưu');
+  const handleSaveModerationSettings = async () => {
+    setIsSavingModerationSettings(true);
+    try {
+      await upsertAdminSettings([
+        {
+          key: ADMIN_SETTING_KEYS.RISK_THRESHOLD_LOW,
+          value: String(moderationSettings.riskScoreThresholdLow),
+        },
+        {
+          key: ADMIN_SETTING_KEYS.RISK_THRESHOLD_HIGH,
+          value: String(moderationSettings.riskScoreThresholdHigh),
+        },
+        {
+          key: ADMIN_SETTING_KEYS.AUTO_FLAG_ENABLED,
+          value: String(moderationSettings.autoFlagEnabled),
+        },
+        {
+          key: ADMIN_SETTING_KEYS.REQUIRE_APPROVAL_ABOVE_THRESHOLD,
+          value: String(moderationSettings.requireApprovalAboveThreshold),
+        },
+      ]);
+      toast.success('Cài đặt kiểm duyệt đã được lưu');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không lưu được cài đặt kiểm duyệt');
+    } finally {
+      setIsSavingModerationSettings(false);
+    }
   };
 
   const handleSaveBroadcast = () => {
@@ -129,19 +441,25 @@ export default function SettingsPage() {
                     onValueChange={(value) =>
                       setSystemSettings({ ...systemSettings, defaultLanguage: value })
                     }
+                    disabled={isLoadingSettings || languageOptions.length === 0}
                   >
                     <SelectTrigger id="language">
-                      <SelectValue />
+                      <SelectValue
+                        placeholder={
+                          isLoadingSettings ? 'Đang tải danh sách ngôn ngữ...' : 'Chọn ngôn ngữ'
+                        }
+                      />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="vi">Tiếng Việt</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="ja">日本語</SelectItem>
-                      <SelectItem value="ko">한국어</SelectItem>
+                    <SelectContent className="max-h-72">
+                      {languageOptions.map((language) => (
+                        <SelectItem key={language.value} value={language.value}>
+                          {language.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Ngôn ngữ hiển thị mặc định cho người dùng mới
+                    Ngôn ngữ hiển thị mặc định cho người dùng mới ({languageOptions.length} ngôn ngữ)
                   </p>
                 </div>
 
@@ -218,9 +536,13 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={handleSaveSystemSettings} className="gap-2">
+                <Button
+                  onClick={handleSaveSystemSettings}
+                  className="gap-2"
+                  disabled={isSavingSystemSettings}
+                >
                   <Save className="h-4 w-4" />
-                  Lưu cài đặt
+                  {isSavingSystemSettings ? 'Đang lưu...' : 'Lưu cài đặt'}
                 </Button>
               </div>
             </CardContent>
@@ -358,9 +680,13 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={handleSaveModerationSettings} className="gap-2">
+                <Button
+                  onClick={handleSaveModerationSettings}
+                  className="gap-2"
+                  disabled={isSavingModerationSettings}
+                >
                   <Save className="h-4 w-4" />
-                  Lưu cài đặt
+                  {isSavingModerationSettings ? 'Đang lưu...' : 'Lưu cài đặt'}
                 </Button>
               </div>
             </CardContent>

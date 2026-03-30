@@ -6,6 +6,7 @@ import { resolveLanguageOptionValue, useSupportedLanguages } from "../../hooks/u
 const LS_ACCESS = "VINH_KHANH_FOOD_TOUR_ACCESS_TOKEN";
 const LS_REFRESH = "VINH_KHANH_FOOD_TOUR_REFRESH_TOKEN";
 const LS_USER = "VINH_KHANH_FOOD_TOUR_USER";
+const AUTO_AUDIO_KEY = "autoTurnOnNearbyShopAudio";
 
 function ProfilePage() {
     const navigate = useNavigate();
@@ -27,7 +28,8 @@ function ProfilePage() {
         localStorage.removeItem(LS_ACCESS);
         localStorage.removeItem(LS_REFRESH);
         localStorage.removeItem(LS_USER);
-        navigate("/login");
+        localStorage.removeItem(AUTO_AUDIO_KEY);
+        navigate("/login", { replace: true });
     };
 
     const handleAutoAudio = (checked: boolean) => {

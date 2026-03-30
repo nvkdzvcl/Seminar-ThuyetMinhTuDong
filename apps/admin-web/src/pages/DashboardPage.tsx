@@ -24,39 +24,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { KPIStatCard } from '@/components/shared/KPIStatCard'
-import { StatusBadge } from '@/components/shared/StatusBadge'
-import { kpiStats, jobsChartData, alerts } from '@/data/mock-data'
 import { formatRelativeTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { fetchWeeklyVisits } from '@/services/dashboardService'
-import type { WeeklyVisitPoint } from '@/types'
+import { fetchDashboardSnapshot, fetchWeeklyVisits } from '@/services/dashboardService'
+import type { Alert, ChartDataPoint, KPIStat, WeeklyVisitPoint } from '@/types'
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [kpiStats, setKpiStats] = useState<KPIStat[]>([])
+  const [jobsChartData, setJobsChartData] = useState<ChartDataPoint[]>([])
+  const [alerts, setAlerts] = useState<Alert[]>([])
   const [weeklyVisits, setWeeklyVisits] = useState<WeeklyVisitPoint[]>([])
   const [totalWeeklyVisits, setTotalWeeklyVisits] = useState(0)
 
   const handleRefresh = () => {
     setIsRefreshing(true)
-    void loadWeeklyVisits().finally(() => {
+    void loadDashboardData().finally(() => {
       setTimeout(() => setIsRefreshing(false), 500)
     })
   }
 
-  const loadWeeklyVisits = async () => {
+  const loadDashboardData = async () => {
     try {
-      const result = await fetchWeeklyVisits()
-      setWeeklyVisits(result.visitsByDay)
-      setTotalWeeklyVisits(result.totalVisits)
+      const [snapshot, weekly] = await Promise.all([
+        fetchDashboardSnapshot(),
+        fetchWeeklyVisits(),
+      ])
+
+      setKpiStats(snapshot.kpiStats)
+      setJobsChartData(snapshot.jobsChartData)
+      setAlerts(snapshot.alerts)
+      setWeeklyVisits(weekly.visitsByDay)
+      setTotalWeeklyVisits(weekly.totalVisits)
     } catch {
+      setKpiStats([])
+      setJobsChartData([])
+      setAlerts([])
       setWeeklyVisits([])
       setTotalWeeklyVisits(0)
     }
   }
 
   useEffect(() => {
-    void loadWeeklyVisits()
+    void loadDashboardData()
   }, [])
 
   const kpiIcons = [Users, MapPin, AlertTriangle, CheckCircle]
@@ -95,6 +106,11 @@ export function DashboardPage() {
             icon={kpiIcons[index]}
           />
         ))}
+        {kpiStats.length === 0 && (
+          <div className="col-span-full rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+            Chưa có dữ liệu KPI.
+          </div>
+        )}
       </div>
 
       {/* Charts and Weekly Visits */}
@@ -134,6 +150,11 @@ export function DashboardPage() {
                 />
               </BarChart>
             </ResponsiveContainer>
+            {jobsChartData.length === 0 && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Chưa có dữ liệu job trong 7 ngày gần đây.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -204,6 +225,11 @@ export function DashboardPage() {
                 </Button>
               </div>
             ))}
+            {alerts.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Không có cảnh báo nào tại thời điểm hiện tại.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
