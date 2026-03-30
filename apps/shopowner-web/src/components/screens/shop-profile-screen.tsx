@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,6 +31,10 @@ import {
 } from "lucide-react"
 import type { PoiApprovalStatus } from "@/components/app-shell"
 import { parseFlexibleCoordinates } from "@/lib/coordinates"
+import {
+  previewPoiModeration,
+  type PoiModerationPreviewResult,
+} from "@/services/poi-moderation-service"
 
 interface ShopProfileScreenProps {
   onBack: () => void
@@ -57,6 +61,10 @@ const touristTags = [
 
 const SHORT_DESCRIPTION_LIMIT = 140
 const DETAILED_DESCRIPTION_LIMIT = 500
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
 
 export function ShopProfileScreen({
   onBack,
@@ -88,8 +96,13 @@ export function ShopProfileScreen({
   const [longitude, setLongitude] = useState("")
   const [coordinateRaw, setCoordinateRaw] = useState("")
   const [coordinateError, setCoordinateError] = useState<string | null>(null)
+  const [isModerationChecking, setIsModerationChecking] = useState(false)
+  const [moderationPreview, setModerationPreview] = useState<PoiModerationPreviewResult | null>(null)
+  const [moderationError, setModerationError] = useState<string | null>(null)
   const [contactPhone] = useState("0901 000 003")
   const [contactEmail] = useState("owner@gmail.com")
+
+  const isModerationBlocked = moderationPreview?.decision === "BLOCK"
 
   const toggleTag = (tagId: string) => {
     setSelectedTags((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]))
@@ -144,6 +157,79 @@ export function ShopProfileScreen({
     }
   }, [initialShopName, initialShopAddress, initialShopDescription, initialShopLat, initialShopLng])
 
+  const highlightedDescriptionPreview = useMemo(() => {
+    const sourceText = detailedDescription || ""
+    const terms = (moderationPreview?.matchedTerms ?? [])
+      .map((item) => item.trim())
+      .filter((item) => item.length > 1)
+
+    if (!sourceText || terms.length === 0) {
+      return sourceText
+    }
+
+    const uniqueTerms = Array.from(new Set(terms)).sort((a, b) => b.length - a.length)
+    const regex = new RegExp(`(${uniqueTerms.map(escapeRegExp).join("|")})`, "gi")
+    const parts = sourceText.split(regex)
+
+    return parts.map((part, index) => {
+      const isMatch = uniqueTerms.some((term) => part.toLowerCase() === term.toLowerCase())
+      if (!isMatch) {
+        return <span key={`txt-${index}`}>{part}</span>
+      }
+      return (
+        <mark key={`mark-${index}`} className="rounded bg-red-200 px-0.5 text-red-900">
+          {part}
+        </mark>
+      )
+    })
+  }, [detailedDescription, moderationPreview?.matchedTerms])
+
+  const runModerationPreview = async (
+    overrideDescription?: string,
+  ): Promise<PoiModerationPreviewResult | null> => {
+    const descriptionToCheck = (overrideDescription ?? detailedDescription).trim()
+    if (!descriptionToCheck) {
+      setModerationPreview(null)
+      setModerationError(null)
+      return null
+    }
+
+    setIsModerationChecking(true)
+    setModerationError(null)
+    try {
+      const preview = await previewPoiModeration({
+        name: shopName.trim(),
+        category: cuisine.trim(),
+        address: address.trim(),
+        description: descriptionToCheck,
+      })
+      setModerationPreview(preview)
+      return preview
+    } catch {
+      setModerationError("Không kiểm tra được nội dung ngay lúc này. Bạn vẫn có thể lưu nháp.")
+      return null
+    } finally {
+      setIsModerationChecking(false)
+    }
+  }
+
+  useEffect(() => {
+    const descriptionToCheck = detailedDescription.trim()
+    if (!descriptionToCheck) {
+      setModerationPreview(null)
+      setModerationError(null)
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      void runModerationPreview(descriptionToCheck)
+    }, 600)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [detailedDescription, shopName, address, cuisine])
+
   const handleSaveShopProfile = async () => {
     const parseNumberInput = (value: string): number | null => {
       if (!value.trim()) return null
@@ -191,6 +277,13 @@ export function ShopProfileScreen({
       }
     }
 
+    const preview = await runModerationPreview(detailedDescription)
+    if (preview?.decision === "BLOCK") {
+      setCoordinateError(null)
+      setModerationError(preview.message || "Mô tả có dấu hiệu vi phạm rõ ràng, vui lòng chỉnh sửa.")
+      return
+    }
+
     setCoordinateError(null)
     await onSaveShop({
       name: shopName.trim(),
@@ -200,6 +293,22 @@ export function ShopProfileScreen({
       lng,
     })
   }
+
+  const handleSubmitPoiRegistration = async () => {
+    const preview = await runModerationPreview(detailedDescription)
+    if (preview?.decision === "BLOCK") {
+      setModerationError(preview.message || "Mô tả có dấu hiệu vi phạm rõ ràng, vui lòng chỉnh sửa.")
+      return
+    }
+    onSubmitPoiRegistration()
+  }
+
+  const moderationToneClass =
+    moderationPreview?.decision === "BLOCK"
+      ? "border-red-200 bg-red-50 text-red-700"
+      : moderationPreview?.decision === "WARN"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : "border-emerald-200 bg-emerald-50 text-emerald-700"
 
   return (
     <div className="min-h-screen bg-background">
@@ -376,6 +485,37 @@ export function ShopProfileScreen({
                   className="min-h-[140px] resize-none"
                 />
               </div>
+
+              {isModerationChecking ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                  AI đang kiểm tra nội dung mô tả...
+                </div>
+              ) : null}
+              {moderationPreview ? (
+                <div className={`rounded-lg border p-3 text-sm ${moderationToneClass}`}>
+                  <p className="font-medium">{moderationPreview.message}</p>
+                  <p className="mt-1 text-xs">
+                    Điểm rủi ro: {moderationPreview.riskScore}/100 ({moderationPreview.decision})
+                  </p>
+                  {(moderationPreview.matchedTerms?.length ?? 0) > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {moderationPreview.matchedTerms.map((term) => (
+                        <Badge key={`m-mobile-${term}`} variant="outline" className="border-current text-current">
+                          {term}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {moderationError ? (
+                <p className="text-sm text-destructive">{moderationError}</p>
+              ) : null}
+              {(moderationPreview?.matchedTerms?.length ?? 0) > 0 ? (
+                <div className="rounded-lg border bg-muted/30 p-3 text-sm leading-6 text-foreground">
+                  {highlightedDescriptionPreview}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -397,7 +537,7 @@ export function ShopProfileScreen({
               ) : null}
               <div className="flex gap-2">
                 {(poiApprovalStatus === "unregistered" || poiApprovalStatus === "rejected") && (
-                  <Button className="gap-2" onClick={onSubmitPoiRegistration}>
+                  <Button className="gap-2" onClick={() => { void handleSubmitPoiRegistration() }} disabled={isModerationChecking || isModerationBlocked}>
                     <Send className="w-4 h-4" />
                     {poiApprovalStatus === "rejected" ? "Gửi lại duyệt" : "Gửi đăng ký POI"}
                   </Button>
@@ -461,9 +601,9 @@ export function ShopProfileScreen({
 
           <div className="fixed bottom-20 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border">
             <div className="max-w-md mx-auto">
-              <Button className="w-full h-12 text-base font-semibold gap-2" onClick={() => { void handleSaveShopProfile() }} disabled={isSaving}>
+              <Button className="w-full h-12 text-base font-semibold gap-2" onClick={() => { void handleSaveShopProfile() }} disabled={isSaving || isModerationChecking || isModerationBlocked}>
                 <Save className="w-5 h-5" />
-                {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+                {isSaving ? "Đang lưu..." : isModerationBlocked ? "Cần chỉnh sửa nội dung" : "Lưu thay đổi"}
               </Button>
             </div>
           </div>
@@ -489,7 +629,7 @@ export function ShopProfileScreen({
                 Lịch sử duyệt
               </Button>
               {(poiApprovalStatus === "unregistered" || poiApprovalStatus === "rejected") && (
-                <Button className="gap-2 whitespace-nowrap" onClick={onSubmitPoiRegistration}>
+                <Button className="gap-2 whitespace-nowrap" onClick={() => { void handleSubmitPoiRegistration() }} disabled={isModerationChecking || isModerationBlocked}>
                   <Send className="h-4 w-4" />
                   {poiApprovalStatus === "rejected" ? "Gửi lại duyệt" : "Gửi đăng ký POI"}
                 </Button>
@@ -500,10 +640,10 @@ export function ShopProfileScreen({
                 onClick={() => {
                   void handleSaveShopProfile()
                 }}
-                disabled={isSaving}
+                disabled={isSaving || isModerationChecking || isModerationBlocked}
               >
                 <Save className="h-4 w-4" />
-                {isSaving ? "Đang lưu..." : "Lưu bản nháp"}
+                {isSaving ? "Đang lưu..." : isModerationBlocked ? "Cần chỉnh sửa nội dung" : "Lưu bản nháp"}
               </Button>
               <Button variant="destructive" className="gap-2 whitespace-nowrap" onClick={onLogout}>
                 <LogOut className="h-4 w-4" />
@@ -678,6 +818,46 @@ export function ShopProfileScreen({
                       className="min-h-[150px] resize-none"
                     />
                   </div>
+
+                  {isModerationChecking ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                      AI đang kiểm tra nội dung mô tả...
+                    </div>
+                  ) : null}
+                  {moderationPreview ? (
+                    <div className={`rounded-lg border p-3 text-sm ${moderationToneClass}`}>
+                      <p className="font-medium">{moderationPreview.message}</p>
+                      <p className="mt-1 text-xs">
+                        Điểm rủi ro: {moderationPreview.riskScore}/100 ({moderationPreview.decision})
+                      </p>
+                      {(moderationPreview.matchedTerms?.length ?? 0) > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {moderationPreview.matchedTerms.map((term) => (
+                            <Badge key={`m-desktop-${term}`} variant="outline" className="border-current text-current">
+                              {term}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                      {moderationPreview.suggestedRewrite ? (
+                        <button
+                          type="button"
+                          className="mt-2 text-xs underline"
+                          onClick={() => setDetailedDescription(moderationPreview.suggestedRewrite || "")}
+                        >
+                          Áp dụng gợi ý viết lại
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {moderationError ? (
+                    <p className="text-sm text-destructive">{moderationError}</p>
+                  ) : null}
+                  {(moderationPreview?.matchedTerms?.length ?? 0) > 0 ? (
+                    <div className="rounded-lg border bg-muted/30 p-3 text-sm leading-6 text-foreground">
+                      {highlightedDescriptionPreview}
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
 
@@ -729,7 +909,7 @@ export function ShopProfileScreen({
 
                   <div className="space-y-2">
                     {(poiApprovalStatus === "unregistered" || poiApprovalStatus === "rejected") && (
-                      <Button className="w-full gap-2" onClick={onSubmitPoiRegistration}>
+                      <Button className="w-full gap-2" onClick={() => { void handleSubmitPoiRegistration() }} disabled={isModerationChecking || isModerationBlocked}>
                         <Send className="h-4 w-4" />
                         {poiApprovalStatus === "rejected" ? "Gửi lại yêu cầu" : "Gửi đăng ký POI"}
                       </Button>

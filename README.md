@@ -78,6 +78,27 @@ cp apps/api-server/.env.example apps/api-server/.env
 - `AZURE_SPEECH_REGION`
 - `AZURE_SPEECH_TTS_ENDPOINT`
 
+## POI moderation by AI (Content Safety + Qwen/Ollama)
+
+Backend POI flow (`create`, `update`, `submit`) can tu dong moderation:
+
+- Layer 1: Azure AI Content Safety (text safety score)
+- Layer 2: local LLM qua Ollama (Qwen semantic check)
+
+Them cac bien sau vao `apps/api-server/.env`:
+
+- `AZURE_CONTENT_SAFETY_KEY`
+- `AZURE_CONTENT_SAFETY_ENDPOINT`
+- `AZURE_CONTENT_SAFETY_API_VERSION` (default `2024-09-01`)
+- `POI_MODERATION_ENABLED` (`true/false`)
+- `LLM_PROVIDER` (default `ollama`)
+- `OLLAMA_BASE_URL` (default `http://localhost:11434`)
+- `OLLAMA_MODEL` (vi du `qwen3:4b`)
+- `OLLAMA_TIMEOUT_MS`
+- `OLLAMA_THINK`
+
+Neu chua cau hinh du, backend van chay theo fallback heuristic va khong crash luong tao POI.
+
 `application.yaml` da duoc cau hinh de tu dong nap `.env` tu:
 
 - `./.env`

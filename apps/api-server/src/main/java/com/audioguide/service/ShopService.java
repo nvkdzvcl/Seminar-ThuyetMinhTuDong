@@ -7,11 +7,15 @@ import com.audioguide.dto.shopDTO.ShopResponse;
 import com.audioguide.dto.shopDTO.ShopTypeResponse;
 import com.audioguide.dto.shopDTO.ShopUpdateRequest;
 import com.audioguide.entity.ShopType;
+import com.audioguide.dto.poiDTO.PoiModerationPreviewRequest;
 import com.audioguide.enums.Status;
+import com.audioguide.enums.PoiStatus;
 import com.audioguide.enums.UserRole;
 import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;
 import com.audioguide.mapper.ShopMapper;
+import com.audioguide.repository.PoiApprovalHistoryRepository;
+import com.audioguide.repository.PoiRepository;
 import com.audioguide.repository.ShopRepository;
 import com.audioguide.repository.ShopTypeRepository;
 import com.audioguide.repository.UserRepository;
@@ -29,6 +33,7 @@ import com.audioguide.utils.FileStoreUtil;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -43,6 +48,9 @@ public class ShopService {
     ShopTypeRepository shopTypeRepository;
     ShopMapper shopMapper;
     UserRepository userRepository;
+    PoiRepository poiRepository;
+    PoiApprovalHistoryRepository poiApprovalHistoryRepository;
+    PoiModerationService poiModerationService;
 
     Path IMAGE_DIR = Path.of("uploads/shop-images");
     Path AUDIO_DIR = Path.of("uploads/shop-audios");
@@ -73,6 +81,8 @@ public class ShopService {
                     .orElseThrow(() -> new AppException(ErrorCode.SHOP_TYPE_NOT_FOUND))
                 : shopTypeRepository.findFirstByOrderByIdAsc()
                     .orElseThrow(() -> new AppException(ErrorCode.SHOP_TYPE_NOT_FOUND));
+
+        ensureShopContentAllowedForOwner(request.getName(), request.getAddress(), request.getDescription(), shopType.getName(), null);
 
         var coordinates = resolveCoordinatesForCreate(request);
         var shop = shopMapper.toShopFromShopCreateRequest(request);
@@ -176,6 +186,18 @@ public class ShopService {
                     return new AppException(ErrorCode.SHOP_NOT_FOUND);
                 });
 
+        String effectiveName = hasText(request.getName()) ? request.getName().trim() : shop.getName();
+        String effectiveAddress = hasText(request.getAddress()) ? request.getAddress().trim() : shop.getAddress();
+        String effectiveDescription = hasText(request.getDescription()) ? request.getDescription().trim() : shop.getDescription();
+        String effectiveCategory = shop.getShopType() != null ? shop.getShopType().getName() : null;
+        ensureShopContentAllowedForOwner(
+                effectiveName,
+                effectiveAddress,
+                effectiveDescription,
+                effectiveCategory,
+                null
+        );
+
         var coordinates = resolveCoordinatesForUpdate(request);
         if (coordinates != null) {
             request.setLat(coordinates.lat());
@@ -183,6 +205,7 @@ public class ShopService {
         }
         shopMapper.updateShopInfo(shop, request);
         var updatedShop = shopRepository.save(shop);
+        syncPoiAfterShopUpdate(updatedShop, true);
         log.info("Shop {} updated successfully by owner {}", updatedShop.getId(), ownerId);
         return shopMapper.toShopResponseFromShop(updatedShop);
     }
@@ -357,6 +380,72 @@ public class ShopService {
                 .name(shopType.getName())
                 .description(shopType.getDescription())
                 .build();
+    }
+
+    private void ensureShopContentAllowedForOwner(
+            String name,
+            String address,
+            String description,
+            String category,
+            String region
+    ) {
+        var preview = poiModerationService.previewForShopOwner(
+                PoiModerationPreviewRequest.builder()
+                        .name(name)
+                        .address(address)
+                        .description(description)
+                        .category(category)
+                        .region(region)
+                        .build()
+        );
+
+        if ("BLOCK".equalsIgnoreCase(preview.getDecision())) {
+            throw new AppException(ErrorCode.SHOP_CONTENT_BLOCKED_BY_AI);
+        }
+    }
+
+    private void syncPoiAfterShopUpdate(com.audioguide.entity.Shop shop, boolean savePendingHistory) {
+        var poiOptional = poiRepository.findByShopId(shop.getId());
+        if (poiOptional.isEmpty()) {
+            return;
+        }
+
+        var poi = poiOptional.get();
+        poi.setName(shop.getName());
+        poi.setDescription(shop.getDescription());
+        poi.setAddress(shop.getAddress());
+        poi.setLat(shop.getLat());
+        poi.setLng(shop.getLng());
+        poi.setCategory(shop.getShopType() != null ? shop.getShopType().getName() : poi.getCategory());
+        poi.setOwnerId(shop.getOwner() != null ? shop.getOwner().getId() : poi.getOwnerId());
+        poi.setOwnerName(shop.getOwner() != null ? shop.getOwner().getFullName() : poi.getOwnerName());
+        poi.setCoverImage(shop.getImageName());
+        poi.setStatus(PoiStatus.DRAFT);
+        poi.setRejectionReason(null);
+        poi.setUpdatedAt(LocalDateTime.now());
+
+        poiModerationService.evaluateAndApply(poi);
+        poi.setUpdatedAt(LocalDateTime.now());
+        poi = poiRepository.save(poi);
+
+        if (poi.getStatus() == PoiStatus.FLAGGED) {
+            saveApprovalHistory(shop.getId(), poi.getId(), "rejected", "AI Moderation", poi.getRejectionReason());
+        } else if (savePendingHistory) {
+            saveApprovalHistory(shop.getId(), poi.getId(), "pending", null, null);
+        }
+    }
+
+    private void saveApprovalHistory(Integer shopId, Integer poiId, String status, String reviewer, String reason) {
+        var now = LocalDateTime.now();
+        poiApprovalHistoryRepository.save(com.audioguide.entity.PoiApprovalHistory.builder()
+                .shopId(shopId)
+                .poiId(poiId)
+                .status(status)
+                .submittedAt(now)
+                .reviewer(reviewer)
+                .reviewedAt(reviewer != null ? now : null)
+                .reason(reason)
+                .build());
     }
 
     private record RequiredShopType(String name, String description) {}

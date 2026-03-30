@@ -28,6 +28,7 @@ import { Separator } from '@/components/ui/separator'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { EmptyState } from '@/components/shared/EmptyState'
 import type { POI } from '@/types'
+import { fetchAdminSettings } from '@/services/adminSettingsService'
 import {
   fetchPoiDetailById,
   updatePoi,
@@ -64,6 +65,7 @@ function toCurrency(value?: number) {
 }
 
 const DEFAULT_CUSTOMER_WEB_URL = 'http://localhost:5173'
+const DEFAULT_RISK_THRESHOLD_HIGH = 70
 
 function resolveCustomerBaseUrl(rawBaseUrl?: string): string {
   if (!rawBaseUrl?.trim()) {
@@ -85,9 +87,11 @@ export function POIDetailPage() {
   const [reviewReason, setReviewReason] = useState('')
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [isRescanningAi, setIsRescanningAi] = useState(false)
   const [shopQrDataUrl, setShopQrDataUrl] = useState('')
   const [isGeneratingQr, setIsGeneratingQr] = useState(false)
   const [qrError, setQrError] = useState('')
+  const [riskThresholdHigh, setRiskThresholdHigh] = useState(DEFAULT_RISK_THRESHOLD_HIGH)
 
   const loadDetail = useCallback(async () => {
     if (!id) return
@@ -110,6 +114,83 @@ export function POIDetailPage() {
   useEffect(() => {
     void loadDetail()
   }, [loadDetail])
+
+  useEffect(() => {
+    let disposed = false
+
+    const loadModerationSettings = async () => {
+      try {
+        const settings = await fetchAdminSettings()
+        const rawThreshold = settings.find((item) => item.key === 'risk_threshold_high')?.value
+        const parsed = Number.parseInt(rawThreshold ?? '', 10)
+        if (!disposed && Number.isFinite(parsed)) {
+          setRiskThresholdHigh(Math.min(100, Math.max(0, parsed)))
+        }
+      } catch {
+        if (!disposed) {
+          setRiskThresholdHigh(DEFAULT_RISK_THRESHOLD_HIGH)
+        }
+      }
+    }
+
+    void loadModerationSettings()
+    return () => {
+      disposed = true
+    }
+  }, [])
+
+  const latestPoiModerationLog = useMemo(() => {
+    if (systemLogs.length === 0) return null
+    return (
+      systemLogs.find((item) => item.fieldName === 'poi.description') ??
+      systemLogs[0]
+    )
+  }, [systemLogs])
+
+  const aiLabels = useMemo(() => {
+    const labels = latestPoiModerationLog?.labels ?? ''
+    if (!labels.trim()) return []
+    return labels
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 8)
+  }, [latestPoiModerationLog?.labels])
+
+  const aiMatchedTerms = useMemo(() => {
+    const terms = latestPoiModerationLog?.matchedTerms ?? ''
+    if (!terms.trim()) return []
+    return terms
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 8)
+  }, [latestPoiModerationLog?.matchedTerms])
+
+  const poiRiskScore = poi?.riskScore ?? 0
+  const aiRiskLabel =
+    poiRiskScore >= riskThresholdHigh
+      ? 'Rủi ro cao'
+      : poiRiskScore >= Math.max(30, riskThresholdHigh - 20)
+        ? 'Cần xem lại'
+        : 'Rủi ro thấp'
+  const aiRiskRingClass =
+    poiRiskScore >= riskThresholdHigh
+      ? 'border-red-200'
+      : poiRiskScore >= Math.max(30, riskThresholdHigh - 20)
+        ? 'border-amber-200'
+        : 'border-emerald-200'
+
+  const approvalBlockedReason = useMemo(() => {
+    if (!poi) return ''
+    if (poi.status === 'flagged') {
+      return 'POI đang bị gắn cờ bởi AI hoặc admin, cần chỉnh sửa hoặc từ chối trước khi duyệt.'
+    }
+    if (poi.riskFlag && (poi.riskScore ?? 0) >= riskThresholdHigh) {
+      return `Điểm rủi ro ${poi.riskScore ?? 0}/100 vượt ngưỡng duyệt ${riskThresholdHigh}/100.`
+    }
+    return ''
+  }, [poi, riskThresholdHigh])
 
   const handleSaveDraft = async () => {
     if (!id || !poi?.shopId) return
@@ -137,6 +218,10 @@ export function POIDetailPage() {
 
   const handleApprove = async () => {
     if (!id) return
+    if (approvalBlockedReason) {
+      toast.error(approvalBlockedReason)
+      return
+    }
 
     setIsUpdatingStatus(true)
     try {
@@ -173,6 +258,30 @@ export function POIDetailPage() {
       toast.error(error instanceof Error ? error.message : 'Từ chối POI thất bại')
     } finally {
       setIsUpdatingStatus(false)
+    }
+  }
+
+  const handleRescanAi = async () => {
+    if (!id || !poi?.shopId) return
+
+    setIsRescanningAi(true)
+    try {
+      const updatedPoi = await updatePoi(id, {
+        shopId: Number(poi.shopId),
+        description: description.trim(),
+        region: poi.region,
+        category: poi.category,
+        qrCode: poi.qrCode,
+        riskFlag: poi.riskFlag,
+        riskScore: poi.riskScore,
+      })
+      setPoi(updatedPoi)
+      toast.success('Đã quét AI lại cho POI')
+      await loadDetail()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Quét AI thất bại')
+    } finally {
+      setIsRescanningAi(false)
     }
   }
 
@@ -303,13 +412,20 @@ export function POIDetailPage() {
             size="sm"
             className="bg-blue-600 hover:bg-blue-500"
             onClick={() => void handleApprove()}
-            disabled={isUpdatingStatus}
+            disabled={isUpdatingStatus || Boolean(approvalBlockedReason)}
           >
             <Check className="mr-2 h-4 w-4" />
-            {isUpdatingStatus ? 'Đang xử lý...' : 'Duyệt'}
+            {isUpdatingStatus ? 'Đang xử lý...' : approvalBlockedReason ? 'Bị chặn bởi AI' : 'Duyệt'}
           </Button>
         </div>
       </div>
+
+      {approvalBlockedReason ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <CircleAlert className="mr-1.5 inline h-4 w-4" />
+          {approvalBlockedReason}
+        </div>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_340px]">
         <div className="space-y-5">
@@ -513,29 +629,66 @@ export function POIDetailPage() {
           <Card>
             <CardContent className="space-y-4 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Phân tích an toàn AI</h3>
-              <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 border-emerald-200">
+              <div className={`mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 ${aiRiskRingClass}`}>
                 <div className="text-center">
-                  <p className="text-3xl font-bold">{poi.riskScore ?? 15}</p>
-                  <p className="text-xs text-muted-foreground">Rủi ro thấp</p>
+                  <p className="text-3xl font-bold">{poiRiskScore}</p>
+                  <p className="text-xs text-muted-foreground">{aiRiskLabel}</p>
                 </div>
               </div>
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">AI Labels</p>
                 <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="secondary">Ẩm thực</Badge>
-                  <Badge variant="secondary">Hà Nội</Badge>
-                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">An toàn</Badge>
+                  {aiLabels.length > 0 ? (
+                    aiLabels.map((label) => (
+                      <Badge key={label} variant="secondary">
+                        {label}
+                      </Badge>
+                    ))
+                  ) : (
+                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">An toàn</Badge>
+                  )}
                 </div>
               </div>
+              {aiMatchedTerms.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Từ khóa cảnh báo</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {aiMatchedTerms.map((term) => (
+                      <Badge key={term} variant="outline" className="border-red-200 text-red-700">
+                        {term}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-                Gợi ý chỉnh sửa: AI đề xuất thêm thông tin vị trí để mô tả dễ tạo audio tự nhiên hơn.
+                {latestPoiModerationLog?.suggestedRewrite?.trim()
+                  ? `Gợi ý chỉnh sửa: ${latestPoiModerationLog.suggestedRewrite}`
+                  : 'AI chưa trả gợi ý chỉnh sửa cụ thể cho POI này.'}
               </div>
+              {latestPoiModerationLog?.modelVersion ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Model: {latestPoiModerationLog.modelVersion}
+                </p>
+              ) : null}
               <div className="flex items-center justify-between">
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (latestPoiModerationLog?.suggestedRewrite?.trim()) {
+                      setDescription(latestPoiModerationLog.suggestedRewrite.trim().slice(0, 500))
+                    } else {
+                      toast.info('AI chưa có gợi ý rewrite để áp dụng.')
+                    }
+                  }}
+                >
                   <Bot className="mr-1 h-4 w-4" />
                   Áp dụng gợi ý
                 </Button>
-                <Button size="sm">Quét AI ngay</Button>
+                <Button size="sm" onClick={() => void handleRescanAi()} disabled={isRescanningAi || isUpdatingStatus}>
+                  {isRescanningAi ? 'Đang quét...' : 'Quét AI ngay'}
+                </Button>
               </div>
             </CardContent>
           </Card>

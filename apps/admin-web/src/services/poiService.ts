@@ -89,8 +89,13 @@ export interface PoiModerationLogDetail {
   id: string
   menuItemId?: string
   fieldName: string
+  textSnapshot?: string
   status?: string
   riskScore?: number
+  labels?: string
+  matchedTerms?: string
+  suggestedRewrite?: string
+  modelVersion?: string
   createdAt?: string
 }
 
@@ -261,8 +266,13 @@ export async function fetchPoiDetailById(id: string): Promise<PoiDetail> {
       id: String(item.id),
       menuItemId: item.menuItemId != null ? String(item.menuItemId) : undefined,
       fieldName: item.fieldName,
+      textSnapshot: item.textSnapshot ?? undefined,
       status: item.status ?? undefined,
       riskScore: item.riskScore ?? undefined,
+      labels: item.labels ?? undefined,
+      matchedTerms: item.matchedTerms ?? undefined,
+      suggestedRewrite: item.suggestedRewrite ?? undefined,
+      modelVersion: item.modelVersion ?? undefined,
       createdAt: item.createdAt ?? undefined,
     })),
     approvalHistory: detail.approvalHistory.map((item) => ({

@@ -29,6 +29,8 @@ public enum ErrorCode {
     SHOP_NOT_FOUND( "SHOP_NOT_FOUND", HttpStatus.NOT_FOUND, "Shop not found"),
     SHOP_TYPE_NOT_FOUND( "SHOP_TYPE_NOT_FOUND", HttpStatus.NOT_FOUND, "Shop type not found"),
     POI_NOT_FOUND( "POI_NOT_FOUND", HttpStatus.NOT_FOUND, "POI not found"),
+    SHOP_CONTENT_BLOCKED_BY_AI("SHOP_CONTENT_BLOCKED_BY_AI", HttpStatus.BAD_REQUEST, "Mo ta co noi dung nhay cam/khong phu hop, vui long chinh sua truoc khi luu"),
+    POI_APPROVAL_BLOCKED_BY_AI("POI_APPROVAL_BLOCKED_BY_AI", HttpStatus.BAD_REQUEST, "POI dang bi AI gan co rui ro cao, khong the duyet"),
 
     FORBIDDEN( "FORBIDDEN", HttpStatus.FORBIDDEN, "You do not have permission to access this resource"),
     USER_ALREADY_HAS_SHOP( "USER_ALREADY_HAS_SHOP", HttpStatus.BAD_REQUEST, "User already has a shop"),

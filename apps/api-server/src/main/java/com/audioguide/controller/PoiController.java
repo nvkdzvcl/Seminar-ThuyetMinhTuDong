@@ -4,10 +4,13 @@ import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.poiDTO.PoiCreateRequest;
 import com.audioguide.dto.poiDTO.PoiApprovalSummaryResponse;
+import com.audioguide.dto.poiDTO.PoiModerationPreviewRequest;
+import com.audioguide.dto.poiDTO.PoiModerationPreviewResponse;
 import com.audioguide.dto.poiDTO.PoiResponse;
 import com.audioguide.dto.poiDTO.PoiStatusUpdateRequest;
 import com.audioguide.dto.poiDTO.PoiUpdateRequest;
 import com.audioguide.enums.PoiStatus;
+import com.audioguide.service.PoiModerationService;
 import com.audioguide.service.PoiService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class PoiController {
 
     PoiService poiService;
+    PoiModerationService poiModerationService;
 
     @GetMapping
     ApiResponse<PagingDto<PoiResponse>> getAll(
@@ -62,6 +66,17 @@ public class PoiController {
         return ApiResponse.<PoiApprovalSummaryResponse>builder()
                 .message("Submit POI registration successfully")
                 .result(poiService.submitRegistration(shopId))
+                .build();
+    }
+
+    @PostMapping("/moderation/preview")
+    @PreAuthorize("hasAnyAuthority('OWNER_SHOP','ADMIN','SUPER_ADMIN')")
+    ApiResponse<PoiModerationPreviewResponse> previewModeration(
+            @RequestBody PoiModerationPreviewRequest request
+    ) {
+        return ApiResponse.<PoiModerationPreviewResponse>builder()
+                .message("Preview POI moderation successfully")
+                .result(poiModerationService.previewForShopOwner(request))
                 .build();
     }
 

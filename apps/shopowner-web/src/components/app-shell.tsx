@@ -12,6 +12,7 @@ import { AudioManagementScreen } from "./screens/audio-management-screen"
 import { ApprovalHistoryScreen } from "./screens/approval-history-screen"
 import { getPoiApprovalSummary, submitPoiRegistration } from "@/services/poi-approval-service"
 import { createShop, getMyShop, getShopTypes, updateMyShop, type CreateShopPayload, type ShopTypeOption } from "@/services/shop-service"
+import { previewPoiModeration } from "@/services/poi-moderation-service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -340,6 +341,33 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
       return
     }
 
+    try {
+      const moderationPreview = await previewPoiModeration({
+        name: createShopName.trim(),
+        address: createShopAddress.trim(),
+        description: createShopDescription.trim(),
+        category: SHOP_CATEGORIES.find((category) => category.key === createShopCategoryKey)?.label,
+      })
+      if (moderationPreview.decision === "BLOCK") {
+        setNotice({
+          type: "error",
+          message: moderationPreview.message || "Mô tả có dấu hiệu nhạy cảm, vui lòng chỉnh sửa trước khi tạo quán.",
+        })
+        return
+      }
+      if (moderationPreview.decision === "WARN") {
+        setNotice({
+          type: "info",
+          message: moderationPreview.message || "Mô tả có dấu hiệu chưa phù hợp, bạn nên chỉnh sửa trước khi gửi duyệt.",
+        })
+      }
+    } catch {
+      setNotice({
+        type: "info",
+        message: "Không kiểm tra được nội dung tự động. Hệ thống vẫn tiếp tục tạo quán và sẽ kiểm duyệt ở bước sau.",
+      })
+    }
+
     const payload: CreateShopPayload = {
       name: createShopName.trim(),
       address: createShopAddress.trim(),
@@ -469,9 +497,10 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 setShopDescription(updatedShop.description || "")
                 setShopLat(typeof updatedShop.lat === "number" ? updatedShop.lat : null)
                 setShopLng(typeof updatedShop.lng === "number" ? updatedShop.lng : null)
+                await loadApprovalSummary(updatedShop.id)
                 setNotice({
                   type: "success",
-                  message: "Đã lưu thông tin cửa hàng.",
+                  message: "Đã lưu thông tin cửa hàng. Nội dung mới đã được đưa về hàng chờ admin duyệt.",
                 })
               } catch (error) {
                 setNotice({

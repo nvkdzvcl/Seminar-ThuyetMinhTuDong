@@ -22,6 +22,7 @@ import com.audioguide.repository.PoiMenuItemRepository;
 import com.audioguide.repository.PoiModerationLogRepository;
 import com.audioguide.repository.PoiRepository;
 import com.audioguide.repository.ShopRepository;
+import com.audioguide.repository.AdminSettingRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -41,6 +42,8 @@ public class PoiService {
     PoiMenuItemRepository poiMenuItemRepository;
     PoiModerationLogRepository poiModerationLogRepository;
     ShopRepository shopRepository;
+    AdminSettingRepository adminSettingRepository;
+    PoiModerationService poiModerationService;
 
     public PagingDto<PoiResponse> getAll(
             int page,
@@ -131,12 +134,16 @@ public class PoiService {
                 .updatedAt(now)
                 .build();
         var saved = poiRepository.save(poi);
-        saveHistory(saved.getShopId(), saved.getId(), "pending", null, null);
+        poiModerationService.evaluateAndApply(saved);
+        saved.setUpdatedAt(LocalDateTime.now());
+        saved = poiRepository.save(saved);
+        saveRegistrationHistoryByModeration(saved);
         return toResponse(saved);
     }
 
     public PoiResponse update(Integer id, PoiUpdateRequest request) {
         var poi = findByIdOrThrow(id);
+        var previousStatus = poi.getStatus();
         var shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
         poi.setShopId(shop.getId());
@@ -155,12 +162,20 @@ public class PoiService {
         poi.setRiskFlag(Boolean.TRUE.equals(request.getRiskFlag()));
         poi.setRiskScore(request.getRiskScore());
         poi.setUpdatedAt(LocalDateTime.now());
-        return toResponse(poiRepository.save(poi));
+        var saved = poiRepository.save(poi);
+        poiModerationService.evaluateAndApply(saved);
+        saved.setUpdatedAt(LocalDateTime.now());
+        saved = poiRepository.save(saved);
+        if (previousStatus != PoiStatus.FLAGGED && saved.getStatus() == PoiStatus.FLAGGED) {
+            saveHistory(saved.getShopId(), saved.getId(), "rejected", "AI Moderation", saved.getRejectionReason());
+        }
+        return toResponse(saved);
     }
 
     public PoiResponse updateStatus(Integer id, PoiStatusUpdateRequest request) {
         var poi = findByIdOrThrow(id);
         var normalizedReason = normalizeBlank(request.getReason());
+        ensureCanPublishByAiPolicy(poi, request.getStatus());
         poi.setStatus(request.getStatus());
         if (request.getStatus() == PoiStatus.FLAGGED || request.getStatus() == PoiStatus.HIDDEN) {
             poi.setRejectionReason(normalizedReason);
@@ -222,7 +237,10 @@ public class PoiService {
         poi.setRejectionReason(null);
         poi.setUpdatedAt(now);
         var saved = poiRepository.save(poi);
-        saveHistory(shopId, saved.getId(), "pending", null, null);
+        poiModerationService.evaluateAndApply(saved);
+        saved.setUpdatedAt(LocalDateTime.now());
+        saved = poiRepository.save(saved);
+        saveRegistrationHistoryByModeration(saved);
         return getApprovalSummaryByShopId(shopId);
     }
 
@@ -373,5 +391,47 @@ public class PoiService {
                 .reviewedAt(reviewer != null ? now : null)
                 .reason(reason)
                 .build());
+    }
+
+    private void saveRegistrationHistoryByModeration(Poi poi) {
+        if (poi.getStatus() == PoiStatus.FLAGGED) {
+            saveHistory(poi.getShopId(), poi.getId(), "rejected", "AI Moderation", poi.getRejectionReason());
+            return;
+        }
+        saveHistory(poi.getShopId(), poi.getId(), "pending", null, null);
+    }
+
+    private void ensureCanPublishByAiPolicy(Poi poi, PoiStatus targetStatus) {
+        if (targetStatus != PoiStatus.PUBLISHED) {
+            return;
+        }
+
+        int highThreshold = readIntSetting("risk_threshold_high", 70, 0, 100);
+        int riskScore = poi.getRiskScore() == null ? 0 : poi.getRiskScore();
+        boolean isFlaggedByRisk = Boolean.TRUE.equals(poi.getRiskFlag()) && riskScore >= highThreshold;
+        boolean isAlreadyFlagged = poi.getStatus() == PoiStatus.FLAGGED;
+
+        if (isFlaggedByRisk || isAlreadyFlagged) {
+            throw new AppException(ErrorCode.POI_APPROVAL_BLOCKED_BY_AI);
+        }
+    }
+
+    private int readIntSetting(String key, int defaultValue, int min, int max) {
+        return adminSettingRepository.findBySettingKey(key)
+                .map(setting -> setting.getSettingValue())
+                .map(value -> parseInt(value, defaultValue))
+                .map(value -> Math.min(max, Math.max(min, value)))
+                .orElse(defaultValue);
+    }
+
+    private int parseInt(String value, int defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException exception) {
+            return defaultValue;
+        }
     }
 }
