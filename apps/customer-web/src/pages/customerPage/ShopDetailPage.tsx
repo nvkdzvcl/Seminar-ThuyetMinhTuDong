@@ -174,6 +174,7 @@ function ShopDetailPage() {
                 type: "SHOP",
                 url: narrationAudioUrl,
                 title: shop.name,
+                shopId: shop.id,
             });
             setNeedsUserGestureToPlay(false);
         } catch (error) {

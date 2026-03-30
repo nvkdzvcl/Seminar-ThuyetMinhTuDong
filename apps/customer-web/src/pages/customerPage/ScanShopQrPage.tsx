@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
 import { routePath } from "../../routes/route";
 import { resolvePreferredLanguage } from "../../utils/language";
+import { analyticsService } from "../../services/analyticsService";
 
 const SHOP_ID_PATTERNS = [
     /(?:^|[/?#=&])shopId(?:=|\/)(\d+)(?:$|[/?#&])/i,
@@ -139,6 +140,19 @@ function ScanShopQrPage() {
 
         alert(`Đã nhận QR quán #${shopId}. Đang chuyển tới trang quán.`);
         const preferredLanguage = resolvePreferredLanguage();
+        void analyticsService
+            .trackEvent({
+                shopId,
+                eventType: "QR_SCAN",
+                source: "QR_DIRECT",
+                languageCode: preferredLanguage,
+                metadata: {
+                    from: "scan_qr_page",
+                },
+            })
+            .catch((error) => {
+                console.error("Track QR scan event failed:", error);
+            });
         const shopPath = routePath.ShopDetailPage.replace(":shopId", String(shopId));
         navigate(`${shopPath}?autoplay=1&lang=${encodeURIComponent(preferredLanguage)}`, { replace: true });
     };

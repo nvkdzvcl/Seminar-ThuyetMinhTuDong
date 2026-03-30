@@ -77,6 +77,7 @@ function SearchShopPage() {
                 type: "SHOP",
                 url: targetShop.audioURL,
                 title: targetShop.name,
+                shopId: targetShop.id,
             });
         } catch (error) {
             console.error("Nghe audio quán lỗi:", error);

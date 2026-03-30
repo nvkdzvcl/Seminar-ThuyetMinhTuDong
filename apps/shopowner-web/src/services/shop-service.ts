@@ -48,8 +48,8 @@ export interface ShopTypeOption {
   description?: string
 }
 
-export function getMyShop(): Promise<OwnerShop> {
-  return apiFetch<OwnerShop>("/shop/me")
+export function getMyShop(): Promise<OwnerShop | null> {
+  return apiFetch<OwnerShop | null>("/shop/me")
 }
 
 export function getShopTypes(): Promise<ShopTypeOption[]> {

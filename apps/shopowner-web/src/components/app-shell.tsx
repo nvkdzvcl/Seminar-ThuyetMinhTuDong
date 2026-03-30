@@ -197,6 +197,19 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     setIsLoadingOwnerContext(true)
     try {
       const shop = await getMyShop()
+      if (!shop) {
+        setShopId(null)
+        setShopLat(null)
+        setShopLng(null)
+        setPoiApprovalStatus("unregistered")
+        setRejectionReason("")
+        setApprovalHistory([])
+        setNotice({
+          type: "info",
+          message: "Tài khoản hiện chưa có cửa hàng. Bạn có thể tạo cửa hàng mới ngay bên dưới.",
+        })
+        return
+      }
       setShopId(shop.id)
       setShopName(shop.name || "Quán của tôi")
       setShopAddress(shop.address || "")
@@ -464,7 +477,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
           />
         )
       case "qr":
-        return <QRScreen onNavigate={navigateTo} shopId={shopId ?? 0} shopName={shopName} />
+        return <QRScreen shopId={shopId ?? 0} shopName={shopName} />
       case "insights":
         return <InsightsScreen />
       case "shop-profile":

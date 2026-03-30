@@ -7,6 +7,8 @@ import {
     type AudioEntityType,
     type AudioTriggerType,
 } from "./slices/audioSlice";
+import { analyticsService } from "../services/analyticsService";
+import { resolvePreferredLanguage } from "../utils/language";
 
 type PlayAudioInput = {
     id: number;
@@ -43,6 +45,47 @@ const stopGlobalAudio = () => {
     globalAudio.currentTime = 0;
     globalAudio.src = "";
     globalAudio = null;
+};
+
+const getResolvedShopId = (type: AudioEntityType, id: number, shopId?: number) => {
+    if (shopId) {
+        return shopId;
+    }
+
+    if (type === "SHOP") {
+        return id;
+    }
+
+    return null;
+};
+
+const trackAudioEvent = (
+    eventType: "AUDIO_PLAY_START" | "AUDIO_PLAY_COMPLETE" | "AUDIO_PLAY_ERROR",
+    payload: { id: number; type: AudioEntityType; title?: string; shopId?: number; trigger?: AudioTriggerType },
+    metadata?: Record<string, unknown>
+) => {
+    const resolvedShopId = getResolvedShopId(payload.type, payload.id, payload.shopId);
+    if (!resolvedShopId) {
+        return;
+    }
+
+    void analyticsService
+        .trackEvent({
+            shopId: resolvedShopId,
+            dishId: payload.type === "DISH" ? payload.id : undefined,
+            eventType,
+            source: "CUSTOMER_WEB",
+            languageCode: resolvePreferredLanguage(),
+            metadata: {
+                entityType: payload.type,
+                title: payload.title || null,
+                trigger: payload.trigger || "MANUAL",
+                ...metadata,
+            },
+        })
+        .catch((error) => {
+            console.error(`Track ${eventType} failed:`, error);
+        });
 };
 
 export function useAudioPlayer() {
@@ -104,6 +147,7 @@ export function useAudioPlayer() {
 
             nextAudio.onended = () => {
                 const endedAudio = { id, type, url, title, shopId, trigger };
+                trackAudioEvent("AUDIO_PLAY_COMPLETE", endedAudio);
                 dispatch(clearAudioState());
                 stopGlobalAudio();
                 alert(`Audio của ${getAudioLabel(endedAudio)} đã phát xong`);
@@ -120,8 +164,13 @@ export function useAudioPlayer() {
                     alert(`Đang phát audio của ${getAudioLabel({ type, title })}`);
                 }
 
+                trackAudioEvent("AUDIO_PLAY_START", { id, type, title, shopId, trigger });
+
                 return true;
             } catch (error) {
+                trackAudioEvent("AUDIO_PLAY_ERROR", { id, type, title, shopId, trigger }, {
+                    errorMessage: error instanceof Error ? error.message : "unknown",
+                });
                 dispatch(clearAudioState());
                 stopGlobalAudio();
                 if (!isAutoplayBlockedError(error)) {
@@ -144,6 +193,7 @@ export function useAudioPlayer() {
             if (globalAudio.paused) {
                 await globalAudio.play();
                 dispatch(setAudioPlaying(true));
+                trackAudioEvent("AUDIO_PLAY_START", { id, type, title, shopId, trigger });
                 alert(`Đang phát audio của ${getAudioLabel({ type, title })}`);
                 return true;
             }

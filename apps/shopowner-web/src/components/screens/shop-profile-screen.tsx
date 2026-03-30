@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -61,6 +61,10 @@ const touristTags = [
 
 const SHORT_DESCRIPTION_LIMIT = 140
 const DETAILED_DESCRIPTION_LIMIT = 500
+const MODERATION_MIN_DESCRIPTION_LENGTH = 20
+const MODERATION_IDLE_MS = 1800
+const SAVE_BUTTON_DEFAULT_LABEL = "Lưu thay đổi"
+const SAVE_BUTTON_BLOCKED_LABEL = "Cần chỉnh sửa nội dung"
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -99,8 +103,19 @@ export function ShopProfileScreen({
   const [isModerationChecking, setIsModerationChecking] = useState(false)
   const [moderationPreview, setModerationPreview] = useState<PoiModerationPreviewResult | null>(null)
   const [moderationError, setModerationError] = useState<string | null>(null)
+  const [hasEditedDetailedDescription, setHasEditedDetailedDescription] = useState(false)
+  const [autoModerationPaused, setAutoModerationPaused] = useState(false)
   const [contactPhone] = useState("0901 000 003")
   const [contactEmail] = useState("owner@gmail.com")
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
+    if (typeof window === "undefined") {
+      return false
+    }
+    return window.matchMedia("(min-width: 768px)").matches
+  })
+  const moderationRequestRef = useRef(0)
+  const lastAutoModerationFingerprintRef = useRef("")
+  const deferredDetailedDescription = useDeferredValue(detailedDescription)
 
   const isModerationBlocked = moderationPreview?.decision === "BLOCK"
 
@@ -145,6 +160,22 @@ export function ShopProfileScreen({
   const StatusIcon = poiStatusInfo.icon
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    const mediaQuery = window.matchMedia("(min-width: 768px)")
+    const handleViewportChange = (event: MediaQueryListEvent) => {
+      setIsDesktopViewport(event.matches)
+    }
+
+    setIsDesktopViewport(mediaQuery.matches)
+    mediaQuery.addEventListener("change", handleViewportChange)
+    return () => {
+      mediaQuery.removeEventListener("change", handleViewportChange)
+    }
+  }, [])
+
+  useEffect(() => {
     setShopName(initialShopName || "Quán của tôi")
     setAddress(initialShopAddress || "")
     setDetailedDescription(initialShopDescription || "")
@@ -152,13 +183,16 @@ export function ShopProfileScreen({
     setLongitude(typeof initialShopLng === "number" ? String(initialShopLng) : "")
     setCoordinateRaw("")
     setCoordinateError(null)
+    setHasEditedDetailedDescription(false)
+    setAutoModerationPaused(false)
+    lastAutoModerationFingerprintRef.current = ""
     if (initialShopDescription) {
       setShortDescription(initialShopDescription.slice(0, SHORT_DESCRIPTION_LIMIT))
     }
   }, [initialShopName, initialShopAddress, initialShopDescription, initialShopLat, initialShopLng])
 
   const highlightedDescriptionPreview = useMemo(() => {
-    const sourceText = detailedDescription || ""
+    const sourceText = deferredDetailedDescription || ""
     const terms = (moderationPreview?.matchedTerms ?? [])
       .map((item) => item.trim())
       .filter((item) => item.length > 1)
@@ -182,53 +216,119 @@ export function ShopProfileScreen({
         </mark>
       )
     })
-  }, [detailedDescription, moderationPreview?.matchedTerms])
+  }, [deferredDetailedDescription, moderationPreview?.matchedTerms])
 
   const runModerationPreview = async (
     overrideDescription?: string,
+    options?: { showLoading?: boolean; isAuto?: boolean; fingerprint?: string; pauseAutoAfterResult?: boolean },
   ): Promise<PoiModerationPreviewResult | null> => {
+    const nameToCheck = shopName.trim()
+    const categoryToCheck = cuisine.trim()
+    const addressToCheck = address.trim()
     const descriptionToCheck = (overrideDescription ?? detailedDescription).trim()
     if (!descriptionToCheck) {
       setModerationPreview(null)
       setModerationError(null)
+      if (options?.isAuto) {
+        lastAutoModerationFingerprintRef.current = ""
+      }
+      return null
+    }
+    if (descriptionToCheck.length < MODERATION_MIN_DESCRIPTION_LENGTH) {
+      setModerationPreview(null)
+      setModerationError(null)
+      if (options?.isAuto) {
+        lastAutoModerationFingerprintRef.current = ""
+      }
       return null
     }
 
-    setIsModerationChecking(true)
+    const fingerprint =
+      options?.fingerprint ??
+      `${nameToCheck}||${categoryToCheck}||${addressToCheck}||${descriptionToCheck}`
+    if (options?.isAuto) {
+      if (fingerprint === lastAutoModerationFingerprintRef.current) {
+        return moderationPreview
+      }
+      lastAutoModerationFingerprintRef.current = fingerprint
+    }
+
+    const requestId = ++moderationRequestRef.current
+    const shouldShowLoading = options?.showLoading ?? true
+
+    if (shouldShowLoading) {
+      setIsModerationChecking(true)
+    }
     setModerationError(null)
     try {
       const preview = await previewPoiModeration({
-        name: shopName.trim(),
-        category: cuisine.trim(),
-        address: address.trim(),
+        name: nameToCheck,
+        category: categoryToCheck,
+        address: addressToCheck,
         description: descriptionToCheck,
       })
+      if (requestId !== moderationRequestRef.current) {
+        return null
+      }
       setModerationPreview(preview)
+      if (options?.isAuto && options.pauseAutoAfterResult) {
+        setAutoModerationPaused(true)
+      }
       return preview
     } catch {
+      if (requestId !== moderationRequestRef.current) {
+        return null
+      }
       setModerationError("Không kiểm tra được nội dung ngay lúc này. Bạn vẫn có thể lưu nháp.")
       return null
     } finally {
-      setIsModerationChecking(false)
+      if (shouldShowLoading && requestId === moderationRequestRef.current) {
+        setIsModerationChecking(false)
+      }
     }
   }
 
   useEffect(() => {
-    const descriptionToCheck = detailedDescription.trim()
-    if (!descriptionToCheck) {
-      setModerationPreview(null)
-      setModerationError(null)
+    if (!hasEditedDetailedDescription || autoModerationPaused) {
+      setIsModerationChecking(false)
       return
     }
 
+    const nameToCheck = shopName.trim()
+    const categoryToCheck = cuisine.trim()
+    const addressToCheck = address.trim()
+    const descriptionToCheck = detailedDescription.trim()
+    if (!descriptionToCheck || descriptionToCheck.length < MODERATION_MIN_DESCRIPTION_LENGTH) {
+      setModerationPreview(null)
+      setModerationError(null)
+      setIsModerationChecking(false)
+      lastAutoModerationFingerprintRef.current = ""
+      return
+    }
+    const fingerprint = `${nameToCheck}||${categoryToCheck}||${addressToCheck}||${descriptionToCheck}`
+
     const timer = window.setTimeout(() => {
-      void runModerationPreview(descriptionToCheck)
-    }, 600)
+      void runModerationPreview(descriptionToCheck, {
+        showLoading: false,
+        isAuto: true,
+        fingerprint,
+        pauseAutoAfterResult: true,
+      })
+    }, MODERATION_IDLE_MS)
 
     return () => {
       window.clearTimeout(timer)
     }
-  }, [detailedDescription, shopName, address, cuisine])
+  }, [detailedDescription, shopName, cuisine, address, hasEditedDetailedDescription, autoModerationPaused])
+
+  const handleDetailedDescriptionChange = (value: string) => {
+    setDetailedDescription(value)
+    setHasEditedDetailedDescription(true)
+    if (autoModerationPaused) {
+      setModerationPreview(null)
+      setModerationError(null)
+    }
+  }
 
   const handleSaveShopProfile = async () => {
     const parseNumberInput = (value: string): number | null => {
@@ -309,10 +409,12 @@ export function ShopProfileScreen({
       : moderationPreview?.decision === "WARN"
         ? "border-amber-200 bg-amber-50 text-amber-700"
         : "border-emerald-200 bg-emerald-50 text-emerald-700"
+  const saveButtonLabel = isModerationBlocked ? SAVE_BUTTON_BLOCKED_LABEL : SAVE_BUTTON_DEFAULT_LABEL
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="md:hidden">
+      {!isDesktopViewport ? (
+      <div>
         <div className="relative h-52 bg-muted">
           <div
             className="absolute inset-0 bg-cover bg-center"
@@ -481,7 +583,7 @@ export function ShopProfileScreen({
                   id="detailed-description-mobile"
                   value={detailedDescription}
                   maxLength={DETAILED_DESCRIPTION_LIMIT}
-                  onChange={(event) => setDetailedDescription(event.target.value)}
+                  onChange={(event) => handleDetailedDescriptionChange(event.target.value)}
                   className="min-h-[140px] resize-none"
                 />
               </div>
@@ -510,6 +612,11 @@ export function ShopProfileScreen({
               ) : null}
               {moderationError ? (
                 <p className="text-sm text-destructive">{moderationError}</p>
+              ) : null}
+              {autoModerationPaused && hasEditedDetailedDescription ? (
+                <p className="text-xs text-muted-foreground">
+                  AI đã tạm dừng tự kiểm tra để ưu tiên nhập liệu. Hệ thống sẽ kiểm tra lại khi bạn bấm Lưu hoặc Gửi duyệt.
+                </p>
               ) : null}
               {(moderationPreview?.matchedTerms?.length ?? 0) > 0 ? (
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm leading-6 text-foreground">
@@ -603,14 +710,14 @@ export function ShopProfileScreen({
             <div className="max-w-md mx-auto">
               <Button className="w-full h-12 text-base font-semibold gap-2" onClick={() => { void handleSaveShopProfile() }} disabled={isSaving || isModerationChecking || isModerationBlocked}>
                 <Save className="w-5 h-5" />
-                {isSaving ? "Đang lưu..." : isModerationBlocked ? "Cần chỉnh sửa nội dung" : "Lưu thay đổi"}
+                {isSaving ? "Đang lưu..." : saveButtonLabel}
               </Button>
             </div>
           </div>
         </div>
-      </div>
+      </div>) : null}
 
-      <div className="hidden md:block">
+      {isDesktopViewport ? (<div className="hidden md:block">
         <div className="mx-auto max-w-6xl px-6 py-8 lg:px-8">
           <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -643,7 +750,7 @@ export function ShopProfileScreen({
                 disabled={isSaving || isModerationChecking || isModerationBlocked}
               >
                 <Save className="h-4 w-4" />
-                {isSaving ? "Đang lưu..." : isModerationBlocked ? "Cần chỉnh sửa nội dung" : "Lưu bản nháp"}
+                {isSaving ? "Đang lưu..." : saveButtonLabel}
               </Button>
               <Button variant="destructive" className="gap-2 whitespace-nowrap" onClick={onLogout}>
                 <LogOut className="h-4 w-4" />
@@ -814,7 +921,7 @@ export function ShopProfileScreen({
                       id="description-desktop"
                       value={detailedDescription}
                       maxLength={DETAILED_DESCRIPTION_LIMIT}
-                      onChange={(event) => setDetailedDescription(event.target.value)}
+                      onChange={(event) => handleDetailedDescriptionChange(event.target.value)}
                       className="min-h-[150px] resize-none"
                     />
                   </div>
@@ -843,7 +950,7 @@ export function ShopProfileScreen({
                         <button
                           type="button"
                           className="mt-2 text-xs underline"
-                          onClick={() => setDetailedDescription(moderationPreview.suggestedRewrite || "")}
+                          onClick={() => handleDetailedDescriptionChange(moderationPreview.suggestedRewrite || "")}
                         >
                           Áp dụng gợi ý viết lại
                         </button>
@@ -852,6 +959,11 @@ export function ShopProfileScreen({
                   ) : null}
                   {moderationError ? (
                     <p className="text-sm text-destructive">{moderationError}</p>
+                  ) : null}
+                  {autoModerationPaused && hasEditedDetailedDescription ? (
+                    <p className="text-xs text-muted-foreground">
+                      AI đã tạm dừng tự kiểm tra để ưu tiên nhập liệu. Hệ thống sẽ kiểm tra lại khi bạn bấm Lưu hoặc Gửi duyệt.
+                    </p>
                   ) : null}
                   {(moderationPreview?.matchedTerms?.length ?? 0) > 0 ? (
                     <div className="rounded-lg border bg-muted/30 p-3 text-sm leading-6 text-foreground">
@@ -959,7 +1071,7 @@ export function ShopProfileScreen({
             </div>
           </div>
         </div>
-      </div>
+      </div>) : null}
     </div>
   )
 }

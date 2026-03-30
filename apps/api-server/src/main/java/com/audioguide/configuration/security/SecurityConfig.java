@@ -36,6 +36,7 @@ public class SecurityConfig {
             "/user/**",
             "/poi/**",
             "/dashboard/**",
+            "/analytics/**",
             "/uploads/**",
             "/translation/**",
 

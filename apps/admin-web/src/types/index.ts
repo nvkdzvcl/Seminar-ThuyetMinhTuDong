@@ -1,5 +1,5 @@
 // User Types
-export type UserRole = 'super_admin' | 'customer' | 'store_owner'
+export type UserRole = 'super_admin' | 'admin' | 'customer' | 'store_owner'
 export type UserStatus = 'active' | 'suspended'
 
 export interface User {

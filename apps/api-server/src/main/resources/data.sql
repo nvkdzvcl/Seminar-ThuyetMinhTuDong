@@ -21,6 +21,7 @@ DELETE FROM poi_approval_history;
 DELETE FROM admin_audit_logs;
 DELETE FROM admin_jobs;
 DELETE FROM admin_settings;
+DELETE FROM analytics_event;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -305,6 +306,7 @@ ALTER TABLE poi_moderation_log AUTO_INCREMENT = 3;
 ALTER TABLE poi_approval_history AUTO_INCREMENT = 4;
 ALTER TABLE admin_jobs AUTO_INCREMENT = 1;
 ALTER TABLE admin_settings AUTO_INCREMENT = 1;
+ALTER TABLE analytics_event AUTO_INCREMENT = 1;
 
 INSERT INTO admin_jobs
 (job_code, type, status, related_poi_id, related_user_id, retry_count, error_message, created_at, started_at, ended_at)

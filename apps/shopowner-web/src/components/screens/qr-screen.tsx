@@ -10,14 +10,10 @@ import {
   Printer, 
   Share2, 
   Volume2,
-  Globe,
   Utensils
 } from "lucide-react"
 
-type Screen = "dashboard" | "menu" | "qr" | "insights" | "shop-profile" | "dish-editor" | "audio-management"
-
 interface QRScreenProps {
-  onNavigate: (screen: Screen) => void
   shopId: number
   shopName: string
 }
@@ -31,7 +27,7 @@ function normalizeBaseUrl(rawBaseUrl?: string): string {
   return rawBaseUrl.trim().replace(/\/+$/, "")
 }
 
-export function QRScreen({ onNavigate, shopId, shopName }: QRScreenProps) {
+export function QRScreen({ shopId, shopName }: QRScreenProps) {
   const [qrImageDataUrl, setQrImageDataUrl] = useState("")
   const [isGeneratingQr, setIsGeneratingQr] = useState(false)
   const [qrError, setQrError] = useState("")
@@ -290,32 +286,6 @@ export function QRScreen({ onNavigate, shopId, shopName }: QRScreenProps) {
         </CardContent>
       </Card>
 
-      {/* Audio Management Link */}
-      <Card 
-        className="bg-card border-border cursor-pointer hover:bg-secondary/50 transition-colors"
-        onClick={() => onNavigate("audio-management")}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-              <Globe className="w-6 h-6 text-emerald-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-foreground">Quản lý thuyết minh</h3>
-              <p className="text-sm text-muted-foreground">
-                5 ngôn ngữ - 4 sẵn sàng, 1 đang chờ
-              </p>
-            </div>
-            <div className="flex gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="w-2 h-2 rounded-full bg-[oklch(0.7_0.16_55)]" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

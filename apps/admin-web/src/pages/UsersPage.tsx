@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   MoreHorizontal,
   Eye,
@@ -48,14 +48,19 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Pagination } from '@/components/shared/Pagination'
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { users, auditLogs } from '@/data/mock-data'
 import type { User, UserRole, UserStatus } from '@/types'
 import { formatDateTime, formatRelativeTime, getRoleName } from '@/lib/utils'
+import {
+  fetchAdminUsers,
+  updateAdminUserRole,
+  updateAdminUserStatus,
+} from '@/services/userService'
 
 const PAGE_SIZE = 10
 
 const roleOptions = [
   { value: 'super_admin', label: 'Super Admin' },
+  { value: 'admin', label: 'Admin' },
   { value: 'customer', label: 'Khách hàng' },
   { value: 'store_owner', label: 'Chủ cửa hàng' },
 ]
@@ -68,6 +73,7 @@ const statusOptions = [
 function getRoleIcon(role: UserRole) {
   switch (role) {
     case 'super_admin':
+    case 'admin':
       return Shield
     case 'customer':
       return UserCog
@@ -82,7 +88,12 @@ export function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
+  const [users, setUsers] = useState<User[]>([])
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [detailSheetOpen, setDetailSheetOpen] = useState(false)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
@@ -93,43 +104,57 @@ export function UsersPage() {
     { key: 'status', label: 'Trạng thái', options: statusOptions, value: filters.status },
   ]
 
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      // Search filter
-      if (search) {
-        const searchLower = search.toLowerCase()
-        if (
-          !user.name.toLowerCase().includes(searchLower) &&
-          !user.email.toLowerCase().includes(searchLower) &&
-          !user.phoneNumber.toLowerCase().includes(searchLower)
-        ) {
-          return false
-        }
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim())
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const loadUsers = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const result = await fetchAdminUsers({
+        page: currentPage,
+        size: pageSize,
+        search: debouncedSearch || undefined,
+        role:
+          filters.role && filters.role !== 'all' ? (filters.role as UserRole) : undefined,
+        status:
+          filters.status && filters.status !== 'all'
+            ? (filters.status as UserStatus)
+            : undefined,
+      })
+
+      if (result.totalPages > 0 && currentPage > result.totalPages) {
+        setCurrentPage(result.totalPages)
+        return
       }
 
-      // Role filter
-      if (filters.role && filters.role !== 'all' && user.role !== filters.role) {
-        return false
-      }
+      setUsers(result.items)
+      setTotalItems(result.totalItems || 0)
+      setTotalPages(Math.max(result.totalPages || 1, 1))
+    } catch (error) {
+      setUsers([])
+      setTotalItems(0)
+      setTotalPages(1)
+      toast.error(error instanceof Error ? error.message : 'Không tải được danh sách người dùng')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentPage, pageSize, debouncedSearch, filters.role, filters.status])
 
-      // Status filter
-      if (filters.status && filters.status !== 'all' && user.status !== filters.status) {
-        return false
-      }
-
-      return true
-    })
-  }, [search, filters])
-
-  const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredUsers.slice(start, start + pageSize)
-  }, [filteredUsers, currentPage, pageSize])
-
-  const totalPages = Math.ceil(filteredUsers.length / pageSize)
+  useEffect(() => {
+    void loadUsers()
+  }, [loadUsers])
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
+    setCurrentPage(1)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
     setCurrentPage(1)
   }
 
@@ -152,26 +177,43 @@ export function UsersPage() {
     setStatusDialogOpen(true)
   }
 
-  const confirmStatusChange = () => {
-    if (selectedUser) {
-      const newStatus = statusAction === 'lock' ? 'suspended' : 'active'
+  const confirmStatusChange = async () => {
+    if (!selectedUser) return
+
+    try {
+      const newStatus: UserStatus = statusAction === 'lock' ? 'suspended' : 'active'
+      const updatedUser = await updateAdminUserStatus(selectedUser.id, newStatus)
+      setUsers((current) =>
+        current.map((user) => (user.id === updatedUser.id ? updatedUser : user))
+      )
+      setSelectedUser((current) => (current?.id === updatedUser.id ? updatedUser : current))
       toast.success(
-        `Đã ${statusAction === 'lock' ? 'khóa' : 'mở khóa'} tài khoản "${selectedUser.name}"`
+        `Đã ${statusAction === 'lock' ? 'khóa' : 'mở khóa'} tài khoản "${updatedUser.name}"`
       )
       setStatusDialogOpen(false)
+      void loadUsers()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Không thể cập nhật trạng thái người dùng'
+      )
     }
   }
 
-  const handleChangeRole = (user: User, newRole: UserRole) => {
-    toast.success(`Đã đổi vai trò của "${user.name}" thành "${getRoleName(newRole)}"`)
+  const handleChangeRole = async (user: User, newRole: UserRole) => {
+    try {
+      const updatedUser = await updateAdminUserRole(user.id, newRole)
+      setUsers((current) =>
+        current.map((item) => (item.id === updatedUser.id ? updatedUser : item))
+      )
+      setSelectedUser((current) => (current?.id === updatedUser.id ? updatedUser : current))
+      toast.success(`Đã đổi vai trò của "${updatedUser.name}" thành "${getRoleName(newRole)}"`)
+      void loadUsers()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể đổi vai trò người dùng')
+    }
   }
 
-  const userActivity = useMemo(() => {
-    if (!selectedUser) return []
-    return auditLogs
-      .filter((log) => log.actorId === selectedUser.id)
-      .slice(0, 5)
-  }, [selectedUser])
+  const userActivity: Array<{ id: string; action: string; timestamp: string; module: string; entity: string }> = []
 
   return (
     <div className="space-y-6">
@@ -183,14 +225,18 @@ export function UsersPage() {
       <FilterBar
         searchPlaceholder="Tìm theo tên, email, số điện thoại..."
         searchValue={search}
-        onSearchChange={setSearch}
+        onSearchChange={handleSearchChange}
         filters={filterConfigs}
         onFilterChange={handleFilterChange}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
 
-      {paginatedUsers.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
+          Đang tải danh sách người dùng...
+        </div>
+      ) : users.length === 0 ? (
         <EmptyState
           icon={Users}
           title="Không tìm thấy người dùng"
@@ -216,7 +262,7 @@ export function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedUsers.map((user) => {
+                {users.map((user) => {
                   const RoleIcon = getRoleIcon(user.role)
                   return (
                     <TableRow key={user.id}>
@@ -318,7 +364,7 @@ export function UsersPage() {
             currentPage={currentPage}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredUsers.length}
+            totalItems={totalItems}
             onPageChange={setCurrentPage}
             onPageSizeChange={(size) => {
               setPageSize(size)

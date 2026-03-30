@@ -232,4 +232,21 @@ CREATE TABLE IF NOT EXISTS admin_settings (
     updated_at DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS analytics_event (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id VARCHAR(64) NOT NULL UNIQUE,
+    shop_id INT NOT NULL,
+    poi_id INT NULL,
+    dish_id INT NULL,
+    customer_id INT NULL,
+    session_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    language_code VARCHAR(16) NULL,
+    source VARCHAR(32) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    metadata_json TEXT NULL,
+    INDEX idx_analytics_shop_time (shop_id, occurred_at),
+    INDEX idx_analytics_shop_type_time (shop_id, event_type, occurred_at)
+);
+
 SET FOREIGN_KEY_CHECKS = 1;

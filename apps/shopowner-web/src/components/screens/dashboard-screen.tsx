@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { 
   QrCode, 
-  Headphones, 
+  Headphones,
   Globe, 
   Utensils, 
   Store, 
@@ -27,6 +28,7 @@ import {
   Settings,
   LogOut
 } from "lucide-react"
+import { getOwnerHomeStats, type OwnerHomeStats } from "@/services/dashboard-service"
 import type { PoiApprovalStatus } from "@/components/app-shell"
 
 type Screen = "dashboard" | "menu" | "qr" | "insights" | "shop-profile" | "dish-editor" | "audio-management"
@@ -48,8 +50,57 @@ export function DashboardScreen({
   shopName = "Quán của tôi",
   shopAddress = "",
 }: DashboardScreenProps) {
+  const [homeStats, setHomeStats] = useState<OwnerHomeStats | null>(null)
+  const [isLoadingInsights, setIsLoadingInsights] = useState(true)
+  const [insightsError, setInsightsError] = useState("")
   const isOpen = true
   const isApproved = poiApprovalStatus === "approved"
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setIsLoadingInsights(true)
+      setInsightsError("")
+      try {
+        const result = await getOwnerHomeStats()
+        if (cancelled) {
+          return
+        }
+        setHomeStats(result)
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+        setInsightsError(error instanceof Error ? error.message : "Không tải được dữ liệu thống kê.")
+      } finally {
+        if (!cancelled) {
+          setIsLoadingInsights(false)
+        }
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const topLanguage = homeStats?.topLanguage ?? "Chưa có"
+  const topDish = homeStats?.topDish ?? "Chưa có"
+  const qrScansToday = homeStats?.qrScansToday ?? 0
+  const audioPlaysToday = homeStats?.audioPlaysToday ?? 0
+
+  const recentActivities = useMemo(() => {
+    return (homeStats?.recentActivities ?? []).map((item, index) => mapRecentActivityItem(item, index))
+  }, [homeStats?.recentActivities])
+
+  const aiInsightText = useMemo(() => {
+    if (qrScansToday <= 0 && audioPlaysToday <= 0) {
+      return "Hôm nay chưa có lượt quét QR hoặc nghe audio. Khi khách bắt đầu tương tác, bảng thống kê sẽ cập nhật theo thời gian thực."
+    }
+
+    return `Hôm nay có ${qrScansToday} lượt quét QR và ${audioPlaysToday} lượt nghe audio. Ngôn ngữ nổi bật là ${topLanguage}, nội dung được quan tâm nhiều là ${topDish}.`
+  }, [audioPlaysToday, qrScansToday, topDish, topLanguage])
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-6">
@@ -118,7 +169,7 @@ export function DashboardScreen({
                 <QrCode className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">127</p>
+                <p className="text-2xl font-bold text-foreground">{qrScansToday}</p>
                 <p className="text-xs text-muted-foreground">Quét QR hôm nay</p>
               </div>
             </div>
@@ -132,7 +183,7 @@ export function DashboardScreen({
                 <Headphones className="w-5 h-5 text-[oklch(0.7_0.16_55)]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">89</p>
+                <p className="text-2xl font-bold text-foreground">{audioPlaysToday}</p>
                 <p className="text-xs text-muted-foreground">Lượt nghe audio</p>
               </div>
             </div>
@@ -146,7 +197,7 @@ export function DashboardScreen({
                 <Globe className="w-5 h-5 text-[oklch(0.7_0.12_85)]" />
               </div>
               <div>
-                <p className="text-lg font-bold text-foreground">Tiếng Anh</p>
+                <p className="text-lg font-bold text-foreground">{topLanguage}</p>
                 <p className="text-xs text-muted-foreground">Ngôn ngữ phổ biến</p>
               </div>
             </div>
@@ -160,13 +211,24 @@ export function DashboardScreen({
                 <TrendingUp className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-lg font-bold text-foreground">Ốc hương</p>
-                <p className="text-xs text-muted-foreground">Món được xem nhiều</p>
+                <p className="text-lg font-bold text-foreground">{topDish}</p>
+                 <p className="text-xs text-muted-foreground">Món được xem nhiều</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {isLoadingInsights ? (
+        <Card className="bg-card border-border">
+          <CardContent className="p-3 text-xs text-muted-foreground">Đang tải dữ liệu thống kê thật...</CardContent>
+        </Card>
+      ) : null}
+      {!isLoadingInsights && insightsError ? (
+        <Card className="bg-card border-destructive/30">
+          <CardContent className="p-3 text-xs text-destructive">{insightsError}</CardContent>
+        </Card>
+      ) : null}
 
       {/* Quick Actions */}
       {!isApproved && (
@@ -249,34 +311,29 @@ export function DashboardScreen({
           </Button>
         </div>
         
-        <Card className="bg-card border-border">
-          <CardContent className="p-0 divide-y divide-border">
-            <ActivityItem 
-              icon={<QrCode className="w-4 h-4" />}
-              iconBg="bg-primary/10"
-              iconColor="text-primary"
-              title="Khách quét mã QR"
-              subtitle="Nghe giới thiệu bằng tiếng Hàn"
-              time="5 phút trước"
-            />
-            <ActivityItem 
-              icon={<Headphones className="w-4 h-4" />}
-              iconBg="bg-[oklch(0.7_0.16_55)]/10"
-              iconColor="text-[oklch(0.7_0.16_55)]"
-              title="Audio được phát"
-              subtitle="Món Ốc hương nướng mỡ hành"
-              time="12 phút trước"
-            />
-            <ActivityItem 
-              icon={<Globe className="w-4 h-4" />}
-              iconBg="bg-[oklch(0.85_0.15_85)]/15"
-              iconColor="text-[oklch(0.7_0.12_85)]"
-              title="Bản dịch mới"
-              subtitle="Đã dịch sang tiếng Nhật"
-              time="1 giờ trước"
-            />
-          </CardContent>
-        </Card>
+        {recentActivities.length > 0 ? (
+          <Card className="bg-card border-border">
+            <CardContent className="p-0 divide-y divide-border">
+              {recentActivities.map((activity) => (
+                <ActivityItem
+                  key={activity.key}
+                  icon={activity.icon}
+                  iconBg={activity.iconBg}
+                  iconColor={activity.iconColor}
+                  title={activity.title}
+                  subtitle={activity.subtitle}
+                  time={activity.time}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-card border-border">
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Chưa có hoạt động thực tế gần đây.
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* AI Insight Banner */}
@@ -290,13 +347,77 @@ export function DashboardScreen({
               <span className="text-xs font-medium text-[oklch(0.85_0.15_85)]">AI Insight</span>
             </div>
             <p className="text-sm text-[oklch(0.95_0.01_85)] leading-relaxed">
-              Du khách Hàn Quốc chiếm 40% lượt nghe audio tuần này. Cân nhắc thêm món ăn phù hợp khẩu vị Hàn.
+              {aiInsightText}
             </p>
           </div>
         </CardContent>
       </Card>
     </div>
   )
+}
+
+function formatDateTime(raw?: string): string {
+  if (!raw) {
+    return ""
+  }
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) {
+    return raw
+  }
+
+  return parsed.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function mapRecentActivityItem(item: OwnerHomeStats["recentActivities"][number], index: number): ActivityDisplayItem {
+  const normalizedType = (item.type || "").toUpperCase()
+  if (normalizedType.includes("QR_SCAN")) {
+    return {
+      key: `activity-${index}-${item.occurredAt}`,
+      icon: <QrCode className="w-4 h-4" />,
+      iconBg: "bg-primary/10",
+      iconColor: "text-primary",
+      title: item.title,
+      subtitle: item.subtitle,
+      time: formatDateTime(item.occurredAt),
+    }
+  }
+
+  if (normalizedType.includes("AUDIO")) {
+    return {
+      key: `activity-${index}-${item.occurredAt}`,
+      icon: <Headphones className="w-4 h-4" />,
+      iconBg: "bg-[oklch(0.7_0.16_55)]/10",
+      iconColor: "text-[oklch(0.7_0.16_55)]",
+      title: item.title,
+      subtitle: item.subtitle,
+      time: formatDateTime(item.occurredAt),
+    }
+  }
+
+  return {
+    key: `activity-${index}-${item.occurredAt}`,
+    icon: <ShieldAlert className="w-4 h-4" />,
+    iconBg: "bg-emerald-500/10",
+    iconColor: "text-emerald-600",
+    title: item.title,
+    subtitle: item.subtitle,
+    time: formatDateTime(item.occurredAt),
+  }
+}
+
+interface ActivityDisplayItem {
+  key: string
+  icon: React.ReactNode
+  iconBg: string
+  iconColor: string
+  title: string
+  subtitle: string
+  time: string
 }
 
 interface ActivityItemProps {

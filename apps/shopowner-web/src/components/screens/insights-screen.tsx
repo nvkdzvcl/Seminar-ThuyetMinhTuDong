@@ -1,104 +1,214 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { 
-  TrendingUp, 
+import {
+  TrendingUp,
   Sparkles,
   QrCode,
-  Headphones,
+  Users,
   Clock,
-  Utensils
+  Utensils,
+  Wallet,
 } from "lucide-react"
-import { 
-  AreaChart, 
+import {
+  AreaChart,
   Area,
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
   ResponsiveContainer,
   Tooltip,
-  Cell
+  Cell,
 } from "recharts"
+import { getOwnerInsights, type OwnerInsights } from "@/services/insights-service"
 
-const scanData = [
-  { day: "T2", scans: 45 },
-  { day: "T3", scans: 62 },
-  { day: "T4", scans: 78 },
-  { day: "T5", scans: 95 },
-  { day: "T6", scans: 127 },
-  { day: "T7", scans: 156 },
-  { day: "CN", scans: 142 },
+const LANGUAGE_COLORS = [
+  "oklch(0.5 0.18 25)",
+  "oklch(0.7 0.16 55)",
+  "oklch(0.85 0.15 85)",
+  "oklch(0.55 0.12 145)",
+  "oklch(0.45 0.1 200)",
+  "oklch(0.62 0.14 320)",
 ]
 
-const languageData = [
-  { name: "English", value: 42, color: "oklch(0.5 0.18 25)" },
-  { name: "Korean", value: 28, color: "oklch(0.7 0.16 55)" },
-  { name: "Japanese", value: 15, color: "oklch(0.85 0.15 85)" },
-  { name: "Chinese", value: 10, color: "oklch(0.55 0.12 145)" },
-  { name: "Vietnamese", value: 5, color: "oklch(0.45 0.1 200)" },
-]
-
-const peakTimeData = [
-  { time: "16:00", listens: 12 },
-  { time: "17:00", listens: 28 },
-  { time: "18:00", listens: 45 },
-  { time: "19:00", listens: 78 },
-  { time: "20:00", listens: 95 },
-  { time: "21:00", listens: 82 },
-  { time: "22:00", listens: 48 },
-]
-
-const aiInsights = [
-  {
-    icon: Headphones,
-    iconBg: "bg-primary/10",
-    iconColor: "text-primary",
-    title: "Audio tiếng Anh được nghe nhiều nhất vào buổi tối",
-    description: "Từ 19:00 - 21:00, du khách quốc tế thường xuyên sử dụng audio hướng dẫn.",
-  },
-  {
-    icon: Utensils,
-    iconBg: "bg-[oklch(0.7_0.16_55)]/10",
-    iconColor: "text-[oklch(0.7_0.16_55)]",
-    title: "Ốc hương là món được xem nhiều nhất tuần này",
-    description: "Tăng 23% so với tuần trước, đặc biệt phổ biến với khách Hàn Quốc.",
-  },
-  {
-    icon: TrendingUp,
-    iconBg: "bg-emerald-500/10",
-    iconColor: "text-emerald-600",
-    title: "Lượt quét QR tăng 35% so với tháng trước",
-    description: "Nên cân nhắc thêm menu mới để tận dụng lượng khách tăng.",
-  },
-]
+function formatCurrency(value: number): string {
+  return `${Math.max(0, value || 0).toLocaleString("vi-VN")}đ`
+}
 
 export function InsightsScreen() {
-  const totalScans = scanData.reduce((acc, curr) => acc + curr.scans, 0)
-  const avgDaily = Math.round(totalScans / 7)
+  const [insights, setInsights] = useState<OwnerInsights | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState("")
+
+  useEffect(() => {
+    let cancelled = false
+    const loadInsights = async () => {
+      setIsLoading(true)
+      setErrorMessage("")
+      try {
+        const result = await getOwnerInsights()
+        if (cancelled) return
+        setInsights(result)
+      } catch (error) {
+        if (cancelled) return
+        setErrorMessage(error instanceof Error ? error.message : "Không tải được thống kê.")
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void loadInsights()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const dailyOrderData = useMemo(() => {
+    if (!insights?.dailyMetrics?.length) {
+      return []
+    }
+    return insights.dailyMetrics.map((item) => ({
+      day: item.date,
+      orders: item.orders ?? 0,
+      revenue: item.revenue ?? 0,
+    }))
+  }, [insights?.dailyMetrics])
+
+  const languageData = useMemo(() => {
+    const metrics = insights?.languageMetrics ?? []
+    if (metrics.length === 0) {
+      return []
+    }
+    const total = metrics.reduce((acc, item) => acc + (item.count ?? 0), 0)
+    return metrics.map((item, index) => {
+      const count = item.count ?? 0
+      const percent = total > 0 ? Math.round((count * 100) / total) : 0
+      return {
+        name: item.language || "Unknown",
+        count,
+        percent,
+        color: LANGUAGE_COLORS[index % LANGUAGE_COLORS.length],
+      }
+    })
+  }, [insights?.languageMetrics])
+
+  const topDishData = useMemo(() => {
+    return (insights?.topDishMetrics ?? []).map((item) => ({
+      dish: item.dishName || "Khác",
+      quantity: item.quantity ?? 0,
+    }))
+  }, [insights?.topDishMetrics])
+
+  const aiInsights = useMemo(() => {
+    if (!insights || insights.totalOrders7Days <= 0) {
+      return [
+        {
+          icon: Sparkles,
+          iconBg: "bg-primary/10",
+          iconColor: "text-primary",
+          title: "Chưa có dữ liệu đơn hàng 7 ngày gần nhất",
+          description: "Khi có đơn hàng, hệ thống sẽ tự tạo thống kê thật cho quán của bạn.",
+        },
+      ]
+    }
+
+    const topLanguage = languageData[0]
+    const topDish = topDishData[0]
+    const growthPercent = insights.growthPercent ?? 0
+
+    return [
+      {
+        icon: QrCode,
+        iconBg: "bg-primary/10",
+        iconColor: "text-primary",
+        title: `Quán có ${insights.totalOrders7Days} lượt ghé trong 7 ngày`,
+        description: `Trung bình ${insights.avgDailyOrders} lượt/ngày, ${insights.uniqueCustomers7Days} khách hàng khác nhau.`,
+      },
+      topLanguage
+        ? {
+            icon: Users,
+            iconBg: "bg-[oklch(0.7_0.16_55)]/10",
+            iconColor: "text-[oklch(0.7_0.16_55)]",
+            title: `Ngôn ngữ nổi bật: ${topLanguage.name}`,
+            description: `Chiếm khoảng ${topLanguage.percent}% dữ liệu khách có phát sinh đơn.`,
+          }
+        : null,
+      topDish
+        ? {
+            icon: Utensils,
+            iconBg: "bg-emerald-500/10",
+            iconColor: "text-emerald-600",
+            title: `Món được gọi nhiều: ${topDish.dish}`,
+            description: `${topDish.quantity} lượt gọi trong 7 ngày gần nhất.`,
+          }
+        : null,
+      {
+        icon: TrendingUp,
+        iconBg: "bg-sky-500/10",
+        iconColor: "text-sky-600",
+        title: growthPercent >= 0 ? "Xu hướng tăng trưởng tích cực" : "Xu hướng giảm so với tuần trước",
+        description: `Biến động tuần này: ${growthPercent >= 0 ? "+" : ""}${growthPercent}% so với 7 ngày trước.`,
+      },
+    ].filter(Boolean) as Array<{
+      icon: typeof Sparkles
+      iconBg: string
+      iconColor: string
+      title: string
+      description: string
+    }>
+  }, [insights, languageData, topDishData])
+
+  if (isLoading) {
+    return (
+      <div className="px-4 pt-6 pb-4">
+        <Card className="bg-card border-border">
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Đang tải thống kê thực tế...
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="px-4 pt-6 pb-4">
+        <Card className="bg-card border-destructive/30">
+          <CardContent className="p-6 text-sm text-destructive">
+            {errorMessage}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const growthPercent = insights?.growthPercent ?? 0
+  const growthText = `${growthPercent >= 0 ? "+" : ""}${growthPercent}%`
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-foreground">Thống kê</h1>
-        <p className="text-sm text-muted-foreground">7 ngày gần nhất</p>
+        <p className="text-sm text-muted-foreground">Dữ liệu thật từ 7 ngày gần nhất</p>
       </div>
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-2 gap-3">
         <Card className="bg-card border-border">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <QrCode className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Tổng quét QR</span>
+              <span className="text-xs text-muted-foreground">Lượt ghé</span>
             </div>
             <div className="flex items-end gap-2">
-              <span className="text-2xl font-bold text-foreground">{totalScans}</span>
+              <span className="text-2xl font-bold text-foreground">{insights?.totalOrders7Days ?? 0}</span>
               <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 mb-1">
                 <TrendingUp className="w-3 h-3 mr-1" />
-                +35%
+                {growthText}
               </Badge>
             </div>
           </CardContent>
@@ -108,60 +218,72 @@ export function InsightsScreen() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="w-4 h-4 text-[oklch(0.7_0.16_55)]" />
-              <span className="text-xs text-muted-foreground">Trung bình/ngày</span>
+              <span className="text-xs text-muted-foreground">TB/ngày</span>
             </div>
-            <div className="flex items-end gap-2">
-              <span className="text-2xl font-bold text-foreground">{avgDaily}</span>
-              <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 mb-1">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +12%
-              </Badge>
+            <span className="text-2xl font-bold text-foreground">{insights?.avgDailyOrders ?? 0}</span>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs text-muted-foreground">Doanh thu 7 ngày</span>
             </div>
+            <span className="text-lg font-bold text-foreground">{formatCurrency(insights?.totalRevenue7Days ?? 0)}</span>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4 text-sky-600" />
+              <span className="text-xs text-muted-foreground">Khách duy nhất</span>
+            </div>
+            <span className="text-2xl font-bold text-foreground">{insights?.uniqueCustomers7Days ?? 0}</span>
           </CardContent>
         </Card>
       </div>
 
-      {/* QR Scans Chart */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Lượt quét QR theo ngày</CardTitle>
+          <CardTitle className="text-base font-semibold">Lượt ghé theo ngày</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="h-[180px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={scanData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={dailyOrderData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="scanGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="oklch(0.5 0.18 25)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="oklch(0.5 0.18 25)" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="oklch(0.5 0.18 25)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="oklch(0.5 0.18 25)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis 
-                  dataKey="day" 
+                <XAxis
+                  dataKey="day"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: 'oklch(0.556 0 0)' }}
+                  tick={{ fontSize: 12, fill: "oklch(0.556 0 0)" }}
                 />
-                <YAxis 
+                <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: 'oklch(0.556 0 0)' }}
+                  tick={{ fontSize: 12, fill: "oklch(0.556 0 0)" }}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'oklch(0.99 0.005 85)',
-                    border: '1px solid oklch(0.88 0.02 75)',
-                    borderRadius: '8px',
-                    fontSize: '12px'
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "oklch(0.99 0.005 85)",
+                    border: "1px solid oklch(0.88 0.02 75)",
+                    borderRadius: "8px",
+                    fontSize: "12px",
                   }}
-                  labelStyle={{ color: 'oklch(0.2 0.02 30)' }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="scans" 
-                  stroke="oklch(0.5 0.18 25)" 
+                <Area
+                  type="monotone"
+                  dataKey="orders"
+                  stroke="oklch(0.5 0.18 25)"
                   strokeWidth={2}
-                  fill="url(#scanGradient)" 
+                  fill="url(#scanGradient)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -169,36 +291,38 @@ export function InsightsScreen() {
         </CardContent>
       </Card>
 
-      {/* Language Distribution */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Ngôn ngữ được sử dụng</CardTitle>
+          <CardTitle className="text-base font-semibold">Ngôn ngữ khách hàng</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="h-[160px] w-full">
+          <div className="h-[170px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={languageData} layout="vertical" margin={{ top: 5, right: 30, left: 50, bottom: 5 }}>
                 <XAxis type="number" hide />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
+                <YAxis
+                  type="category"
+                  dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: 'oklch(0.2 0.02 30)' }}
-                  width={70}
+                  tick={{ fontSize: 12, fill: "oklch(0.2 0.02 30)" }}
+                  width={80}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'oklch(0.99 0.005 85)',
-                    border: '1px solid oklch(0.88 0.02 75)',
-                    borderRadius: '8px',
-                    fontSize: '12px'
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "oklch(0.99 0.005 85)",
+                    border: "1px solid oklch(0.88 0.02 75)",
+                    borderRadius: "8px",
+                    fontSize: "12px",
                   }}
-                  formatter={(value: number) => [`${value}%`, 'Tỷ lệ']}
+                  formatter={(_value: number, _name, item) => {
+                    const payload = item?.payload as { count?: number; percent?: number } | undefined
+                    return [`${payload?.count ?? 0} lượt (${payload?.percent ?? 0}%)`, "Ngôn ngữ"]
+                  }}
                 />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                   {languageData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell key={`language-cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>
               </BarChart>
@@ -207,49 +331,51 @@ export function InsightsScreen() {
         </CardContent>
       </Card>
 
-      {/* Peak Listening Times */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Giờ nghe cao điểm</CardTitle>
+          <CardTitle className="text-base font-semibold">Món được gọi nhiều</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="h-[140px] w-full">
+          <div className="h-[160px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={peakTimeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis 
-                  dataKey="time" 
+              <BarChart data={topDishData} margin={{ top: 10, right: 10, left: 20, bottom: 15 }}>
+                <XAxis
+                  dataKey="dish"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 10, fill: 'oklch(0.556 0 0)' }}
+                  tick={{ fontSize: 10, fill: "oklch(0.556 0 0)" }}
+                  interval={0}
+                  angle={-10}
+                  textAnchor="end"
+                  height={45}
                 />
-                <YAxis 
+                <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: 'oklch(0.556 0 0)' }}
+                  tick={{ fontSize: 12, fill: "oklch(0.556 0 0)" }}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'oklch(0.99 0.005 85)',
-                    border: '1px solid oklch(0.88 0.02 75)',
-                    borderRadius: '8px',
-                    fontSize: '12px'
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "oklch(0.99 0.005 85)",
+                    border: "1px solid oklch(0.88 0.02 75)",
+                    borderRadius: "8px",
+                    fontSize: "12px",
                   }}
-                  formatter={(value: number) => [value, 'Lượt nghe']}
+                  formatter={(value: number) => [`${value}`, "Số lượt gọi"]}
                 />
-                <Bar dataKey="listens" fill="oklch(0.7 0.16 55)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="quantity" fill="oklch(0.7 0.16 55)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
 
-      {/* AI Insights */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[oklch(0.85_0.15_85)]" />
-          <h2 className="text-base font-semibold text-foreground">AI Insights</h2>
+          <h2 className="text-base font-semibold text-foreground">Insights</h2>
         </div>
-        
+
         <div className="space-y-3">
           {aiInsights.map((insight, index) => {
             const Icon = insight.icon
@@ -274,3 +400,4 @@ export function InsightsScreen() {
     </div>
   )
 }
+

@@ -146,6 +146,7 @@ export default function NearbyShopPage() {
                 type: "SHOP",
                 url: shop.audioURL,
                 title: shop.name,
+                shopId: shop.id,
                 trigger,
             });
         } catch (err) {
@@ -162,6 +163,7 @@ export default function NearbyShopPage() {
                 type: "SHOP",
                 url: currentShop.audioURL,
                 title: currentShop.name,
+                shopId: currentShop.id,
             });
         } catch (err) {
             console.error("Toggle audio failed:", err);

@@ -129,12 +129,12 @@ public class ShopService {
 
     public ShopResponse getMyShop() {
         Integer ownerId = getCurrentUserId();
-        var shop = shopRepository.findByOwnerId(ownerId)
-                .orElseThrow(() -> {
-                    log.error("Shop for owner {} not found", ownerId);
-                    return new AppException(ErrorCode.SHOP_NOT_FOUND);
-                });
-        return shopMapper.toShopResponseFromShop(shop);
+        var shopOptional = shopRepository.findByOwnerId(ownerId);
+        if (shopOptional.isEmpty()) {
+            log.info("Shop for owner {} not found", ownerId);
+            return null;
+        }
+        return shopMapper.toShopResponseFromShop(shopOptional.get());
     }
 
     public List<ShopTypeResponse> getAllShopTypes() {
