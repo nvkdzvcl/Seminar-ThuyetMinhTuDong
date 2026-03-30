@@ -139,13 +139,13 @@ export function DashboardPage() {
                 <Bar
                   dataKey="success"
                   name="Thành công"
-                  fill="hsl(var(--chart-1))"
+                  fill="#16a34a"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
                   dataKey="failed"
                   name="Thất bại"
-                  fill="hsl(var(--chart-4))"
+                  fill="#dc2626"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
