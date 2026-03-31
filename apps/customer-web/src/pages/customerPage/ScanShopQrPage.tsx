@@ -383,12 +383,6 @@ function ScanShopQrPage() {
                         </button>
                     </div>
 
-                    <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                        Gợi ý nội dung QR hợp lệ: <span className="font-medium text-slate-700">12</span>,
-                        <span className="font-medium text-slate-700"> /shop/12</span>,
-                        <span className="font-medium text-slate-700"> https://domain/shop/12</span>,
-                        <span className="font-medium text-slate-700"> {`{"shopId":12}`}</span>
-                    </div>
                 </div>
             </div>
         </div>
