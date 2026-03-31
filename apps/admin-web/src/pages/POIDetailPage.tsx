@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileText,
   Filter,
+  ImageIcon,
   MapPin,
   QrCode,
   Save,
@@ -66,12 +67,49 @@ function toCurrency(value?: number) {
 
 const DEFAULT_CUSTOMER_WEB_URL = 'http://localhost:5173'
 const DEFAULT_RISK_THRESHOLD_HIGH = 70
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/vinhkhanhfoodtour/api'
+const API_ORIGIN = (() => {
+  try {
+    return new URL(API_BASE_URL).origin
+  } catch {
+    return ''
+  }
+})()
 
 function resolveCustomerBaseUrl(rawBaseUrl?: string): string {
   if (!rawBaseUrl?.trim()) {
     return DEFAULT_CUSTOMER_WEB_URL
   }
   return rawBaseUrl.trim().replace(/\/+$/, '')
+}
+
+function resolveMenuItemImageUrl(rawImage?: string): string | null {
+  if (!rawImage?.trim()) return null
+  const value = rawImage.trim()
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('data:') ||
+    value.startsWith('blob:')
+  ) {
+    return value
+  }
+
+  if (value.startsWith('/uploads/')) {
+    return `${API_BASE_URL}${value}`
+  }
+
+  if (value.startsWith('uploads/')) {
+    return `${API_BASE_URL}/${value}`
+  }
+
+  if (value.startsWith('/')) {
+    return API_ORIGIN ? `${API_ORIGIN}${value}` : value
+  }
+
+  return `${API_BASE_URL}/uploads/dish-images/${encodeURIComponent(value)}`
 }
 
 export function POIDetailPage() {
@@ -191,6 +229,8 @@ export function POIDetailPage() {
     }
     return ''
   }, [poi, riskThresholdHigh])
+
+  const isApprovedPoi = poi?.status === 'published'
 
   const handleSaveDraft = async () => {
     if (!id || !poi?.shopId) return
@@ -399,24 +439,32 @@ export function POIDetailPage() {
             <Save className="mr-2 h-4 w-4" />
             {isSavingDraft ? 'Đang lưu...' : 'Lưu bản nháp'}
           </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => void handleReject()}
-            disabled={isUpdatingStatus}
-          >
-            <X className="mr-2 h-4 w-4" />
-            {isUpdatingStatus ? 'Đang xử lý...' : 'Từ chối'}
-          </Button>
-          <Button
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-500"
-            onClick={() => void handleApprove()}
-            disabled={isUpdatingStatus || Boolean(approvalBlockedReason)}
-          >
-            <Check className="mr-2 h-4 w-4" />
-            {isUpdatingStatus ? 'Đang xử lý...' : approvalBlockedReason ? 'Bị chặn bởi AI' : 'Duyệt'}
-          </Button>
+          {!isApprovedPoi ? (
+            <>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => void handleReject()}
+                disabled={isUpdatingStatus}
+              >
+                <X className="mr-2 h-4 w-4" />
+                {isUpdatingStatus ? 'Đang xử lý...' : 'Từ chối'}
+              </Button>
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-500"
+                onClick={() => void handleApprove()}
+                disabled={isUpdatingStatus || Boolean(approvalBlockedReason)}
+              >
+                <Check className="mr-2 h-4 w-4" />
+                {isUpdatingStatus ? 'Đang xử lý...' : approvalBlockedReason ? 'Bị chặn bởi AI' : 'Duyệt'}
+              </Button>
+            </>
+          ) : (
+            <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+              Đã duyệt - không còn thao tác phê duyệt
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -536,23 +584,25 @@ export function POIDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="space-y-3 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Ghi chú duyệt / từ chối
-                </h3>
-                <span className="text-xs text-muted-foreground">Bắt buộc khi từ chối</span>
-              </div>
-              <Textarea
-                value={reviewReason}
-                onChange={(event) => setReviewReason(event.target.value.slice(0, 500))}
-                rows={4}
-                placeholder="Nhập lý do nếu từ chối POI (ví dụ: thiếu mô tả rõ ràng, thông tin sai...)"
-                className="bg-muted/40"
-              />
-            </CardContent>
-          </Card>
+          {!isApprovedPoi ? (
+            <Card>
+              <CardContent className="space-y-3 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Ghi chú duyệt / từ chối
+                  </h3>
+                  <span className="text-xs text-muted-foreground">Bắt buộc khi từ chối</span>
+                </div>
+                <Textarea
+                  value={reviewReason}
+                  onChange={(event) => setReviewReason(event.target.value.slice(0, 500))}
+                  rows={4}
+                  placeholder="Nhập lý do nếu từ chối POI (ví dụ: thiếu mô tả rõ ràng, thông tin sai...)"
+                  className="bg-muted/40"
+                />
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardContent className="space-y-4 p-4">
@@ -578,6 +628,7 @@ export function POIDetailPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
                     <tr>
+                      <th className="px-3 py-2 text-left">Ảnh</th>
                       <th className="px-3 py-2 text-left">Tên món</th>
                       <th className="px-3 py-2 text-left">Giá</th>
                       <th className="px-3 py-2 text-center">Đánh giá</th>
@@ -586,34 +637,46 @@ export function POIDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMenu.map((item) => (
-                      <tr key={item.id} className="border-t">
-                        <td className="px-3 py-3">
-                          <p className="font-semibold">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.descriptionText || 'Chưa có mô tả'}</p>
-                        </td>
-                        <td className="px-3 py-3 font-semibold text-blue-600">{toCurrency(item.price)}</td>
-                        <td className="px-3 py-3 text-center">
-                          <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-amber-700">
-                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                            <span className="text-xs font-semibold">{(item.rating ?? 0).toFixed(1)}</span>
-                          </div>
-                        </td>
-                        <td
-                          className={`px-3 py-3 font-medium ${moderationStatusColor(
-                            moderationStatusLabel(item.moderationStatus)
-                          )}`}
-                        >
-                          {moderationStatusLabel(item.moderationStatus)}
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          <Badge variant="outline">{item.status || 'ACTIVE'}</Badge>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredMenu.map((item) => {
+                      const menuImageUrl = resolveMenuItemImageUrl(item.imageUrl)
+                      return (
+                        <tr key={item.id} className="border-t">
+                          <td className="px-3 py-3">
+                            {menuImageUrl ? (
+                              <img src={menuImageUrl} alt={item.name} className="h-12 w-12 rounded-md object-cover" />
+                            ) : (
+                              <div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+                                <ImageIcon className="h-4 w-4" />
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            <p className="font-semibold">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.descriptionText || 'Chưa có mô tả'}</p>
+                          </td>
+                          <td className="px-3 py-3 font-semibold text-blue-600">{toCurrency(item.price)}</td>
+                          <td className="px-3 py-3 text-center">
+                            <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-amber-700">
+                              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                              <span className="text-xs font-semibold">{(item.rating ?? 0).toFixed(1)}</span>
+                            </div>
+                          </td>
+                          <td
+                            className={`px-3 py-3 font-medium ${moderationStatusColor(
+                              moderationStatusLabel(item.moderationStatus)
+                            )}`}
+                          >
+                            {moderationStatusLabel(item.moderationStatus)}
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            <Badge variant="outline">{item.status || 'ACTIVE'}</Badge>
+                          </td>
+                        </tr>
+                      )
+                    })}
                     {filteredMenu.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                        <td colSpan={6} className="px-3 py-8 text-center text-sm text-muted-foreground">
                           Chưa có món ăn phù hợp bộ lọc.
                         </td>
                       </tr>

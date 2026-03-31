@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { deleteDish, getDishesByShopId, type Dish, updateDish } from "@/services/dish-service"
+import {
+  deleteDish,
+  getDishesByShopId,
+  resolveDishImageUrl,
+  type Dish,
+  updateDish,
+} from "@/services/dish-service"
 import { Search, Plus, MoreVertical, Filter, Star, UtensilsCrossed, Loader2 } from "lucide-react"
 import type { PoiApprovalStatus } from "@/components/app-shell"
 import {
@@ -26,14 +32,6 @@ interface MenuScreenProps {
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("vi-VN").format(price) + "đ"
-}
-
-function resolveDishImage(dish: Dish): string | null {
-  if (!dish.image) return null
-  if (dish.image.startsWith("http://") || dish.image.startsWith("https://")) {
-    return dish.image
-  }
-  return null
 }
 
 export function MenuScreen({ onNavigate, poiApprovalStatus, shopId, reloadToken }: MenuScreenProps) {
@@ -160,7 +158,7 @@ export function MenuScreen({ onNavigate, poiApprovalStatus, shopId, reloadToken 
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {filteredDishes.map((dish) => {
-            const dishImage = resolveDishImage(dish)
+            const dishImage = resolveDishImageUrl(dish.image)
             const isBusy = deletingDishId === dish.id || updatingDishId === dish.id
             return (
               <Card

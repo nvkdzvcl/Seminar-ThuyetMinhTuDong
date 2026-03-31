@@ -5,12 +5,15 @@ import com.audioguide.dto.dishDTO.DishCreationRequest;
 import com.audioguide.dto.dishDTO.DishResponse;
 import com.audioguide.dto.dishDTO.DishUpdateRequest;
 import com.audioguide.entity.Dish;
+import com.audioguide.entity.PoiMenuItem;
 import com.audioguide.enums.Status;
 import com.audioguide.enums.UserRole;
 import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;
 import com.audioguide.mapper.DishMapper;
 import com.audioguide.repository.DishRepository;
+import com.audioguide.repository.PoiMenuItemRepository;
+import com.audioguide.repository.PoiRepository;
 import com.audioguide.repository.ShopRepository;
 import com.audioguide.repository.UserRepository;
 import com.audioguide.utils.FileStoreUtil;
@@ -18,6 +21,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -27,20 +31,24 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class DishService {
 
-    DishRepository dishRepository;
-    ShopRepository shopRepository;
-    UserRepository userRepository;
-    DishMapper dishMapper;
+    final DishRepository dishRepository;
+    final ShopRepository shopRepository;
+    final UserRepository userRepository;
+    final PoiRepository poiRepository;
+    final PoiMenuItemRepository poiMenuItemRepository;
+    final DishMapper dishMapper;
 
-    Path IMAGE_DIR = Path.of("uploads/dish-images");
+    @Value("${file.upload-dir}")
+    String uploadDir;
 
     public DishResponse createDish(DishCreationRequest request) {
 
@@ -64,6 +72,7 @@ public class DishService {
         dish.setStatus(Status.ACTIVE);
 
         var savedDish = dishRepository.save(dish);
+        syncDishToPoiMenu(savedDish, null);
 
         log.info("Dish {} created", savedDish.getName());
 
@@ -87,9 +96,11 @@ public class DishService {
             throw new AppException(ErrorCode.FORBIDDEN);
         }
 
+        String previousName = dish.getName();
         dishMapper.updateDishInfo(dish, request);
 
         var updatedDish = dishRepository.save(dish);
+        syncDishToPoiMenu(updatedDish, previousName);
 
         log.info("Dish {} updated", dishId);
 
@@ -113,9 +124,11 @@ public class DishService {
             throw new AppException(ErrorCode.FORBIDDEN);
         }
 
+        String previousName = dish.getName();
         dish.setStatus(Status.DELETED);
 
-        dishRepository.save(dish);
+        var deletedDish = dishRepository.save(dish);
+        syncDishToPoiMenu(deletedDish, previousName);
 
         log.info("Dish {} deleted", dishId);
     }
@@ -137,11 +150,13 @@ public class DishService {
             throw new AppException(ErrorCode.FORBIDDEN);
         }
 
-        String image = FileStoreUtil.saveKeepingNameWithSuffix(file, IMAGE_DIR);
+        Path imageDir = Path.of(uploadDir, "dish-images");
+        String image = FileStoreUtil.saveKeepingNameWithSuffix(file, imageDir);
 
         dish.setImage(image);
 
-        dishRepository.save(dish);
+        var updatedDish = dishRepository.save(dish);
+        syncDishToPoiMenu(updatedDish, null);
 
         return image;
     }
@@ -222,5 +237,45 @@ public class DishService {
         );
     }
 
+    private void syncDishToPoiMenu(Dish dish, String previousName) {
+        if (dish.getShop() == null || dish.getShop().getId() == null) {
+            return;
+        }
+
+        var poiOptional = poiRepository.findByShopId(dish.getShop().getId());
+        if (poiOptional.isEmpty()) {
+            return;
+        }
+
+        var poi = poiOptional.get();
+        var targetName = dish.getName();
+        var menuItemOptional = targetName == null
+                ? java.util.Optional.<PoiMenuItem>empty()
+                : poiMenuItemRepository.findFirstByPoi_IdAndNameOrderByUpdatedAtDesc(poi.getId(), targetName);
+
+        if (menuItemOptional.isEmpty()
+                && previousName != null
+                && !previousName.isBlank()
+                && (targetName == null || !previousName.equalsIgnoreCase(targetName))) {
+            menuItemOptional = poiMenuItemRepository.findFirstByPoi_IdAndNameOrderByUpdatedAtDesc(poi.getId(), previousName);
+        }
+
+        var now = LocalDateTime.now();
+        var menuItem = menuItemOptional.orElseGet(() -> PoiMenuItem.builder()
+                .poi(poi)
+                .moderationStatus("AN_TOAN")
+                .createdAt(now)
+                .build());
+
+        menuItem.setName(targetName);
+        menuItem.setDescriptionText(dish.getDescription());
+        menuItem.setPrice(dish.getPrice());
+        menuItem.setIsSignature(Boolean.TRUE.equals(dish.getIsSignature()));
+        menuItem.setImageUrl(dish.getImage());
+        menuItem.setStatus(dish.getStatus() == Status.DELETED ? "DELETED" : "ACTIVE");
+        menuItem.setUpdatedAt(now);
+
+        poiMenuItemRepository.save(menuItem);
+    }
 
 }

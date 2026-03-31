@@ -20,14 +20,22 @@ async function parseErrorMessage(response: Response): Promise<string> {
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const accessToken = getOwnerAccessToken()
+  const isFormDataBody = init?.body instanceof FormData
+
+  const headers = new Headers(init?.headers ?? {})
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`)
+  }
+
+  if (isFormDataBody) {
+    headers.delete("Content-Type")
+  } else if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json")
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(init?.headers ?? {}),
-    },
     ...init,
+    headers,
   })
 
   if (!response.ok) {

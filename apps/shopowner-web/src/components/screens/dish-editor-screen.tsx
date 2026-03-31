@@ -1,14 +1,21 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react"
-import { createDish, deleteDish, getDishById, updateDish } from "@/services/dish-service"
+import { ArrowLeft, ImageIcon, Loader2, Save, Trash2 } from "lucide-react"
+import {
+  createDish,
+  deleteDish,
+  getDishById,
+  resolveDishImageUrl,
+  updateDish,
+  uploadDishImage,
+} from "@/services/dish-service"
 import type { PoiApprovalStatus } from "@/components/app-shell"
 
 interface DishEditorScreenProps {
@@ -41,9 +48,12 @@ export function DishEditorScreen({
   const [price, setPrice] = useState("")
   const [description, setDescription] = useState("")
   const [isSignature, setIsSignature] = useState(false)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
 
   const [isLoadingDish, setIsLoadingDish] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -53,6 +63,8 @@ export function DishEditorScreen({
       setPrice("")
       setDescription("")
       setIsSignature(false)
+      setImagePreviewUrl(null)
+      setSelectedImageFile(null)
       setErrorMessage(null)
       return
     }
@@ -69,6 +81,8 @@ export function DishEditorScreen({
         setPrice(String(dish.price ?? ""))
         setDescription(dish.description ?? "")
         setIsSignature(Boolean(dish.isSignature))
+        setImagePreviewUrl(resolveDishImageUrl(dish.image))
+        setSelectedImageFile(null)
       } catch (error) {
         if (isCancelled) return
         setErrorMessage(error instanceof Error ? error.message : "Không thể tải thông tin món ăn.")
@@ -94,6 +108,36 @@ export function DishEditorScreen({
     return parsed
   }
 
+  const handleSelectImage = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("Vui lòng chọn file ảnh hợp lệ.")
+      event.target.value = ""
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage("Ảnh món ăn tối đa 5MB.")
+      event.target.value = ""
+      return
+    }
+
+    setSelectedImageFile(file)
+    setErrorMessage(null)
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setImagePreviewUrl(reader.result)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleSave = async () => {
     if (!name.trim()) {
       setErrorMessage("Tên món ăn không được để trống.")
@@ -109,28 +153,43 @@ export function DishEditorScreen({
     setIsSaving(true)
     setErrorMessage(null)
     try {
+      let savedDishId: number | null = null
+
       if (isNew) {
-        await createDish({
+        const created = await createDish({
           shopId,
           name: name.trim(),
           description: description.trim(),
           price: parsedPrice,
           isSignature,
         })
-        onSaved("Đã thêm món ăn mới.")
+        savedDishId = created.id
       } else if (numericDishId) {
-        await updateDish(numericDishId, {
+        const updated = await updateDish(numericDishId, {
           name: name.trim(),
           description: description.trim(),
           price: parsedPrice,
           isSignature,
         })
+        savedDishId = updated.id
+      }
+
+      if (selectedImageFile && savedDishId) {
+        setIsUploadingImage(true)
+        const uploadedImage = await uploadDishImage(savedDishId, selectedImageFile)
+        setImagePreviewUrl(resolveDishImageUrl(uploadedImage))
+      }
+
+      if (isNew) {
+        onSaved("Đã thêm món ăn mới.")
+      } else if (numericDishId) {
         onSaved("Đã cập nhật món ăn.")
       }
       onBack()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Lưu món ăn thất bại.")
     } finally {
+      setIsUploadingImage(false)
       setIsSaving(false)
     }
   }
@@ -222,10 +281,11 @@ export function DishEditorScreen({
               </Label>
               <Input
                 id="dish-price"
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={price}
-                onChange={(event) => setPrice(event.target.value)}
+                onChange={(event) => setPrice(event.target.value.replace(/\D/g, ""))}
                 placeholder="180000"
                 className="h-12"
               />
@@ -242,6 +302,47 @@ export function DishEditorScreen({
                 placeholder="Mô tả ngắn về món ăn, hương vị, cách chế biến..."
                 className="min-h-[120px] resize-none"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dish-image" className="text-foreground font-medium">
+                Hình ảnh món ăn
+              </Label>
+              <div className="overflow-hidden rounded-lg border border-dashed bg-muted/20">
+                {imagePreviewUrl ? (
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Ảnh món ăn"
+                    className="h-44 w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-44 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <ImageIcon className="h-6 w-6" />
+                    <span>Chưa có ảnh món ăn</span>
+                  </div>
+                )}
+              </div>
+              <input
+                id="dish-image"
+                type="file"
+                accept="image/*"
+                onChange={handleSelectImage}
+                className="hidden"
+              />
+              <label
+                htmlFor="dish-image"
+                className="inline-flex h-11 w-fit cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Chọn tệp
+              </label>
+              {selectedImageFile ? (
+                <p className="text-xs text-muted-foreground">
+                  Đã chọn: {selectedImageFile.name}
+                </p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Chấp nhận ảnh JPG/PNG/WebP, tối đa 5MB.
+              </p>
             </div>
 
             <Card className="bg-card border-border">
@@ -270,10 +371,18 @@ export function DishEditorScreen({
             onClick={() => {
               void handleSave()
             }}
-            disabled={isLoadingDish || isSaving || isDeleting}
+            disabled={isLoadingDish || isSaving || isUploadingImage || isDeleting}
           >
-            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            {isApproved ? (isNew ? "Thêm món ăn" : "Lưu thay đổi") : "Lưu nháp"}
+            {isSaving || isUploadingImage ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Save className="w-5 h-5" />
+            )}
+            {isUploadingImage
+              ? "Đang tải ảnh..."
+              : isApproved
+                ? (isNew ? "Thêm món ăn" : "Lưu thay đổi")
+                : "Lưu nháp"}
           </Button>
         </div>
       </div>

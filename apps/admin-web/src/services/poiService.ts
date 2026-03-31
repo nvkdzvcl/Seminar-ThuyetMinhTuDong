@@ -82,6 +82,7 @@ export interface PoiMenuItemDetail {
   price?: number
   rating?: number
   moderationStatus?: string
+  imageUrl?: string
   status?: string
 }
 
@@ -205,6 +206,7 @@ function mapPoiMenuItem(api: PoiMenuItemApiModel): PoiMenuItemDetail {
     price: api.price ?? undefined,
     rating: api.rating ?? undefined,
     moderationStatus: api.moderationStatus ?? undefined,
+    imageUrl: api.imageUrl ?? undefined,
     status: api.status ?? undefined,
   }
 }
