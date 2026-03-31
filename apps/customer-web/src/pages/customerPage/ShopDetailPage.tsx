@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import DishCard from "../../components/ui/DishCard";
 import SectionTitle from "../../components/home/SectionTitle";
@@ -13,6 +13,7 @@ import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import { resolvePreferredLanguage } from "../../utils/language";
 import { resolveMediaUrl } from "../../utils/media";
 import { notifyError, notifyInfo, notifyWarning } from "../../utils/notify";
+import { routePath } from "../../routes/route";
 
 function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
     if (!rawAudioPath) return undefined;
@@ -52,6 +53,7 @@ function isAutoplayBlockedError(error: unknown): boolean {
 }
 
 function ShopDetailPage() {
+    const navigate = useNavigate();
     const { shopId } = useParams();
     const [searchParams] = useSearchParams();
     const { currentAudio, isAudioPlaying, toggleAudio } = useAudioPlayer();
@@ -59,6 +61,7 @@ function ShopDetailPage() {
     const requestedLanguage = searchParams.get("lang");
     const shouldAutoplayNarration = searchParams.get("autoplay") === "1";
     const hasAutoplayTriggeredRef = useRef(false);
+    const menuSectionRef = useRef<HTMLDivElement | null>(null);
 
     const [shop, setShop] = useState<ShopResponse | null>(null);
     const [nearbyShops, setNearbyShops] = useState<ShopResponse[]>([]);
@@ -152,6 +155,18 @@ function ShopDetailPage() {
         console.log("Xem món", dishId);
     };
 
+    const handleBackToShopList = () => {
+        if (window.history.length > 1) {
+            navigate(-1);
+            return;
+        }
+        navigate(routePath.shopSearchPage);
+    };
+
+    const handleScrollToMenu = () => {
+        menuSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
     const playShopNarration = useCallback(async () => {
         if (!shop) return;
 
@@ -226,6 +241,25 @@ function ShopDetailPage() {
     return (
         <div className="min-h-screen bg-slate-50">
             <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+                <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={handleBackToShopList}
+                        aria-label="Quay lại chọn quán"
+                        title="Quay lại chọn quán"
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-xl font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                        <span aria-hidden="true">←</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleScrollToMenu}
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                    >
+                        Xem menu quán
+                    </button>
+                </div>
+
                 <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
                     <div className="grid gap-0 lg:grid-cols-[1.2fr_1fr]">
                         <div className="h-[280px] bg-slate-100 sm:h-[360px]">
@@ -316,36 +350,44 @@ function ShopDetailPage() {
                     />
                 </div>
 
-                <div className="mt-8">
+                <div ref={menuSectionRef} className="mt-8 scroll-mt-24">
                     <SectionTitle
                         title="Món ăn của quán"
                         subtitle="Danh sách món ăn theo quán, có phân trang"
                     />
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {shopDishes.map((dish) => (
-                            <DishCard
-                                key={dish.id}
-                                shopId={dish.shopId}
-                                id={dish.id}
-                                image={dish.image || "https://placehold.co/600x400?text=Dish"}
-                                dishName={dish.name}
-                                rating={4.7}
-                                price={dish.price}
-                                shopName={shop.name}
-                                onNavigate={handleNavigate}
-                                onListenAudio={handleListenAudio}
-                                onViewMenu={handleViewMenu}
-                            />
-                        ))}
-                    </div>
+                    {shopDishes.length === 0 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
+                            Quán này chưa có món nào trong menu.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                {shopDishes.map((dish) => (
+                                    <DishCard
+                                        key={dish.id}
+                                        shopId={dish.shopId}
+                                        id={dish.id}
+                                        image={dish.image || "https://placehold.co/600x400?text=Dish"}
+                                        dishName={dish.name}
+                                        rating={4.7}
+                                        price={dish.price}
+                                        shopName={shop.name}
+                                        onNavigate={handleNavigate}
+                                        onListenAudio={handleListenAudio}
+                                        onViewMenu={handleViewMenu}
+                                    />
+                                ))}
+                            </div>
 
-                    <SimplePagination
-                        page={dishPage}
-                        onPrev={() => setDishPage((prev) => Math.max(1, prev - 1))}
-                        onNext={() => setDishPage((prev) => prev + 1)}
-                        disablePrev={dishPage === 1}
-                    />
+                            <SimplePagination
+                                page={dishPage}
+                                onPrev={() => setDishPage((prev) => Math.max(1, prev - 1))}
+                                onNext={() => setDishPage((prev) => prev + 1)}
+                                disablePrev={dishPage === 1}
+                            />
+                        </>
+                    )}
                 </div>
 
                 <div className="mt-8">

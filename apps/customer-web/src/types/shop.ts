@@ -6,6 +6,8 @@ export type ShopResponse = {
   description: string;
   imageName: string;
   audioURL: string;
+  shopTypeId?: number;
+  shopTypeName?: string;
   lat: number;
   lng: number;
   avgCostPerPerson: number;

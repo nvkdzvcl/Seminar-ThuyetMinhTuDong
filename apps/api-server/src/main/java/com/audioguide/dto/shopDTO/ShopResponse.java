@@ -25,6 +25,8 @@ public class ShopResponse {
     String description;
     String imageName;
     String audioURL;
+    Integer shopTypeId;
+    String shopTypeName;
     Double lat;
     Double lng;
 

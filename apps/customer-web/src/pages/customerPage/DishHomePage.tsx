@@ -12,6 +12,7 @@ import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
+import { routePath } from "../../routes/route";
 
 function HomePage() {
     const navigate = useNavigate();
@@ -72,11 +73,28 @@ function HomePage() {
     }, [shops]);
 
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         const trimmed = keyword.trim();
         if (!trimmed) return;
 
-        navigate(`/search-dish?keyword=${encodeURIComponent(trimmed)}`);
+        try {
+            const [dishRes, shopRes] = await Promise.all([
+                dishService.searchDishes(trimmed, "ACTIVE", 1, 1),
+                shopService.searchShops(trimmed, "ACTIVE", 1, 1),
+            ]);
+
+            const hasDishResult = (dishRes.result?.items?.length ?? 0) > 0;
+            const hasShopResult = (shopRes.result?.items?.length ?? 0) > 0;
+
+            if (hasShopResult && !hasDishResult) {
+                navigate(`${routePath.shopSearchPage}?keyword=${encodeURIComponent(trimmed)}`);
+                return;
+            }
+        } catch {
+            // fallback to dish search route if pre-check fails
+        }
+
+        navigate(`${routePath.searchDishes}?keyword=${encodeURIComponent(trimmed)}`);
     };
 
     const handleNavigateToShop = (shopId: number) => {

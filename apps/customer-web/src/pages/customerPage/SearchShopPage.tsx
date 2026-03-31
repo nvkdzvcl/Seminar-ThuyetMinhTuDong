@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { routePath } from "../../routes/route";
 import ShopCard from "../../components/shop/ShopCard";
 import { shopService } from "../../services/shopService";
@@ -8,9 +8,11 @@ import { useAudioPlayer } from "../../stores/useAudioPlayer";
 
 function SearchShopPage() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { toggleAudio } = useAudioPlayer();
+    const keywordFromUrl = searchParams.get("keyword") || "";
 
-    const [keyword, setKeyword] = useState("");
+    const [keyword, setKeyword] = useState(keywordFromUrl);
     const [shops, setShops] = useState<ShopResponse[]>([]);
     const [allShops, setAllShops] = useState<ShopResponse[]>([]);
     const [suggestions, setSuggestions] = useState<ShopResponse[]>([]);
@@ -19,6 +21,10 @@ function SearchShopPage() {
     const [isSearching, setIsSearching] = useState(false);
     const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
     const [pageError, setPageError] = useState("");
+
+    useEffect(() => {
+        setKeyword(keywordFromUrl);
+    }, [keywordFromUrl]);
 
     useEffect(() => {
         const loadDefaultShops = async () => {
@@ -86,6 +92,12 @@ function SearchShopPage() {
     }, [keyword, allShops]);
 
     const handleSubmitSearch = () => {
+        const trimmed = keyword.trim();
+        if (!trimmed) {
+            setSearchParams({});
+            return;
+        }
+        setSearchParams({ keyword: trimmed });
         setShowSuggestions(true);
     };
 
