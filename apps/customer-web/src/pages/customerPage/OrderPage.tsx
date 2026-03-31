@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { notifyInfo } from "../../utils/notify";
 
 type OrderStatus = "PROCESSING" | "COMPLETED" | "CANCELLED";
 
@@ -117,7 +118,7 @@ function OrderPage() {
                             {order.status === "COMPLETED" && (
                                 <button
                                     type="button"
-                                    onClick={() => alert("Tính năng nghe lại sẽ được cập nhật ở bước tích hợp AI streaming")}
+                                    onClick={() => notifyInfo("Tính năng nghe lại sẽ được cập nhật ở bước tích hợp AI streaming")}
                                     className="flex-1 rounded-xl bg-cyan-600 px-3 py-2.5 text-sm font-semibold text-white"
                                 >
                                     Nghe lại

@@ -9,6 +9,7 @@ import {
 } from "./slices/audioSlice";
 import { analyticsService } from "../services/analyticsService";
 import { resolvePreferredLanguage } from "../utils/language";
+import { notifyError, notifyInfo, notifyWarning } from "../utils/notify";
 
 type PlayAudioInput = {
     id: number;
@@ -98,14 +99,14 @@ export function useAudioPlayer() {
         dispatch(clearAudioState());
 
         if (previous) {
-            alert(`Đã dừng audio của ${getAudioLabel(previous)}`);
+            notifyInfo(`Đã dừng audio của ${getAudioLabel(previous)}`);
         }
     }, [current, dispatch]);
 
     const playAudio = useCallback(
         async ({ id, type, url, title, shopId, trigger = "MANUAL" }: PlayAudioInput) => {
             if (!url) {
-                alert(`Không tìm thấy audio cho ${getAudioLabel({ type, title })}`);
+                notifyWarning(`Không tìm thấy audio cho ${getAudioLabel({ type, title })}`);
                 return false;
             }
 
@@ -115,7 +116,7 @@ export function useAudioPlayer() {
                 if (globalAudio.paused) {
                     await globalAudio.play();
                     dispatch(setAudioPlaying(true));
-                    alert(`Đang phát lại audio của ${getAudioLabel({ type, title })}`);
+                    notifyInfo(`Đang phát lại audio của ${getAudioLabel({ type, title })}`);
                 }
                 return true;
             }
@@ -150,18 +151,16 @@ export function useAudioPlayer() {
                 trackAudioEvent("AUDIO_PLAY_COMPLETE", endedAudio);
                 dispatch(clearAudioState());
                 stopGlobalAudio();
-                alert(`Audio của ${getAudioLabel(endedAudio)} đã phát xong`);
+                notifyInfo(`Audio của ${getAudioLabel(endedAudio)} đã phát xong`);
             };
 
             try {
                 await nextAudio.play();
 
                 if (previous && (previous.id !== id || previous.type !== type)) {
-                    alert(
-                        `Đã tắt audio cũ và đang phát ${getAudioLabel({ type, title })}`
-                    );
+                    notifyInfo(`Đã tắt audio cũ và đang phát ${getAudioLabel({ type, title })}`);
                 } else {
-                    alert(`Đang phát audio của ${getAudioLabel({ type, title })}`);
+                    notifyInfo(`Đang phát audio của ${getAudioLabel({ type, title })}`);
                 }
 
                 trackAudioEvent("AUDIO_PLAY_START", { id, type, title, shopId, trigger });
@@ -174,7 +173,7 @@ export function useAudioPlayer() {
                 dispatch(clearAudioState());
                 stopGlobalAudio();
                 if (!isAutoplayBlockedError(error)) {
-                    alert(`Không thể phát audio của ${getAudioLabel({ type, title })}`);
+                    notifyError(`Không thể phát audio của ${getAudioLabel({ type, title })}`);
                 }
                 throw error;
             }
@@ -194,13 +193,13 @@ export function useAudioPlayer() {
                 await globalAudio.play();
                 dispatch(setAudioPlaying(true));
                 trackAudioEvent("AUDIO_PLAY_START", { id, type, title, shopId, trigger });
-                alert(`Đang phát audio của ${getAudioLabel({ type, title })}`);
+                notifyInfo(`Đang phát audio của ${getAudioLabel({ type, title })}`);
                 return true;
             }
 
             globalAudio.pause();
             dispatch(setAudioPlaying(false));
-            alert(`Đã tạm dừng audio của ${getAudioLabel({ type, title })}`);
+            notifyInfo(`Đã tạm dừng audio của ${getAudioLabel({ type, title })}`);
             return true;
         },
         [current, dispatch, playAudio]

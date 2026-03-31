@@ -12,6 +12,7 @@ import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import { resolvePreferredLanguage } from "../../utils/language";
 import { resolveMediaUrl } from "../../utils/media";
+import { notifyError, notifyInfo, notifyWarning } from "../../utils/notify";
 
 function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
     if (!rawAudioPath) return undefined;
@@ -165,7 +166,7 @@ function ShopDetailPage() {
             setActiveNarrationLanguage(narration?.language || preferredLanguage);
 
             if (!narrationAudioUrl) {
-                alert("Không tạo được audio thuyết minh cho quán.");
+                notifyWarning("Không tạo được audio thuyết minh cho quán.");
                 return;
             }
 
@@ -183,7 +184,7 @@ function ShopDetailPage() {
             if (isAutoplayBlockedError(error)) {
                 setNeedsUserGestureToPlay(true);
                 if (!shouldAutoplayNarration) {
-                    alert("Trình duyệt yêu cầu bạn tương tác trước khi phát. Hãy bấm lại nút phát audio.");
+                    notifyInfo("Trình duyệt yêu cầu bạn tương tác trước khi phát. Hãy bấm lại nút phát audio.");
                 }
                 return;
             }
@@ -192,7 +193,7 @@ function ShopDetailPage() {
                 error,
                 "Không thể tạo audio theo ngôn ngữ đã chọn. Vui lòng thử lại."
             );
-            alert(message);
+            notifyError(message);
         } finally {
             setIsGeneratingNarration(false);
         }

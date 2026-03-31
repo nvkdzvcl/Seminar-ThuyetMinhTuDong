@@ -5,6 +5,7 @@ import DefaultLayout from "./components/layout/DefaultLayout";
 import { useAppDispatch } from "./stores/hooks";
 import { restoreMeThunk } from "./stores/slices/authSlice";
 import ModalHost from "./components/modals/ModalHost";
+import ToastHost from "./components/common/ToastHost";
 import { useAutoUiTranslation } from "./hooks/useAutoUiTranslation";
 
 const LS_ACCESS = "VINH_KHANH_FOOD_TOUR_ACCESS_TOKEN";
@@ -81,6 +82,7 @@ function App() {
                 <AppRoutes />
             </Router>
             <ModalHost />
+            <ToastHost />
         </>
     );
 }

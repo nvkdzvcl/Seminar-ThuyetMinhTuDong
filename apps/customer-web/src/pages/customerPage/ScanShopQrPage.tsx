@@ -4,6 +4,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { routePath } from "../../routes/route";
 import { resolvePreferredLanguage } from "../../utils/language";
 import { analyticsService } from "../../services/analyticsService";
+import { notifySuccess } from "../../utils/notify";
 
 const SHOP_ID_PATTERNS = [
     /(?:^|[/?#=&])shopId(?:=|\/)(\d+)(?:$|[/?#&])/i,
@@ -138,7 +139,7 @@ function ScanShopQrPage() {
 
         if (!isMountedRef.current) return;
 
-        alert(`Đã nhận QR quán #${shopId}. Đang chuyển tới trang quán.`);
+        notifySuccess(`Đã nhận QR quán #${shopId}. Đang chuyển tới trang quán.`);
         const preferredLanguage = resolvePreferredLanguage();
         void analyticsService
             .trackEvent({

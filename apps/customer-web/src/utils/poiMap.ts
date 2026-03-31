@@ -203,6 +203,7 @@ export function toMapPoiFromApi(poi: PoiResponse): MapPoi | null {
 
     return {
         id: String(poi.id),
+        shopId: poi.shopId,
         name: poi.name,
         address: poi.address ?? undefined,
         description: poi.description ?? undefined,
@@ -218,6 +219,7 @@ export function toMapPoiFromApi(poi: PoiResponse): MapPoi | null {
 export function toMapPoiFromManual(seed: ManualPoiSeed): MapPoi {
     return {
         id: seed.id,
+        shopId: seed.shopId,
         name: seed.name,
         address: seed.address,
         lat: seed.lat,

@@ -3,6 +3,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { authService } from "../../services/authService";
 import type { LoginPayload, RegisterPayload, RegisterResponse, User } from "../../types/auth";
+import { notifySuccess } from "../../utils/notify";
 
 type AuthState = {
     user: User | null;
@@ -49,7 +50,7 @@ export const loginThunk = createAsyncThunk<User, LoginPayload, { rejectValue: st
                 localStorage.setItem(LS_REFRESH, data.result.refreshToken);
             localStorage.setItem(LS_USER, JSON.stringify(data.result.user));
 
-            alert("Login successfully");
+            notifySuccess("Login successfully");
 
             return data.result.user;
         } catch (err: any) {
@@ -71,7 +72,7 @@ export const registerThunk = createAsyncThunk<
             return thunkAPI.rejectWithValue(data.message || "Register failed");
         }
 
-        alert("Register successfully. Please login.");
+        notifySuccess("Register successfully. Please login.");
         return data.result;
     } catch (err: any) {
         return thunkAPI.rejectWithValue(err?.response?.data?.message ?? "Register failed");
@@ -117,7 +118,7 @@ export const logoutThunk = createAsyncThunk<void, void, { rejectValue: string }>
                 return thunkAPI.rejectWithValue(data.message || "Logout failed");
             }
 
-            alert("Logout successfully");
+            notifySuccess("Logout successfully");
             return;
         } catch (err: any) {
             return thunkAPI.rejectWithValue(err?.response?.data?.message ?? "Logout failed");

@@ -34,6 +34,7 @@ export type PoiResponse = {
 
 export type MapPoi = {
     id: string;
+    shopId?: number;
     name: string;
     address?: string;
     description?: string;

@@ -2,6 +2,7 @@ import type { PoiCategoryKey } from "../types/poi";
 
 export type ManualPoiSeed = {
     id: string;
+    shopId?: number;
     name: string;
     address: string;
     lat: number;
