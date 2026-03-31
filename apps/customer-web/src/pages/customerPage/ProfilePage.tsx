@@ -70,14 +70,12 @@ function ProfilePage() {
                 <h3 className="text-base font-semibold text-slate-900">Tùy chọn nghe audio</h3>
 
                 <div className="mt-4 space-y-3">
-                    <div
-                        data-no-auto-translate="true"
-                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-                    >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-sm text-slate-700 sm:pr-3">
                             Ngôn ngữ mặc định {languageOptions.length > 0 ? `(${languageOptions.length})` : ""}
                         </span>
                         <select
+                            data-no-auto-translate="true"
                             value={lang}
                             onChange={(e) => handleLanguageChange(e.target.value)}
                             disabled={languageLoading || languageOptions.length === 0}

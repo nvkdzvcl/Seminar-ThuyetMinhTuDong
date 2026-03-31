@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { translationService } from "../services/translationService";
 import {
     CUSTOMER_LANGUAGE_CHANGED_EVENT,
     getStoredUserLanguage,
-    isEnglishLanguage,
     isVietnameseLanguage,
     normalizeLocale,
 } from "../utils/language";
@@ -14,6 +13,12 @@ const textNodeLastAppliedMap = new WeakMap<Text, string>();
 const elementAttrSourceMap = new WeakMap<Element, Map<string, string>>();
 const elementAttrLastAppliedMap = new WeakMap<Element, Map<string, string>>();
 const translationCache = new Map<string, Map<string, string>>();
+const translatedPageKeys = new Set<string>();
+
+const TRANSLATION_CACHE_STORAGE_KEY = "customer_ui_translation_cache_v1";
+const MAX_CACHE_LANGUAGES = 8;
+const MAX_CACHE_ENTRIES_PER_LANGUAGE = 1500;
+let translationCacheHydrated = false;
 
 const TRANSLATABLE_ATTRS = ["placeholder", "title", "aria-label"] as const;
 
@@ -95,6 +100,78 @@ function ensureLanguageCache(targetLanguage: string): Map<string, string> {
     return cache;
 }
 
+function hydrateTranslationCacheFromStorage() {
+    if (translationCacheHydrated || typeof window === "undefined") {
+        return;
+    }
+
+    translationCacheHydrated = true;
+    try {
+        const raw = window.localStorage.getItem(TRANSLATION_CACHE_STORAGE_KEY);
+        if (!raw) return;
+
+        const parsed = JSON.parse(raw) as Record<string, Array<[string, string]>>;
+        Object.entries(parsed).forEach(([language, entries]) => {
+            if (!Array.isArray(entries) || !language.trim()) return;
+            const map = new Map<string, string>();
+            entries.forEach((pair) => {
+                if (!Array.isArray(pair) || pair.length !== 2) return;
+                const source = String(pair[0] || "");
+                const translated = String(pair[1] || "");
+                if (!source.trim()) return;
+                map.set(source, translated || source);
+            });
+            if (map.size > 0) {
+                translationCache.set(language, map);
+            }
+        });
+    } catch {
+        // ignore malformed cache payload
+    }
+}
+
+function persistTranslationCacheToStorage(preferredLanguage?: string) {
+    if (typeof window === "undefined") {
+        return;
+    }
+
+    try {
+        const entries = Array.from(translationCache.entries());
+        entries.sort(([a], [b]) => {
+            if (preferredLanguage && a === preferredLanguage && b !== preferredLanguage) return -1;
+            if (preferredLanguage && b === preferredLanguage && a !== preferredLanguage) return 1;
+            return 0;
+        });
+
+        const limited = entries.slice(0, MAX_CACHE_LANGUAGES);
+        const payload: Record<string, Array<[string, string]>> = {};
+
+        limited.forEach(([language, map]) => {
+            const items = Array.from(map.entries());
+            const sliced =
+                items.length > MAX_CACHE_ENTRIES_PER_LANGUAGE
+                    ? items.slice(items.length - MAX_CACHE_ENTRIES_PER_LANGUAGE)
+                    : items;
+            payload[language] = sliced;
+        });
+
+        window.localStorage.setItem(TRANSLATION_CACHE_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+        // ignore storage errors (quota / private mode)
+    }
+}
+
+function setUiTranslatingState(isTranslating: boolean) {
+    if (typeof document === "undefined") {
+        return;
+    }
+    if (isTranslating) {
+        document.body.setAttribute("data-ui-translating", "true");
+        return;
+    }
+    document.body.removeAttribute("data-ui-translating");
+}
+
 function chunkArray<T>(items: T[], size: number): T[][] {
     if (items.length === 0) return [];
     const result: T[][] = [];
@@ -107,7 +184,7 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 async function translateMissingTexts(targetLanguage: string, texts: string[]) {
     const cache = ensureLanguageCache(targetLanguage);
     const missing = texts.filter((text) => !cache.has(text));
-    if (missing.length === 0) return;
+    if (missing.length === 0) return false;
 
     const batches = chunkArray(missing, 40);
     for (const batch of batches) {
@@ -124,6 +201,9 @@ async function translateMissingTexts(targetLanguage: string, texts: string[]) {
             });
         }
     }
+
+    persistTranslationCacheToStorage(targetLanguage);
+    return true;
 }
 
 function shouldSkipElement(element: Element | null): boolean {
@@ -203,6 +283,7 @@ export function useAutoUiTranslation() {
     const [storedLanguage, setStoredLanguage] = useState(() =>
         normalizeLocale(getStoredUserLanguage() || "en-US")
     );
+    hydrateTranslationCacheFromStorage();
 
     useEffect(() => {
         const syncLanguageFromStorage = () => {
@@ -230,26 +311,31 @@ export function useAutoUiTranslation() {
         return normalizeLocale(storedLanguage);
     }, [location.pathname, storedLanguage]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const root = document.body;
         if (!root) return;
 
         let disposed = false;
         let timer: number | undefined;
+        const pageKey = `${targetLanguage}|${location.pathname}`;
 
         document.documentElement.lang = normalizeLocale(targetLanguage);
 
-        const applyTranslation = async () => {
+        const applyTranslation = async (trigger: "initial" | "mutation" = "initial") => {
             if (disposed || isApplyingRef.current) return;
             isApplyingRef.current = true;
+            let hideUntilApplied = false;
 
             try {
                 if (location.pathname === "/login") {
+                    setUiTranslatingState(false);
                     return;
                 }
 
-                if (!isEnglishLanguage(targetLanguage) && isVietnameseLanguage(targetLanguage)) {
+                if (isVietnameseLanguage(targetLanguage)) {
                     restoreOriginalTexts(root);
+                    translatedPageKeys.add(pageKey);
+                    setUiTranslatingState(false);
                     return;
                 }
 
@@ -263,13 +349,32 @@ export function useAutoUiTranslation() {
                     ])
                 );
 
-                if (uniqueTexts.length === 0) return;
+                if (uniqueTexts.length === 0) {
+                    translatedPageKeys.add(pageKey);
+                    setUiTranslatingState(false);
+                    return;
+                }
+
+                const cache = ensureLanguageCache(targetLanguage);
+                const missingTexts = uniqueTexts.filter((text) => !cache.has(text));
+                const shouldHideForInitialPaint =
+                    trigger === "initial" &&
+                    missingTexts.length > 0 &&
+                    !translatedPageKeys.has(pageKey);
+
+                if (shouldHideForInitialPaint) {
+                    hideUntilApplied = true;
+                    setUiTranslatingState(true);
+                }
 
                 await translateMissingTexts(targetLanguage, uniqueTexts);
-                const cache = ensureLanguageCache(targetLanguage);
+                if (disposed) {
+                    return;
+                }
+                const latestCache = ensureLanguageCache(targetLanguage);
 
                 textNodes.forEach(({ node, lead, core, trail }) => {
-                    const translated = cache.get(core) || core;
+                    const translated = latestCache.get(core) || core;
                     const nextValue = `${lead}${translated}${trail}`;
                     if (node.nodeValue !== nextValue) {
                         node.nodeValue = nextValue;
@@ -278,14 +383,19 @@ export function useAutoUiTranslation() {
                 });
 
                 attrs.forEach(({ element, attr, source }) => {
-                    const translated = cache.get(source) || source;
+                    const translated = latestCache.get(source) || source;
                     if (element.getAttribute(attr) !== translated) {
                         element.setAttribute(attr, translated);
                     }
                     getElementAttrLastAppliedMap(element).set(attr, translated);
                 });
+
+                translatedPageKeys.add(pageKey);
             } finally {
                 isApplyingRef.current = false;
+                if (hideUntilApplied) {
+                    setUiTranslatingState(false);
+                }
             }
         };
 
@@ -293,8 +403,8 @@ export function useAutoUiTranslation() {
             if (disposed) return;
             if (timer) window.clearTimeout(timer);
             timer = window.setTimeout(() => {
-                void applyTranslation();
-            }, 120);
+                void applyTranslation("mutation");
+            }, 40);
         };
 
         const observer = new MutationObserver(() => {
@@ -310,12 +420,13 @@ export function useAutoUiTranslation() {
             attributeFilter: TRANSLATABLE_ATTRS as unknown as string[],
         });
 
-        scheduleApply();
+        void applyTranslation("initial");
 
         return () => {
             disposed = true;
             if (timer) window.clearTimeout(timer);
             observer.disconnect();
+            setUiTranslatingState(false);
         };
     }, [targetLanguage, location.pathname]);
 }

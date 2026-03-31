@@ -13,6 +13,10 @@ body {
   color: #0f172a;
 }
 
+body[data-ui-translating="true"] #root {
+  opacity: 0;
+}
+
 * {
   box-sizing: border-box;
 }

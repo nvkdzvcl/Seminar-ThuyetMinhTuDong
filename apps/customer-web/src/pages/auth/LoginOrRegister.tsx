@@ -414,11 +414,12 @@ function LoginOrRegister() {
                                         )}
                                     </div>
 
-                                    <div data-no-auto-translate="true">
+                                    <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
                                             Language {languageOptions.length > 0 ? `(${languageOptions.length})` : ""}
                                         </label>
                                         <select
+                                            data-no-auto-translate="true"
                                             value={registerForm.language}
                                             onChange={(e) =>
                                                 handleRegisterChange("language", e.target.value)

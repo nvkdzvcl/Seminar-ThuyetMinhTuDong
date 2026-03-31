@@ -289,13 +289,17 @@ export default function NearbyShopPage() {
                 });
             },
             (geoError) => {
+                if (geoError.code === geoError.TIMEOUT) {
+                    setError("GPS phản hồi chậm. Hệ thống sẽ tự thử lại.");
+                    return;
+                }
                 console.error("watchPosition error:", geoError);
                 setError("Không lấy được vị trí hiện tại");
             },
             {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 10000,
+                enableHighAccuracy: false,
+                maximumAge: 15000,
+                timeout: 20000,
             }
         );
 
