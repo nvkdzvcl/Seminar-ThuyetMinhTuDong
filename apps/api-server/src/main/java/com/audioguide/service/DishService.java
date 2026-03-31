@@ -242,7 +242,7 @@ public class DishService {
             return;
         }
 
-        var poiOptional = poiRepository.findByShopId(dish.getShop().getId());
+        var poiOptional = poiRepository.findFirstByShopIdOrderByUpdatedAtDesc(dish.getShop().getId());
         if (poiOptional.isEmpty()) {
             return;
         }

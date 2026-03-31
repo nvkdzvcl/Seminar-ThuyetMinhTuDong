@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PoiRepository extends JpaRepository<Poi, Integer> {
@@ -32,6 +33,8 @@ public interface PoiRepository extends JpaRepository<Poi, Integer> {
     );
 
     Optional<Poi> findByShopId(Integer shopId);
+    Optional<Poi> findFirstByShopIdOrderByUpdatedAtDesc(Integer shopId);
+    List<Poi> findAllByShopIdOrderByUpdatedAtDesc(Integer shopId);
 
     long countByStatus(PoiStatus status);
 }

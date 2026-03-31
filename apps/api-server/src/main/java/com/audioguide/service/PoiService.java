@@ -191,7 +191,7 @@ public class PoiService {
     public PoiApprovalSummaryResponse getApprovalSummaryByShopId(Integer shopId) {
         var shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
-        var poiOptional = poiRepository.findByShopId(shopId);
+        var poiOptional = poiRepository.findFirstByShopIdOrderByUpdatedAtDesc(shopId);
         var history = poiApprovalHistoryRepository.findByShopIdOrderBySubmittedAtDesc(shopId);
         if (poiOptional.isEmpty()) {
             return PoiApprovalSummaryResponse.builder()
@@ -215,7 +215,7 @@ public class PoiService {
         var shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
         var now = LocalDateTime.now();
-        var poi = poiRepository.findByShopId(shopId).orElseGet(() -> Poi.builder()
+        var poi = poiRepository.findFirstByShopIdOrderByUpdatedAtDesc(shopId).orElseGet(() -> Poi.builder()
                 .region(null)
                 .qrCode(null)
                 .riskFlag(false)

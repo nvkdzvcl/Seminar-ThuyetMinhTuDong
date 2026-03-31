@@ -12,7 +12,6 @@ import { AudioManagementScreen } from "./screens/audio-management-screen"
 import { ApprovalHistoryScreen } from "./screens/approval-history-screen"
 import { getPoiApprovalSummary, submitPoiRegistration } from "@/services/poi-approval-service"
 import { createShop, getMyShop, getShopTypes, updateMyShop, type CreateShopPayload, type ShopTypeOption } from "@/services/shop-service"
-import { previewPoiModeration } from "@/services/poi-moderation-service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -56,6 +55,8 @@ const OWNER_DRAFT_SHOP_NAME_KEY = "owner_draft_shop_name"
 const DEFAULT_CREATE_SHOP_AVG_COST = 90000
 const DEFAULT_CREATE_SHOP_AVG_WAIT_TIME = 10
 const DEFAULT_CREATE_SHOP_AVG_EAT_TIME = 30
+const POI_SUBMIT_MAX_ATTEMPTS = 3
+const POI_SUBMIT_RETRY_DELAYS_MS = [1500, 3500]
 
 type ShopCategoryKey = "hai_san" | "lau" | "do_nuong" | "com" | "pho" | "giai_khat"
 
@@ -129,6 +130,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const [dishReloadToken, setDishReloadToken] = useState(0)
   const [isSavingShop, setIsSavingShop] = useState(false)
   const [isCreatingShop, setIsCreatingShop] = useState(false)
+  const [isSubmittingPoiApproval, setIsSubmittingPoiApproval] = useState(false)
+  const [poiSubmitProgressMessage, setPoiSubmitProgressMessage] = useState<string | null>(null)
   const [isLoadingOwnerContext, setIsLoadingOwnerContext] = useState(true)
   const [notice, setNotice] = useState<AppNotice | null>(null)
   const [createShopName, setCreateShopName] = useState(() => consumeDraftShopName())
@@ -308,152 +311,174 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     setCurrentScreen(screen)
   }
 
-  const handleCreateShop = async () => {
-    if (!createShopName.trim() || !createShopAddress.trim() || !createShopDescription.trim()) {
-      setNotice({
-        type: "error",
-        message: "Vui lòng nhập đủ tên quán, địa chỉ và mô tả.",
-      })
-      return
-    }
+  const waitForRetry = (delayMs: number) =>
+    new Promise<void>((resolve) => {
+      window.setTimeout(resolve, delayMs)
+    })
 
-    let lat: number | null = null
-    let lng: number | null = null
-
-    if (createShopCoordinateRaw.trim()) {
-      const parsedCoordinates = parseFlexibleCoordinates(createShopCoordinateRaw)
-      if (!parsedCoordinates) {
-        setNotice({
-          type: "error",
-          message:
-            "Không đọc được tọa độ. Hãy nhập dạng DMS (N/E/W/S) hoặc dạng số thập phân `lat, lng`.",
-        })
-        return
-      }
-      lat = parsedCoordinates.lat
-      lng = parsedCoordinates.lng
-      setCreateShopLat(parsedCoordinates.lat.toFixed(8))
-      setCreateShopLng(parsedCoordinates.lng.toFixed(8))
-    } else {
-      lat = parseNumberInput(createShopLat)
-      if (lat === null || lat < -90 || lat > 90) {
-        setNotice({
-          type: "error",
-          message: "Vĩ độ không hợp lệ. Giá trị hợp lệ từ -90 đến 90.",
-        })
-        return
-      }
-
-      lng = parseNumberInput(createShopLng)
-      if (lng === null || lng < -180 || lng > 180) {
-        setNotice({
-          type: "error",
-          message: "Kinh độ không hợp lệ. Giá trị hợp lệ từ -180 đến 180.",
-        })
-        return
-      }
-    }
-
-    if (lat === null || lng === null) {
-      setNotice({
-        type: "error",
-        message: "Không xác định được tọa độ cửa hàng.",
-      })
-      return
-    }
-
-    try {
-      const moderationPreview = await previewPoiModeration({
-        name: createShopName.trim(),
-        address: createShopAddress.trim(),
-        description: createShopDescription.trim(),
-        category: SHOP_CATEGORIES.find((category) => category.key === createShopCategoryKey)?.label,
-      })
-      if (moderationPreview.decision === "BLOCK") {
-        setNotice({
-          type: "error",
-          message: moderationPreview.message || "Mô tả có dấu hiệu nhạy cảm, vui lòng chỉnh sửa trước khi tạo quán.",
-        })
-        return
-      }
-      if (moderationPreview.decision === "WARN") {
-        setNotice({
-          type: "info",
-          message: moderationPreview.message || "Mô tả có dấu hiệu chưa phù hợp, bạn nên chỉnh sửa trước khi gửi duyệt.",
-        })
-      }
-    } catch {
+  const submitPoiRegistrationWithRetry = async (
+    targetShopId: number,
+    source: "auto-after-create" | "manual",
+  ) => {
+    if (isSubmittingPoiApproval) {
       setNotice({
         type: "info",
-        message: "Không kiểm tra được nội dung tự động. Hệ thống vẫn tiếp tục tạo quán và sẽ kiểm duyệt ở bước sau.",
-      })
-    }
-
-    const payload: CreateShopPayload = {
-      name: createShopName.trim(),
-      address: createShopAddress.trim(),
-      shortDescription: createShopDescription.trim().slice(0, 140),
-      detailedDescription: createShopDescription.trim(),
-      description: createShopDescription.trim(),
-      lat,
-      lng,
-      avgCostPerPerson: DEFAULT_CREATE_SHOP_AVG_COST,
-      avgWaitTimeMin: DEFAULT_CREATE_SHOP_AVG_WAIT_TIME,
-      avgEatTimeMin: DEFAULT_CREATE_SHOP_AVG_EAT_TIME,
-    }
-
-    const selectedShopTypeId = shopTypeIdByCategory[createShopCategoryKey]
-    if (selectedShopTypeId !== null) {
-      payload.shopTypeId = selectedShopTypeId
-    } else if (hasShopTypeLoadError) {
-      setNotice({
-        type: "error",
-        message: "Không tải được loại cửa hàng từ backend. Vui lòng thử lại.",
-      })
-      return
-    } else {
-      const selectedCategoryLabel =
-        SHOP_CATEGORIES.find((category) => category.key === createShopCategoryKey)?.label ?? "đã chọn"
-      setNotice({
-        type: "error",
-        message: `Loại cửa hàng "${selectedCategoryLabel}" chưa được cấu hình trên backend.`,
+        message: "Hệ thống đang gửi duyệt POI. Vui lòng chờ trong giây lát.",
       })
       return
     }
 
-    setIsCreatingShop(true)
+    setIsSubmittingPoiApproval(true)
     try {
-      const createdShop = await createShop(payload)
-      let isSubmittedToAdmin = false
-      let submitWarningMessage: string | null = null
-      try {
-        await submitPoiRegistration(createdShop.id)
-        isSubmittedToAdmin = true
-      } catch (submitError) {
-        submitWarningMessage = getErrorMessage(
-          submitError,
-          "Đã tạo cửa hàng. Vui lòng vào Hồ sơ quán để gửi đăng ký POI.",
-        )
+      for (let attempt = 1; attempt <= POI_SUBMIT_MAX_ATTEMPTS; attempt += 1) {
+        setPoiSubmitProgressMessage(`Đang gửi duyệt POI... (lần ${attempt}/${POI_SUBMIT_MAX_ATTEMPTS})`)
+        try {
+          const summary = await submitPoiRegistration(targetShopId)
+          setPoiApprovalStatus(summary.status)
+          setRejectionReason(summary.rejectionReason)
+          setApprovalHistory(summary.history)
+          if (summary.status === "rejected") {
+            setNotice({
+              type: "error",
+              message: summary.rejectionReason || "POI bị AI gắn cờ. Vui lòng chỉnh sửa mô tả rồi gửi duyệt lại.",
+            })
+            return
+          }
+          setNotice({
+            type: "success",
+            message:
+              source === "auto-after-create"
+                ? "Đã gửi đăng ký POI cho admin. Bạn có thể theo dõi trạng thái ở Hồ sơ quán."
+                : "Đã gửi yêu cầu duyệt POI. Admin sẽ thấy mục này để xem xét.",
+          })
+          return
+        } catch (submitError) {
+          if (attempt >= POI_SUBMIT_MAX_ATTEMPTS) {
+            const fallbackMessage =
+              source === "auto-after-create"
+                ? "Đã tạo cửa hàng. Vui lòng vào Hồ sơ quán để gửi đăng ký POI."
+                : "Gửi yêu cầu duyệt thất bại."
+            setNotice({
+              type: "info",
+              message: getErrorMessage(submitError, fallbackMessage),
+            })
+            return
+          }
+
+          const retryDelayMs = POI_SUBMIT_RETRY_DELAYS_MS[Math.min(attempt - 1, POI_SUBMIT_RETRY_DELAYS_MS.length - 1)]
+          setPoiSubmitProgressMessage(
+            `Kết nối tạm lỗi, sẽ tự thử lại sau ${Math.ceil(retryDelayMs / 1000)} giây... (lần ${attempt}/${POI_SUBMIT_MAX_ATTEMPTS})`,
+          )
+          await waitForRetry(retryDelayMs)
+        }
+      }
+    } finally {
+      setPoiSubmitProgressMessage(null)
+      setIsSubmittingPoiApproval(false)
+    }
+  }
+
+  const handleCreateShop = async () => {
+    if (isCreatingShop) {
+      return
+    }
+    setIsCreatingShop(true)
+
+    try {
+      if (!createShopName.trim() || !createShopAddress.trim() || !createShopDescription.trim()) {
+        setNotice({
+          type: "error",
+          message: "Vui lòng nhập đủ tên quán, địa chỉ và mô tả.",
+        })
+        return
       }
 
+      let lat: number | null = null
+      let lng: number | null = null
+
+      if (createShopCoordinateRaw.trim()) {
+        const parsedCoordinates = parseFlexibleCoordinates(createShopCoordinateRaw)
+        if (!parsedCoordinates) {
+          setNotice({
+            type: "error",
+            message:
+              "Không đọc được tọa độ. Hãy nhập dạng DMS (N/E/W/S) hoặc dạng số thập phân `lat, lng`.",
+          })
+          return
+        }
+        lat = parsedCoordinates.lat
+        lng = parsedCoordinates.lng
+        setCreateShopLat(parsedCoordinates.lat.toFixed(8))
+        setCreateShopLng(parsedCoordinates.lng.toFixed(8))
+      } else {
+        lat = parseNumberInput(createShopLat)
+        if (lat === null || lat < -90 || lat > 90) {
+          setNotice({
+            type: "error",
+            message: "Vĩ độ không hợp lệ. Giá trị hợp lệ từ -90 đến 90.",
+          })
+          return
+        }
+
+        lng = parseNumberInput(createShopLng)
+        if (lng === null || lng < -180 || lng > 180) {
+          setNotice({
+            type: "error",
+            message: "Kinh độ không hợp lệ. Giá trị hợp lệ từ -180 đến 180.",
+          })
+          return
+        }
+      }
+
+      if (lat === null || lng === null) {
+        setNotice({
+          type: "error",
+          message: "Không xác định được tọa độ cửa hàng.",
+        })
+        return
+      }
+
+      const payload: CreateShopPayload = {
+        name: createShopName.trim(),
+        address: createShopAddress.trim(),
+        shortDescription: createShopDescription.trim().slice(0, 140),
+        detailedDescription: createShopDescription.trim(),
+        description: createShopDescription.trim(),
+        lat,
+        lng,
+        avgCostPerPerson: DEFAULT_CREATE_SHOP_AVG_COST,
+        avgWaitTimeMin: DEFAULT_CREATE_SHOP_AVG_WAIT_TIME,
+        avgEatTimeMin: DEFAULT_CREATE_SHOP_AVG_EAT_TIME,
+      }
+
+      const selectedShopTypeId = shopTypeIdByCategory[createShopCategoryKey]
+      if (selectedShopTypeId !== null) {
+        payload.shopTypeId = selectedShopTypeId
+      } else if (hasShopTypeLoadError) {
+        setNotice({
+          type: "error",
+          message: "Không tải được loại cửa hàng từ backend. Vui lòng thử lại.",
+        })
+        return
+      } else {
+        const selectedCategoryLabel =
+          SHOP_CATEGORIES.find((category) => category.key === createShopCategoryKey)?.label ?? "đã chọn"
+        setNotice({
+          type: "error",
+          message: `Loại cửa hàng "${selectedCategoryLabel}" chưa được cấu hình trên backend.`,
+        })
+        return
+      }
+
+      const createdShop = await createShop(payload)
       await loadOwnerContext()
       setCurrentScreen("dashboard")
-      if (isSubmittedToAdmin) {
-        setNotice({
-          type: "success",
-          message: "Đã tạo cửa hàng và gửi đăng ký POI. Admin có thể bắt đầu duyệt.",
-        })
-      } else if (submitWarningMessage) {
-        setNotice({
-          type: "info",
-          message: submitWarningMessage,
-        })
-      } else {
-        setNotice({
-          type: "success",
-          message: "Đã tạo cửa hàng thành công.",
-        })
-      }
+      setNotice({
+        type: "success",
+        message: "Đã tạo cửa hàng thành công. Hệ thống đang gửi đăng ký POI để admin duyệt...",
+      })
+
+      void submitPoiRegistrationWithRetry(createdShop.id, "auto-after-create")
     } catch (error) {
       setNotice({
         type: "error",
@@ -546,22 +571,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 })
                 return
               }
-              void submitPoiRegistration(shopId)
-                .then((summary) => {
-                  setPoiApprovalStatus(summary.status)
-                  setRejectionReason(summary.rejectionReason)
-                  setApprovalHistory(summary.history)
-                  setNotice({
-                    type: "success",
-                    message: "Đã gửi yêu cầu duyệt POI. Admin sẽ thấy mục này để xem xét.",
-                  })
-                })
-                .catch((error) => {
-                  setNotice({
-                    type: "error",
-                    message: getErrorMessage(error, "Gửi yêu cầu duyệt thất bại."),
-                  })
-                })
+              void submitPoiRegistrationWithRetry(shopId, "manual")
             }}
             onViewApprovalHistory={() => setCurrentScreen("approval-history")}
           />
@@ -774,6 +784,14 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
             }`}
           >
             {notice.message}
+          </div>
+        ) : null}
+        {poiSubmitProgressMessage ? (
+          <div className="mx-3 mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              <span>{poiSubmitProgressMessage}</span>
+            </div>
           </div>
         ) : null}
         {renderScreen()}

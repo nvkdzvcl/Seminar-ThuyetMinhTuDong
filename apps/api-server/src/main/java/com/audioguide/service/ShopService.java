@@ -94,14 +94,6 @@ public class ShopService {
                 ""
         );
 
-        ensureShopContentAllowedForOwner(
-                request.getName(),
-                request.getAddress(),
-                detailedDescription,
-                shopType.getName(),
-                null
-        );
-
         var coordinates = resolveCoordinatesForCreate(request);
         var shop = shopMapper.toShopFromShopCreateRequest(request);
 
@@ -479,7 +471,7 @@ public class ShopService {
     }
 
     private void syncPoiAfterShopUpdate(com.audioguide.entity.Shop shop, boolean savePendingHistory) {
-        var poiOptional = poiRepository.findByShopId(shop.getId());
+        var poiOptional = poiRepository.findFirstByShopIdOrderByUpdatedAtDesc(shop.getId());
         if (poiOptional.isEmpty()) {
             return;
         }
