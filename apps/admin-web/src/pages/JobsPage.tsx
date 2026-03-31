@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   MoreHorizontal,
   RefreshCw,
@@ -9,7 +9,6 @@ import {
   CheckCircle,
   Loader2,
   ListTodo,
-  Play,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -43,10 +42,17 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Pagination } from '@/components/shared/Pagination'
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { jobs } from '@/data/mock-data'
-import type { Job, JobStatus, JobType } from '@/types'
+import type { JobStatus, JobType } from '@/types'
 import { formatDateTime, getJobTypeName } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import {
+  cancelAdminJob,
+  fetchAdminJobs,
+  fetchAdminJobsSummary,
+  retryAdminJob,
+  type AdminJob,
+  type AdminJobsSummary,
+} from '@/services/adminJobService'
 
 const PAGE_SIZE = 10
 
@@ -55,6 +61,7 @@ const statusOptions = [
   { value: 'processing', label: 'Đang xử lý' },
   { value: 'failed', label: 'Thất bại' },
   { value: 'done', label: 'Hoàn thành' },
+  { value: 'canceled', label: 'Đã hủy' },
 ]
 
 const typeOptions = [
@@ -63,6 +70,15 @@ const typeOptions = [
   { value: 'image_processing', label: 'Xử lý ảnh' },
   { value: 'data_sync', label: 'Đồng bộ dữ liệu' },
 ]
+
+const INITIAL_STATS: AdminJobsSummary = {
+  total: 0,
+  queued: 0,
+  processing: 0,
+  failed: 0,
+  done: 0,
+  canceled: 0,
+}
 
 function getStatusIcon(status: JobStatus) {
   switch (status) {
@@ -74,6 +90,8 @@ function getStatusIcon(status: JobStatus) {
       return AlertTriangle
     case 'done':
       return CheckCircle
+    case 'canceled':
+      return XCircle
     default:
       return Clock
   }
@@ -83,11 +101,17 @@ export function JobsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [jobs, setJobs] = useState<AdminJob[]>([])
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [stats, setStats] = useState<AdminJobsSummary>(INITIAL_STATS)
+  const [selectedJob, setSelectedJob] = useState<AdminJob | null>(null)
   const [detailSheetOpen, setDetailSheetOpen] = useState(false)
   const [retryDialogOpen, setRetryDialogOpen] = useState(false)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const filterConfigs: FilterConfig[] = [
@@ -95,43 +119,65 @@ export function JobsPage() {
     { key: 'type', label: 'Loại job', options: typeOptions, value: filters.type },
   ]
 
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      // Search filter
-      if (search) {
-        const searchLower = search.toLowerCase()
-        if (
-          !job.id.toLowerCase().includes(searchLower) &&
-          !(job.relatedPOI?.toLowerCase().includes(searchLower)) &&
-          !(job.relatedUser?.toLowerCase().includes(searchLower))
-        ) {
-          return false
-        }
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim())
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const loadJobs = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const [jobsResponse, summary] = await Promise.all([
+        fetchAdminJobs({
+          page: currentPage,
+          size: pageSize,
+          search: debouncedSearch || undefined,
+          status:
+            filters.status && filters.status !== 'all'
+              ? (filters.status as JobStatus)
+              : undefined,
+          type:
+            filters.type && filters.type !== 'all'
+              ? (filters.type as JobType)
+              : undefined,
+        }),
+        fetchAdminJobsSummary(),
+      ])
+
+      if (jobsResponse.totalPages > 0 && currentPage > jobsResponse.totalPages) {
+        setCurrentPage(jobsResponse.totalPages)
+        return
       }
 
-      // Status filter
-      if (filters.status && filters.status !== 'all' && job.status !== filters.status) {
-        return false
-      }
+      setJobs(jobsResponse.items)
+      setTotalItems(jobsResponse.totalItems || 0)
+      setTotalPages(Math.max(jobsResponse.totalPages || 1, 1))
+      setStats(summary)
+    } catch (error) {
+      setJobs([])
+      setTotalItems(0)
+      setTotalPages(1)
+      setStats(INITIAL_STATS)
+      toast.error(error instanceof Error ? error.message : 'Không tải được danh sách job')
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }, [currentPage, pageSize, debouncedSearch, filters.status, filters.type])
 
-      // Type filter
-      if (filters.type && filters.type !== 'all' && job.type !== filters.type) {
-        return false
-      }
-
-      return true
-    })
-  }, [search, filters])
-
-  const paginatedJobs = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredJobs.slice(start, start + pageSize)
-  }, [filteredJobs, currentPage, pageSize])
-
-  const totalPages = Math.ceil(filteredJobs.length / pageSize)
+  useEffect(() => {
+    void loadJobs()
+  }, [loadJobs])
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
+    setCurrentPage(1)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
     setCurrentPage(1)
   }
 
@@ -145,50 +191,49 @@ export function JobsPage() {
 
   const handleRefresh = () => {
     setIsRefreshing(true)
-    setTimeout(() => {
-      setIsRefreshing(false)
-      toast.success('Đã làm mới danh sách job')
-    }, 1000)
+    void loadJobs()
   }
 
-  const handleViewDetail = (job: Job) => {
+  const handleViewDetail = (job: AdminJob) => {
     setSelectedJob(job)
     setDetailSheetOpen(true)
   }
 
-  const handleRetry = (job: Job) => {
+  const handleRetry = (job: AdminJob) => {
     setSelectedJob(job)
     setRetryDialogOpen(true)
   }
 
-  const handleCancel = (job: Job) => {
+  const handleCancel = (job: AdminJob) => {
     setSelectedJob(job)
     setCancelDialogOpen(true)
   }
 
-  const confirmRetry = () => {
-    if (selectedJob) {
-      toast.success(`Đã thêm job "${selectedJob.id}" vào hàng đợi retry`)
+  const confirmRetry = async () => {
+    if (!selectedJob) return
+    try {
+      const updated = await retryAdminJob(selectedJob)
       setRetryDialogOpen(false)
+      setSelectedJob(updated)
+      toast.success(`Đã thêm job "${selectedJob.id}" vào hàng đợi retry`)
+      void loadJobs()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể retry job')
     }
   }
 
-  const confirmCancel = () => {
-    if (selectedJob) {
-      toast.success(`Đã hủy job "${selectedJob.id}"`)
+  const confirmCancel = async () => {
+    if (!selectedJob) return
+    try {
+      const updated = await cancelAdminJob(selectedJob)
       setCancelDialogOpen(false)
+      setSelectedJob(updated)
+      toast.success(`Đã hủy job "${selectedJob.id}"`)
+      void loadJobs()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể hủy job')
     }
   }
-
-  // Stats
-  const stats = useMemo(() => {
-    const total = jobs.length
-    const queued = jobs.filter((j) => j.status === 'queued').length
-    const processing = jobs.filter((j) => j.status === 'processing').length
-    const failed = jobs.filter((j) => j.status === 'failed').length
-    const done = jobs.filter((j) => j.status === 'done').length
-    return { total, queued, processing, failed, done }
-  }, [])
 
   return (
     <div className="space-y-6">
@@ -196,11 +241,10 @@ export function JobsPage() {
         title="Hàng đợi xử lý"
         description="Quản lý các job đang chờ và đã xử lý"
         onRefresh={handleRefresh}
-        isLoading={isRefreshing}
+        isLoading={isRefreshing || isLoading}
       />
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <div className="rounded-lg border bg-card p-4">
           <p className="text-sm text-muted-foreground">Tổng job</p>
           <p className="text-2xl font-bold">{stats.total}</p>
@@ -221,19 +265,27 @@ export function JobsPage() {
           <p className="text-sm text-muted-foreground">Hoàn thành</p>
           <p className="text-2xl font-bold text-success">{stats.done}</p>
         </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Đã hủy</p>
+          <p className="text-2xl font-bold text-muted-foreground">{stats.canceled}</p>
+        </div>
       </div>
 
       <FilterBar
         searchPlaceholder="Tìm theo Job ID, POI, User..."
         searchValue={search}
-        onSearchChange={setSearch}
+        onSearchChange={handleSearchChange}
         filters={filterConfigs}
         onFilterChange={handleFilterChange}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
 
-      {paginatedJobs.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
+          Đang tải danh sách job...
+        </div>
+      ) : jobs.length === 0 ? (
         <EmptyState
           icon={ListTodo}
           title="Không có job nào"
@@ -260,10 +312,10 @@ export function JobsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedJobs.map((job) => {
+                {jobs.map((job) => {
                   const StatusIcon = getStatusIcon(job.status)
                   return (
-                    <TableRow key={job.id}>
+                    <TableRow key={job.backendId}>
                       <TableCell>
                         <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                           {job.id}
@@ -288,7 +340,8 @@ export function JobsPage() {
                               job.status === 'done' && 'text-success',
                               job.status === 'failed' && 'text-destructive',
                               job.status === 'processing' && 'text-info animate-spin',
-                              job.status === 'queued' && 'text-muted-foreground'
+                              job.status === 'queued' && 'text-muted-foreground',
+                              job.status === 'canceled' && 'text-muted-foreground'
                             )}
                           />
                           <StatusBadge status={job.status} />
@@ -328,7 +381,7 @@ export function JobsPage() {
                                 Retry
                               </DropdownMenuItem>
                             )}
-                            {job.status === 'queued' && (
+                            {(job.status === 'queued' || job.status === 'processing') && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -354,7 +407,7 @@ export function JobsPage() {
             currentPage={currentPage}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredJobs.length}
+            totalItems={totalItems}
             onPageChange={setCurrentPage}
             onPageSizeChange={(size) => {
               setPageSize(size)
@@ -364,7 +417,6 @@ export function JobsPage() {
         </>
       )}
 
-      {/* Job Detail Sheet */}
       <Sheet open={detailSheetOpen} onOpenChange={setDetailSheetOpen}>
         <SheetContent className="w-full sm:max-w-lg">
           <SheetHeader>
@@ -374,7 +426,6 @@ export function JobsPage() {
           {selectedJob && (
             <ScrollArea className="mt-6 h-[calc(100vh-200px)]">
               <div className="space-y-6 pr-4">
-                {/* Job Info */}
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Job ID</p>
@@ -406,7 +457,6 @@ export function JobsPage() {
                   </div>
                 </div>
 
-                {/* Timeline */}
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Timeline</p>
                   <div className="space-y-2 text-sm">
@@ -429,7 +479,6 @@ export function JobsPage() {
                   </div>
                 </div>
 
-                {/* Error Log */}
                 {selectedJob.error && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-destructive">Chi tiết lỗi</p>
@@ -441,7 +490,6 @@ export function JobsPage() {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="flex gap-2 pt-4">
                   {selectedJob.status === 'failed' && selectedJob.retryCount < 3 && (
                     <Button onClick={() => handleRetry(selectedJob)}>
@@ -449,7 +497,7 @@ export function JobsPage() {
                       Retry Job
                     </Button>
                   )}
-                  {selectedJob.status === 'queued' && (
+                  {(selectedJob.status === 'queued' || selectedJob.status === 'processing') && (
                     <Button variant="destructive" onClick={() => handleCancel(selectedJob)}>
                       <XCircle className="mr-2 h-4 w-4" />
                       Hủy Job
@@ -462,7 +510,6 @@ export function JobsPage() {
         </SheetContent>
       </Sheet>
 
-      {/* Retry Confirmation */}
       <ConfirmActionDialog
         open={retryDialogOpen}
         onOpenChange={setRetryDialogOpen}
@@ -472,7 +519,6 @@ export function JobsPage() {
         onConfirm={confirmRetry}
       />
 
-      {/* Cancel Confirmation */}
       <ConfirmActionDialog
         open={cancelDialogOpen}
         onOpenChange={setCancelDialogOpen}

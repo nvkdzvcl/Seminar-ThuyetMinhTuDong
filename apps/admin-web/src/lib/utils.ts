@@ -60,6 +60,7 @@ export function getStatusName(status: string): string {
     processing: 'Đang xử lý',
     failed: 'Thất bại',
     done: 'Hoàn thành',
+    canceled: 'Đã hủy',
   }
   return statusNames[status] || status
 }
@@ -93,6 +94,7 @@ export function getActionName(action: string): string {
     status_change: 'Đổi trạng thái',
     login: 'Đăng nhập',
     logout: 'Đăng xuất',
+    read: 'Xem',
   }
   return actionNames[action] || action
 }

@@ -12,6 +12,7 @@ type StatusType =
   | 'processing'
   | 'failed'
   | 'done'
+  | 'canceled'
 
 interface StatusBadgeProps {
   status: StatusType
@@ -32,6 +33,7 @@ const statusStyles: Record<StatusType, string> = {
   processing: 'bg-info/10 text-info border-info/20',
   failed: 'bg-destructive/10 text-destructive border-destructive/20',
   done: 'bg-success/10 text-success border-success/20',
+  canceled: 'bg-muted text-muted-foreground border-border',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

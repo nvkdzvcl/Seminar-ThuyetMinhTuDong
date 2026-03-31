@@ -1,5 +1,13 @@
-import { useState, useMemo } from 'react'
-import { FileText, Download, Calendar, User, Activity, Database, Settings, Briefcase } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  FileText,
+  Calendar,
+  User,
+  Activity,
+  Database,
+  Settings,
+  Briefcase,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -9,17 +17,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DataTableToolbar } from '@/components/shared/DataTableToolbar'
 import { FilterBar, type FilterConfig } from '@/components/shared/FilterBar'
 import { Pagination } from '@/components/shared/Pagination'
-import { AuditDiffCell } from '@/components/shared/AuditDiffCell'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { auditLogs, users } from '@/data/mock-data'
-import type { AuditModule, AuditAction } from '@/types'
-import { formatDateTime, getModuleName, getActionName } from '@/lib/utils'
+import { cn, formatDateTime, getActionName, getModuleName } from '@/lib/utils'
+import {
+  fetchAdminAuditLogs,
+  fetchAllAdminAuditLogs,
+  type AdminAuditLogItem,
+  type AuditLogUiAction,
+  type AuditLogUiModule,
+} from '@/services/adminAuditLogService'
 
 const PAGE_SIZE = 15
 
@@ -38,11 +49,18 @@ const actionOptions = [
   { value: 'status_change', label: 'Đổi trạng thái' },
   { value: 'login', label: 'Đăng nhập' },
   { value: 'logout', label: 'Đăng xuất' },
+  { value: 'read', label: 'Xem' },
 ]
 
-const actorOptions = users.map((u) => ({ value: u.id, label: u.name }))
+const methodOptions = [
+  { value: 'GET', label: 'GET' },
+  { value: 'POST', label: 'POST' },
+  { value: 'PUT', label: 'PUT' },
+  { value: 'PATCH', label: 'PATCH' },
+  { value: 'DELETE', label: 'DELETE' },
+]
 
-function getModuleIcon(module: AuditModule) {
+function getModuleIcon(module: AuditLogUiModule) {
   switch (module) {
     case 'poi':
       return Database
@@ -50,16 +68,15 @@ function getModuleIcon(module: AuditModule) {
       return User
     case 'job':
       return Briefcase
-    case 'system':
-      return Activity
     case 'settings':
       return Settings
+    case 'system':
     default:
       return Activity
   }
 }
 
-function getActionColor(action: AuditAction): string {
+function getActionColor(action: AuditLogUiAction): string {
   switch (action) {
     case 'create':
       return 'bg-success/10 text-success border-success/20'
@@ -73,65 +90,147 @@ function getActionColor(action: AuditAction): string {
       return 'bg-success/10 text-success border-success/20'
     case 'logout':
       return 'bg-muted text-muted-foreground border-border'
+    case 'read':
     default:
       return 'bg-muted text-muted-foreground border-border'
   }
+}
+
+function getStatusCodeClass(statusCode?: number): string {
+  if (!statusCode) return 'bg-muted text-muted-foreground border-border'
+  if (statusCode >= 500) return 'bg-destructive/10 text-destructive border-destructive/20'
+  if (statusCode >= 400) return 'bg-warning/10 text-warning-foreground border-warning/20'
+  return 'bg-success/10 text-success border-success/20'
+}
+
+function escapeCsv(value: string): string {
+  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+function applyFilters(
+  items: AdminAuditLogItem[],
+  search: string,
+  filters: Record<string, string>
+): AdminAuditLogItem[] {
+  return items.filter((log) => {
+    if (search) {
+      const searchLower = search.toLowerCase()
+      const haystack = [
+        log.actor,
+        log.path,
+        log.method,
+        log.detail ?? '',
+        String(log.statusCode ?? ''),
+      ]
+        .join(' ')
+        .toLowerCase()
+      if (!haystack.includes(searchLower)) {
+        return false
+      }
+    }
+
+    if (filters.module && filters.module !== 'all' && log.module !== filters.module) {
+      return false
+    }
+
+    if (filters.action && filters.action !== 'all' && log.action !== filters.action) {
+      return false
+    }
+
+    if (filters.method && filters.method !== 'all' && log.method !== filters.method) {
+      return false
+    }
+
+    return true
+  })
 }
 
 export function AuditLogsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
+  const [logs, setLogs] = useState<AdminAuditLogItem[]>([])
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const filterConfigs: FilterConfig[] = [
     { key: 'module', label: 'Module', options: moduleOptions, value: filters.module },
     { key: 'action', label: 'Hành động', options: actionOptions, value: filters.action },
-    { key: 'actor', label: 'Người thực hiện', options: actorOptions, value: filters.actor },
+    { key: 'method', label: 'HTTP', options: methodOptions, value: filters.method },
   ]
 
-  const filteredLogs = useMemo(() => {
-    return auditLogs.filter((log) => {
-      // Search filter
-      if (search) {
-        const searchLower = search.toLowerCase()
-        if (
-          !log.actor.toLowerCase().includes(searchLower) &&
-          !log.entity.toLowerCase().includes(searchLower) &&
-          !(log.reason?.toLowerCase().includes(searchLower))
-        ) {
-          return false
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim())
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const hasActiveFilters = useMemo(
+    () => Boolean(search) || Object.values(filters).some((v) => v && v !== 'all'),
+    [search, filters]
+  )
+  const hasActiveQuery = useMemo(
+    () => Boolean(debouncedSearch) || Object.values(filters).some((v) => v && v !== 'all'),
+    [debouncedSearch, filters]
+  )
+
+  const loadLogs = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      if (hasActiveQuery) {
+        const allLogs = await fetchAllAdminAuditLogs({ pageSize: 100, maxPages: 80 })
+        const filteredLogs = applyFilters(allLogs, debouncedSearch, filters)
+
+        const resolvedTotalPages = Math.max(Math.ceil(filteredLogs.length / pageSize), 1)
+        if (currentPage > resolvedTotalPages) {
+          setCurrentPage(resolvedTotalPages)
+          return
         }
+
+        const start = (currentPage - 1) * pageSize
+        setLogs(filteredLogs.slice(start, start + pageSize))
+        setTotalItems(filteredLogs.length)
+        setTotalPages(resolvedTotalPages)
+      } else {
+        const result = await fetchAdminAuditLogs({ page: currentPage, size: pageSize })
+        if (result.totalPages > 0 && currentPage > result.totalPages) {
+          setCurrentPage(result.totalPages)
+          return
+        }
+        setLogs(result.items)
+        setTotalItems(result.totalItems || 0)
+        setTotalPages(Math.max(result.totalPages || 1, 1))
       }
+    } catch (error) {
+      setLogs([])
+      setTotalItems(0)
+      setTotalPages(1)
+      toast.error(error instanceof Error ? error.message : 'Không tải được nhật ký hệ thống')
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }, [currentPage, pageSize, hasActiveQuery, debouncedSearch, filters])
 
-      // Module filter
-      if (filters.module && filters.module !== 'all' && log.module !== filters.module) {
-        return false
-      }
-
-      // Action filter
-      if (filters.action && filters.action !== 'all' && log.action !== filters.action) {
-        return false
-      }
-
-      // Actor filter
-      if (filters.actor && filters.actor !== 'all' && log.actorId !== filters.actor) {
-        return false
-      }
-
-      return true
-    })
-  }, [search, filters])
-
-  const paginatedLogs = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredLogs.slice(start, start + pageSize)
-  }, [filteredLogs, currentPage, pageSize])
-
-  const totalPages = Math.ceil(filteredLogs.length / pageSize)
+  useEffect(() => {
+    void loadLogs()
+  }, [loadLogs])
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
+    setCurrentPage(1)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
     setCurrentPage(1)
   }
 
@@ -141,19 +240,41 @@ export function AuditLogsPage() {
     setCurrentPage(1)
   }
 
-  const hasActiveFilters = Boolean(search) || Object.values(filters).some((v) => v && v !== 'all')
-
-  const handleExport = () => {
-    toast.success('Đã bắt đầu xuất file nhật ký...')
-    // Simulate export
-    setTimeout(() => {
-      toast.success('Đã xuất file nhật ký thành công!')
-    }, 2000)
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    void loadLogs()
   }
 
-  const getActorAvatar = (actorId: string) => {
-    const user = users.find((u) => u.id === actorId)
-    return user?.avatar
+  const handleExport = () => {
+    if (logs.length === 0) {
+      toast.error('Không có dữ liệu để xuất')
+      return
+    }
+
+    const headers = ['Thời gian', 'Người thực hiện', 'Hành động', 'HTTP', 'Endpoint', 'Status', 'Chi tiết']
+    const rows = logs.map((log) => [
+      formatDateTime(log.timestamp),
+      log.actor,
+      getActionName(log.action),
+      log.method,
+      log.path,
+      String(log.statusCode ?? ''),
+      log.detail ?? '',
+    ])
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCsv(cell)).join(','))
+      .join('\n')
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `admin-audit-logs-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+    toast.success('Đã xuất file nhật ký')
   }
 
   return (
@@ -161,20 +282,26 @@ export function AuditLogsPage() {
       <DataTableToolbar
         title="Nhật ký hệ thống"
         description="Theo dõi các hoạt động và thay đổi trong hệ thống"
+        onRefresh={handleRefresh}
+        isLoading={isRefreshing || isLoading}
         onExport={handleExport}
       />
 
       <FilterBar
-        searchPlaceholder="Tìm theo người thực hiện, entity, lý do..."
+        searchPlaceholder="Tìm theo người thực hiện, endpoint, chi tiết..."
         searchValue={search}
-        onSearchChange={setSearch}
+        onSearchChange={handleSearchChange}
         filters={filterConfigs}
         onFilterChange={handleFilterChange}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
 
-      {paginatedLogs.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
+          Đang tải nhật ký hệ thống...
+        </div>
+      ) : logs.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Không có nhật ký nào"
@@ -194,13 +321,14 @@ export function AuditLogsPage() {
                   <TableHead>Người thực hiện</TableHead>
                   <TableHead>Module</TableHead>
                   <TableHead>Hành động</TableHead>
-                  <TableHead>Entity</TableHead>
-                  <TableHead>Thay đổi</TableHead>
-                  <TableHead>Lý do</TableHead>
+                  <TableHead>Endpoint</TableHead>
+                  <TableHead>HTTP</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Chi tiết</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedLogs.map((log) => {
+                {logs.map((log) => {
                   const ModuleIcon = getModuleIcon(log.module)
                   return (
                     <TableRow key={log.id}>
@@ -213,9 +341,12 @@ export function AuditLogsPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={getActorAvatar(log.actorId)} />
                             <AvatarFallback className="text-xs">
-                              {log.actor.slice(0, 2)}
+                              {log.actor
+                                .replace(/@/g, ' ')
+                                .trim()
+                                .slice(0, 2)
+                                .toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <span className="text-sm">{log.actor}</span>
@@ -233,17 +364,24 @@ export function AuditLogsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="max-w-[150px] truncate text-sm" title={log.entity}>
-                          {log.entity}
-                        </div>
+                        <code className="max-w-[220px] truncate text-xs text-muted-foreground" title={log.path}>
+                          {log.path}
+                        </code>
                       </TableCell>
                       <TableCell>
-                        <AuditDiffCell before={log.before} after={log.after} />
+                        <Badge variant="outline" className="font-mono">
+                          {log.method}
+                        </Badge>
                       </TableCell>
                       <TableCell>
-                        {log.reason ? (
-                          <div className="max-w-[150px] truncate text-sm text-muted-foreground" title={log.reason}>
-                            {log.reason}
+                        <Badge variant="outline" className={cn('font-mono', getStatusCodeClass(log.statusCode))}>
+                          {log.statusCode ?? '--'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {log.detail ? (
+                          <div className="max-w-[220px] truncate text-sm text-muted-foreground" title={log.detail}>
+                            {log.detail}
                           </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -260,7 +398,7 @@ export function AuditLogsPage() {
             currentPage={currentPage}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredLogs.length}
+            totalItems={totalItems}
             onPageChange={setCurrentPage}
             onPageSizeChange={(size) => {
               setPageSize(size)

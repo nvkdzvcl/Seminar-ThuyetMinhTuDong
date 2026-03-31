@@ -60,7 +60,7 @@ export interface POIChangeLog {
 }
 
 // Job Types
-export type JobStatus = 'queued' | 'processing' | 'failed' | 'done'
+export type JobStatus = 'queued' | 'processing' | 'failed' | 'done' | 'canceled'
 export type JobType = 'audio_generation' | 'content_moderation' | 'image_processing' | 'data_sync'
 
 export interface Job {
