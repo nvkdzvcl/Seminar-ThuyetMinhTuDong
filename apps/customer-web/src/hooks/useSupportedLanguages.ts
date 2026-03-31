@@ -26,6 +26,14 @@ function buildLabel(item: UiLanguageOption): string {
     return `${displayName} - ${nativeName}`;
 }
 
+function normalizeLabelKey(label: string): string {
+    return label
+        .normalize("NFKC")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+}
+
 export function resolveLanguageOptionValue(
     options: LanguageSelectOption[],
     language?: string | null
@@ -113,10 +121,23 @@ export function useSupportedLanguages() {
             const bEnglish = b.code.toLowerCase() === "en" || b.value.toLowerCase().startsWith("en");
             if (aEnglish && !bEnglish) return -1;
             if (!aEnglish && bEnglish) return 1;
-            return a.label.localeCompare(b.label, "en", { sensitivity: "base" });
+            const byLabel = a.label.localeCompare(b.label, "en", { sensitivity: "base" });
+            if (byLabel !== 0) return byLabel;
+            const byLength = a.value.length - b.value.length;
+            if (byLength !== 0) return byLength;
+            return a.value.localeCompare(b.value, "en", { sensitivity: "base" });
         });
 
-        return ordered;
+        const deduplicatedByLabel = new Map<string, LanguageSelectOption>();
+        ordered.forEach((option) => {
+            const labelKey = normalizeLabelKey(option.label);
+            if (!labelKey) return;
+            if (!deduplicatedByLabel.has(labelKey)) {
+                deduplicatedByLabel.set(labelKey, option);
+            }
+        });
+
+        return Array.from(deduplicatedByLabel.values());
     }, [languages]);
 
     return {

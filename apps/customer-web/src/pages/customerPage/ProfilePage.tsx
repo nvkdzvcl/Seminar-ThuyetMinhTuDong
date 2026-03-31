@@ -70,15 +70,18 @@ function ProfilePage() {
                 <h3 className="text-base font-semibold text-slate-900">Tùy chọn nghe audio</h3>
 
                 <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-slate-700">
+                    <div
+                        data-no-auto-translate="true"
+                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                        <span className="text-sm text-slate-700 sm:pr-3">
                             Ngôn ngữ mặc định {languageOptions.length > 0 ? `(${languageOptions.length})` : ""}
                         </span>
                         <select
                             value={lang}
                             onChange={(e) => handleLanguageChange(e.target.value)}
                             disabled={languageLoading || languageOptions.length === 0}
-                            className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-56"
                         >
                             {languageOptions.map((option) => (
                                 <option key={option.value} value={option.value}>
@@ -88,12 +91,12 @@ function ProfilePage() {
                         </select>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-sm text-slate-700">Tốc độ đọc</span>
                         <select
                             value={speed}
                             onChange={(e) => setSpeed(e.target.value)}
-                            className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-28"
                         >
                             <option value="0.9">0.9x</option>
                             <option value="1.0">1.0x</option>
@@ -101,13 +104,13 @@ function ProfilePage() {
                         </select>
                     </div>
 
-                    <label className="flex items-center justify-between gap-3">
+                    <label className="flex items-start justify-between gap-3 sm:items-center">
                         <span className="text-sm text-slate-700">Tự phát audio khi tới gần quán</span>
                         <input
                             type="checkbox"
                             checked={autoAudio}
                             onChange={(e) => handleAutoAudio(e.target.checked)}
-                            className="h-4 w-4 rounded"
+                            className="mt-0.5 h-4 w-4 rounded sm:mt-0"
                         />
                     </label>
                 </div>

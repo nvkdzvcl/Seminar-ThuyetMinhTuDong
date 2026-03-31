@@ -414,7 +414,7 @@ function LoginOrRegister() {
                                         )}
                                     </div>
 
-                                    <div>
+                                    <div data-no-auto-translate="true">
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
                                             Language {languageOptions.length > 0 ? `(${languageOptions.length})` : ""}
                                         </label>
