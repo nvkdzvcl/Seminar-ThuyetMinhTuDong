@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { routePath } from "../../routes/route";
-import SearchShopBar from "../../components/shop/SearchShopBar";
 import ShopCard from "../../components/shop/ShopCard";
 import { shopService } from "../../services/shopService";
 import type { ShopResponse } from "../../types/shop";
@@ -14,9 +13,12 @@ function SearchShopPage() {
     const [keyword, setKeyword] = useState("");
     const [shops, setShops] = useState<ShopResponse[]>([]);
     const [allShops, setAllShops] = useState<ShopResponse[]>([]);
+    const [suggestions, setSuggestions] = useState<ShopResponse[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [pageError, setPageError] = useState("");
     const [isSearching, setIsSearching] = useState(false);
+    const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
+    const [pageError, setPageError] = useState("");
 
     useEffect(() => {
         const loadDefaultShops = async () => {
@@ -36,35 +38,65 @@ function SearchShopPage() {
             }
         };
 
-        loadDefaultShops();
+        void loadDefaultShops();
     }, []);
 
-    const handleSearch = async () => {
+    useEffect(() => {
         const trimmed = keyword.trim();
 
         if (!trimmed) {
             setIsSearching(false);
+            setIsSearchingSuggestions(false);
+            setPageError("");
+            setSuggestions([]);
             setShops(allShops);
             return;
         }
 
-        try {
-            setLoading(true);
-            setPageError("");
-            setIsSearching(true);
+        let isDisposed = false;
+        setIsSearchingSuggestions(true);
 
-            const res = await shopService.searchShops(trimmed, "ACTIVE", 1, 20);
-            setShops(res.result?.items ?? []);
-        } catch {
-            setPageError("Không tìm được quán phù hợp");
-            setShops([]);
-        } finally {
-            setLoading(false);
-        }
+        const timer = window.setTimeout(async () => {
+            try {
+                const res = await shopService.searchShops(trimmed, "ACTIVE", 1, 20);
+                if (isDisposed) return;
+
+                const items = res.result?.items ?? [];
+                setIsSearching(true);
+                setShops(items);
+                setSuggestions(items.slice(0, 6));
+                setPageError("");
+            } catch {
+                if (isDisposed) return;
+                setIsSearching(true);
+                setShops([]);
+                setSuggestions([]);
+                setPageError("Không tìm được quán phù hợp");
+            } finally {
+                if (!isDisposed) {
+                    setIsSearchingSuggestions(false);
+                }
+            }
+        }, 260);
+
+        return () => {
+            isDisposed = true;
+            window.clearTimeout(timer);
+        };
+    }, [keyword, allShops]);
+
+    const handleSubmitSearch = () => {
+        setShowSuggestions(true);
     };
 
     const handleViewShop = (shopId: number) => {
         navigate(routePath.ShopDetailPage.replace(":shopId", String(shopId)));
+    };
+
+    const handleSelectSuggestion = (shop: ShopResponse) => {
+        setKeyword(shop.name);
+        setShowSuggestions(false);
+        handleViewShop(shop.id);
     };
 
     const handleListenAudio = async (shopId: number) => {
@@ -110,12 +142,71 @@ function SearchShopPage() {
                     </div>
 
                     <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div className="flex-1">
-                            <SearchShopBar
-                                keyword={keyword}
-                                onKeywordChange={setKeyword}
-                                onSubmit={handleSearch}
-                            />
+                        <div className="relative flex-1">
+                            <form
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    handleSubmitSearch();
+                                }}
+                                className="rounded-[28px] border border-slate-200 bg-white p-3 shadow-sm"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="text"
+                                        value={keyword}
+                                        onChange={(event) => {
+                                            setKeyword(event.target.value);
+                                            setShowSuggestions(true);
+                                        }}
+                                        onFocus={() => setShowSuggestions(true)}
+                                        onBlur={() => {
+                                            window.setTimeout(() => setShowSuggestions(false), 140);
+                                        }}
+                                        placeholder="Tìm tên quán..."
+                                        className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
+                                    />
+
+                                    <button
+                                        type="submit"
+                                        className="h-12 shrink-0 rounded-2xl bg-green-600 px-5 text-sm font-semibold text-white transition hover:bg-green-700"
+                                    >
+                                        Tìm
+                                    </button>
+                                </div>
+                            </form>
+
+                            {showSuggestions && keyword.trim() ? (
+                                <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+                                    {isSearchingSuggestions ? (
+                                        <div className="px-4 py-3 text-sm text-slate-500">
+                                            Đang tìm quán...
+                                        </div>
+                                    ) : suggestions.length > 0 ? (
+                                        <div className="max-h-72 overflow-y-auto py-1">
+                                            {suggestions.map((shop) => (
+                                                <button
+                                                    key={shop.id}
+                                                    type="button"
+                                                    onMouseDown={(event) => event.preventDefault()}
+                                                    onClick={() => handleSelectSuggestion(shop)}
+                                                    className="block w-full px-4 py-3 text-left transition hover:bg-slate-50"
+                                                >
+                                                    <div className="text-sm font-semibold text-slate-900">
+                                                        {shop.name}
+                                                    </div>
+                                                    <div className="mt-1 truncate text-xs text-slate-500">
+                                                        {shop.address || "Chưa có địa chỉ"}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="px-4 py-3 text-sm text-slate-500">
+                                            Không tìm thấy quán phù hợp.
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null}
                         </div>
 
                         <button

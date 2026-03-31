@@ -57,7 +57,6 @@ function ScanShopQrPage() {
     const [cameraReady, setCameraReady] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [status, setStatus] = useState("Đưa QR của quán vào giữa khung để quét hoặc chọn ảnh từ thư viện.");
-    const [manualValue, setManualValue] = useState("");
     const [scanResult, setScanResult] = useState("");
     const [isImportingImage, setIsImportingImage] = useState(false);
 
@@ -120,7 +119,12 @@ function ScanShopQrPage() {
         }
     };
 
-    const navigateToShop = async (rawValue: string) => {
+    const navigateToShopDetail = (shopId: number, preferredLanguage: string) => {
+        const shopPath = routePath.ShopDetailPage.replace(":shopId", String(shopId));
+        navigate(`${shopPath}?autoplay=1&lang=${encodeURIComponent(preferredLanguage)}`, { replace: true });
+    };
+
+    const navigateToShopByQr = async (rawValue: string) => {
         if (hasResolvedQrRef.current) return;
 
         const normalizedRawValue = rawValue.trim();
@@ -154,8 +158,7 @@ function ScanShopQrPage() {
             .catch((error) => {
                 console.error("Track QR scan event failed:", error);
             });
-        const shopPath = routePath.ShopDetailPage.replace(":shopId", String(shopId));
-        navigate(`${shopPath}?autoplay=1&lang=${encodeURIComponent(preferredLanguage)}`, { replace: true });
+        navigateToShopDetail(shopId, preferredLanguage);
     };
 
     const handleDetectedValue = async (decodedText: string) => {
@@ -176,7 +179,7 @@ function ScanShopQrPage() {
             return;
         }
 
-        await navigateToShop(normalizedRawValue);
+        await navigateToShopByQr(normalizedRawValue);
     };
 
     const startScanner = async () => {
@@ -245,7 +248,7 @@ function ScanShopQrPage() {
                 updateStatus("Camera đã sẵn sàng. Hệ thống chỉ nhận 1 QR hợp lệ và giới hạn quét 3 giây/lần.");
             } catch (fallbackError) {
                 console.error("Không mở được camera:", fallbackError);
-                updateStatus("Không mở được camera trên thiết bị này. Bạn hãy chọn ảnh QR từ thư viện hoặc nhập tay ở bên dưới.");
+                updateStatus("Không mở được camera trên thiết bị này. Bạn hãy chọn ảnh QR từ thư viện bên dưới.");
                 await stopScanner();
             }
         } finally {
@@ -270,7 +273,7 @@ function ScanShopQrPage() {
             await handleDetectedValue(decodedText);
         } catch (error) {
             console.error("Không quét được QR từ ảnh:", error);
-            updateStatus("Không đọc được QR từ ảnh này. Hãy chọn ảnh rõ hơn hoặc nhập tay.");
+            updateStatus("Không đọc được QR từ ảnh này. Hãy chọn ảnh rõ hơn.");
         } finally {
             if (isMountedRef.current) {
                 setIsImportingImage(false);
@@ -340,7 +343,7 @@ function ScanShopQrPage() {
                         className="hidden"
                     />
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
                         <button
                             type="button"
                             onClick={() => {
@@ -363,23 +366,6 @@ function ScanShopQrPage() {
                             className="h-12 rounded-2xl border border-slate-200 px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {isScanning ? "Quét lại camera" : "Mở camera"}
-                        </button>
-
-                        <input
-                            type="text"
-                            value={manualValue}
-                            onChange={(event) => setManualValue(event.target.value)}
-                            placeholder="Nhập shopId hoặc dán nội dung QR"
-                            className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-green-500 sm:col-span-2 lg:col-span-1"
-                        />
-
-                        <button
-                            type="button"
-                            onClick={() => void navigateToShop(manualValue)}
-                            disabled={hasResolvedQrRef.current}
-                            className="h-12 rounded-2xl bg-green-600 px-5 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            Mở quán
                         </button>
                     </div>
 
