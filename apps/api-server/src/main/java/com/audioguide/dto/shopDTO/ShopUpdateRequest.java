@@ -18,7 +18,11 @@ public class ShopUpdateRequest {
 
     String address;
 
+    String shortDescription;
+
     String description;
+
+    String detailedDescription;
 
 //     String audioURL;
 

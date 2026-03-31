@@ -19,6 +19,7 @@ public interface ShopMapper {
     @Mapping(target = "ownerId", source = "shop.owner.id")
     @Mapping(target = "shopTypeId", source = "shop.shopType.id")
     @Mapping(target = "shopTypeName", source = "shop.shopType.name")
+    @Mapping(target = "detailedDescription", source = "shop.description")
     ShopResponse toShopResponseFromShop(Shop shop);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

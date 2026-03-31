@@ -36,7 +36,9 @@ public class GlobalExceptionHandler {
         apiResponse.setCode(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode());
         apiResponse.setMessage(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage());
 
-        return ResponseEntity.badRequest().body(apiResponse);
+        return ResponseEntity
+                .status(ErrorCode.UNCATEGORIZED_EXCEPTION.getStatusCode())
+                .body(apiResponse);
     }
 
     @ExceptionHandler(value = AppException.class)
@@ -102,7 +104,9 @@ public class GlobalExceptionHandler {
         apiResponse.setCode(ErrorCode.NO_RESOURCE_FOUND.getCode());
         apiResponse.setMessage(ErrorCode.NO_RESOURCE_FOUND.getMessage());
 
-        return ResponseEntity.badRequest().body(apiResponse);
+        return ResponseEntity
+                .status(ErrorCode.NO_RESOURCE_FOUND.getStatusCode())
+                .body(apiResponse);
     }
 
 

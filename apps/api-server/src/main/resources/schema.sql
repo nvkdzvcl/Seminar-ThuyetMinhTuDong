@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS shop (
     shop_type_id INT NOT NULL,
     name VARCHAR(255),
     address VARCHAR(500),
+    short_description VARCHAR(255),
     description TEXT,
     image_name VARCHAR(255),
     audioURL VARCHAR(500),

@@ -82,6 +82,8 @@ function NearbyMap({ currentPosition }: NearbyMapProps) {
                 title: poi.name,
                 shopId: poi.shopId,
                 trigger: "MANUAL",
+                transcript: narrationRes.result?.script,
+                transcriptLanguage: narrationRes.result?.language,
             });
         } catch (playError) {
             console.error("Play POI narration failed:", playError);

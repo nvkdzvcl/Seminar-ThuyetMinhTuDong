@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from "./hooks";
 import {
     clearAudioState,
     setAudioPlaying,
+    setAudioProgress,
     setCurrentAudio,
     type AudioEntityType,
     type AudioTriggerType,
@@ -18,6 +19,8 @@ type PlayAudioInput = {
     title?: string;
     shopId?: number;
     trigger?: AudioTriggerType;
+    transcript?: string;
+    transcriptLanguage?: string;
 };
 
 let globalAudio: HTMLAudioElement | null = null;
@@ -91,7 +94,7 @@ const trackAudioEvent = (
 
 export function useAudioPlayer() {
     const dispatch = useAppDispatch();
-    const { current, isPlaying, autoTurnOnNearbyShopAudio } = useAppSelector((state) => state.audio);
+    const { current, isPlaying, progress, autoTurnOnNearbyShopAudio } = useAppSelector((state) => state.audio);
 
     const stopAudio = useCallback(() => {
         const previous = current;
@@ -104,13 +107,25 @@ export function useAudioPlayer() {
     }, [current, dispatch]);
 
     const playAudio = useCallback(
-        async ({ id, type, url, title, shopId, trigger = "MANUAL" }: PlayAudioInput) => {
+        async ({
+            id,
+            type,
+            url,
+            title,
+            shopId,
+            trigger = "MANUAL",
+            transcript,
+            transcriptLanguage,
+        }: PlayAudioInput) => {
             if (!url) {
                 notifyWarning(`Không tìm thấy audio cho ${getAudioLabel({ type, title })}`);
                 return false;
             }
 
-            const isSameAudio = current?.id === id && current?.type === type;
+            const isSameAudio =
+                current?.id === id &&
+                current?.type === type &&
+                (!url || current?.url === url);
 
             if (isSameAudio && globalAudio) {
                 if (globalAudio.paused) {
@@ -135,8 +150,30 @@ export function useAudioPlayer() {
                     title,
                     shopId,
                     trigger,
+                    transcript,
+                    transcriptLanguage,
                 })
             );
+            dispatch(
+                setAudioProgress({
+                    progress: 0,
+                    currentTimeSec: 0,
+                    durationSec: 0,
+                })
+            );
+
+            nextAudio.onloadedmetadata = () => {
+                const duration = Number.isFinite(nextAudio.duration) && nextAudio.duration > 0
+                    ? nextAudio.duration
+                    : 0;
+                dispatch(
+                    setAudioProgress({
+                        progress: 0,
+                        currentTimeSec: 0,
+                        durationSec: duration,
+                    })
+                );
+            };
 
             nextAudio.onplay = () => {
                 dispatch(setAudioPlaying(true));
@@ -144,6 +181,22 @@ export function useAudioPlayer() {
 
             nextAudio.onpause = () => {
                 dispatch(setAudioPlaying(false));
+            };
+
+            nextAudio.ontimeupdate = () => {
+                const duration = Number.isFinite(nextAudio.duration) && nextAudio.duration > 0
+                    ? nextAudio.duration
+                    : 0;
+                const currentTime = Number.isFinite(nextAudio.currentTime) && nextAudio.currentTime > 0
+                    ? nextAudio.currentTime
+                    : 0;
+                dispatch(
+                    setAudioProgress({
+                        progress: duration > 0 ? Math.min(1, currentTime / duration) : 0,
+                        currentTimeSec: currentTime,
+                        durationSec: duration,
+                    })
+                );
             };
 
             nextAudio.onended = () => {
@@ -182,11 +235,23 @@ export function useAudioPlayer() {
     );
 
     const toggleAudio = useCallback(
-        async ({ id, type, url, title, shopId, trigger = "MANUAL" }: PlayAudioInput) => {
-            const isSameAudio = current?.id === id && current?.type === type;
+        async ({
+            id,
+            type,
+            url,
+            title,
+            shopId,
+            trigger = "MANUAL",
+            transcript,
+            transcriptLanguage,
+        }: PlayAudioInput) => {
+            const isSameAudio =
+                current?.id === id &&
+                current?.type === type &&
+                (!url || current?.url === url);
 
             if (!isSameAudio || !globalAudio) {
-                return playAudio({ id, type, url, title, shopId, trigger });
+                return playAudio({ id, type, url, title, shopId, trigger, transcript, transcriptLanguage });
             }
 
             if (globalAudio.paused) {
@@ -214,9 +279,11 @@ export function useAudioPlayer() {
     return {
         currentAudio: current,
         isAudioPlaying: isPlaying,
+        audioProgress: progress,
         autoTurnOnNearbyShopAudio,
         playAudio,
         toggleAudio,
         stopAudio,
     };
 }
+

@@ -78,6 +78,7 @@ function ShopDetailPage() {
         import.meta.env.VITE_SHOP_IMAGE_API,
         "https://placehold.co/1200x800?text=Shop"
     );
+    const displayDescription = shop?.shortDescription || "Chưa cập nhật mô tả ngắn";
 
     const [currentPosition, setCurrentPosition] = useState<[number, number]>([
         10.7130418,106.6189652,
@@ -191,6 +192,8 @@ function ShopDetailPage() {
                 url: narrationAudioUrl,
                 title: shop.name,
                 shopId: shop.id,
+                transcript: narration?.script,
+                transcriptLanguage: narration?.language,
             });
             setNeedsUserGestureToPlay(false);
         } catch (error) {
@@ -280,7 +283,7 @@ function ShopDetailPage() {
                             </h1>
 
                             <p className="mt-3 text-sm leading-6 text-slate-600">
-                                {shop.description}
+                                {displayDescription}
                             </p>
 
                             <div className="mt-5 space-y-3 text-sm text-slate-600">

@@ -99,17 +99,17 @@ VALUES
 -- thường Hibernate sẽ lưu ordinal -> ACTIVE = 0, DELETED = 1
 -- =========================
 INSERT INTO shop
-(id, owner_id, shop_type_id, name, address, description, image_name, audioURL, lat, lng, avg_cost_per_person, avg_wait_time_min, avg_eat_time_min, created_at, status)
+(id, owner_id, shop_type_id, name, address, short_description, description, image_name, audioURL, lat, lng, avg_cost_per_person, avg_wait_time_min, avg_eat_time_min, created_at, status)
 VALUES
-(1, 2, 1, 'Oc Dao Vinh Khanh', '15 Vinh Khanh, Quan 4, TP.HCM', 'Chuyen cac mon oc tuoi song va nuong muoi ot', 'shop1.jpg', 'shop1.mp3', 10.7607194, 106.7007169, 120000, 12, 35, '2026-03-01', "ACTIVE"),
+(1, 2, 1, 'Oc Dao Vinh Khanh', '15 Vinh Khanh, Quan 4, TP.HCM', 'Chuyen cac mon oc tuoi song va nuong muoi ot', 'Chuyen cac mon oc tuoi song va nuong muoi ot', 'shop1.jpg', 'shop1.mp3', 10.7607194, 106.7007169, 120000, 12, 35, '2026-03-01', "ACTIVE"),
 
-(2, 3, 2, 'Banh Canh Cua Co Dung',      '25 Vinh Khanh, Quan 4, TP.HCM', 'Banh canh cua dac biet, nuoc dung dam da', 'shop2.jpg', 'shop2.mp3', 10.7612809, 106.7033943, 85000, 8, 25, '2026-03-01', "ACTIVE"),
+(2, 3, 2, 'Banh Canh Cua Co Dung',      '25 Vinh Khanh, Quan 4, TP.HCM', 'Banh canh cua dac biet, nuoc dung dam da', 'Banh canh cua dac biet, nuoc dung dam da', 'shop2.jpg', 'shop2.mp3', 10.7612809, 106.7033943, 85000, 8, 25, '2026-03-01', "ACTIVE"),
 
-(3, 4, 3, 'An Vat Cua Pho',             '39 Vinh Khanh, Quan 4, TP.HCM', 'Banh trang, ca vien chien, tokbokki va mon an vat', 'shop3.jpg', 'shop3.mp3', 10.7611719, 106.7033665, 60000, 6, 20, '2026-03-01', "ACTIVE"),
+(3, 4, 3, 'An Vat Cua Pho',             '39 Vinh Khanh, Quan 4, TP.HCM', 'Banh trang, ca vien chien, tokbokki va mon an vat', 'Banh trang, ca vien chien, tokbokki va mon an vat', 'shop3.jpg', 'shop3.mp3', 10.7611719, 106.7033665, 60000, 6, 20, '2026-03-01', "ACTIVE"),
 
-(4, 5, 4, 'Tra Sua Dem Sai Gon',        '52 Vinh Khanh, Quan 4, TP.HCM', 'Tra sua, tra tac, nuoc ep va cac mon giai nhiet', 'shop4.jpg', 'shop4.mp3', 10.7617836, 106.7036373, 45000, 5, 15, '2026-03-01', "ACTIVE"),
+(4, 5, 4, 'Tra Sua Dem Sai Gon',        '52 Vinh Khanh, Quan 4, TP.HCM', 'Tra sua, tra tac, nuoc ep va cac mon giai nhiet', 'Tra sua, tra tac, nuoc ep va cac mon giai nhiet', 'shop4.jpg', 'shop4.mp3', 10.7617836, 106.7036373, 45000, 5, 15, '2026-03-01', "ACTIVE"),
 
-(5, 1, 1, 'Hai San Nuong 1995',         '66 Vinh Khanh, Quan 4, TP.HCM', 'Hai san nuong mo hanh, tom, muc, so diep', 'shop5.jpg', 'shop5.mp3', 10.7615518,106.7023348, 150000, 15, 40, '2026-03-01', "ACTIVE");
+(5, 1, 1, 'Hai San Nuong 1995',         '66 Vinh Khanh, Quan 4, TP.HCM', 'Hai san nuong mo hanh, tom, muc, so diep', 'Hai san nuong mo hanh, tom, muc, so diep', 'shop5.jpg', 'shop5.mp3', 10.7615518,106.7023348, 150000, 15, 40, '2026-03-01', "ACTIVE");
 
 -- =========================
 -- 5) DISH (20 rows)

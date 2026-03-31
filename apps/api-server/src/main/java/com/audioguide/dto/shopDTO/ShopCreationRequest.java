@@ -20,8 +20,12 @@ public class ShopCreationRequest {
     @NotBlank(message = "SHOP_ADDRESS_BLANK")
     String address;
 
+    String shortDescription;
+
     @NotBlank(message = "SHOP_DESCRIPTION_BLANK")
     String description;
+
+    String detailedDescription;
 
 
 //    @NotBlank(message = "SHOP_AUDIO_URL_BLANK")

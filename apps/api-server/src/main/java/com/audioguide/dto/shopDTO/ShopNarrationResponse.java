@@ -17,6 +17,7 @@ public class ShopNarrationResponse {
     String language;
     String requestedLanguage;
     String voice;
+    String script;
     String audioUrl;
     boolean cached;
     boolean fallbackApplied;

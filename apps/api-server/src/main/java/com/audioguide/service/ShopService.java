@@ -54,6 +54,7 @@ public class ShopService {
 
     Path IMAGE_DIR = Path.of("uploads/shop-images");
     Path AUDIO_DIR = Path.of("uploads/shop-audios");
+    static final int SHORT_DESCRIPTION_LIMIT = 140;
     static final List<RequiredShopType> REQUIRED_SHOP_TYPES = List.of(
             new RequiredShopType("Hải sản", "Quán chuyên hải sản, ốc và các món biển."),
             new RequiredShopType("Lẩu", "Quán lẩu và món nước dùng nóng."),
@@ -82,13 +83,32 @@ public class ShopService {
                 : shopTypeRepository.findFirstByOrderByIdAsc()
                     .orElseThrow(() -> new AppException(ErrorCode.SHOP_TYPE_NOT_FOUND));
 
-        ensureShopContentAllowedForOwner(request.getName(), request.getAddress(), request.getDescription(), shopType.getName(), null);
+        String detailedDescription = resolveDetailedDescription(
+                request.getDetailedDescription(),
+                request.getDescription(),
+                ""
+        );
+        String shortDescription = resolveShortDescription(
+                request.getShortDescription(),
+                detailedDescription,
+                ""
+        );
+
+        ensureShopContentAllowedForOwner(
+                request.getName(),
+                request.getAddress(),
+                detailedDescription,
+                shopType.getName(),
+                null
+        );
 
         var coordinates = resolveCoordinatesForCreate(request);
         var shop = shopMapper.toShopFromShopCreateRequest(request);
 
         shop.setOwner(owner);
         shop.setShopType(shopType);
+        shop.setDescription(detailedDescription);
+        shop.setShortDescription(shortDescription);
         shop.setLat(coordinates.lat());
         shop.setLng(coordinates.lng());
         shop.setCreatedAt(LocalDate.now());
@@ -160,6 +180,16 @@ public class ShopService {
                     log.error("Shop {} not found", shopId);
                     return new AppException(ErrorCode.SHOP_NOT_FOUND);
                 });
+        String resolvedDetailedDescription = resolveDetailedDescription(
+                request.getDetailedDescription(),
+                request.getDescription(),
+                shop.getDescription()
+        );
+        String resolvedShortDescription = resolveShortDescription(
+                request.getShortDescription(),
+                resolvedDetailedDescription,
+                shop.getShortDescription()
+        );
 
         var coordinates = resolveCoordinatesForUpdate(request);
         if (coordinates != null) {
@@ -167,6 +197,8 @@ public class ShopService {
             request.setLng(coordinates.lng());
         }
         shopMapper.updateShopInfo(shop, request);
+        shop.setDescription(resolvedDetailedDescription);
+        shop.setShortDescription(resolvedShortDescription);
         var updatedShop = shopRepository.save(shop);
         log.info("Shop {} updated successfully", shopId);
         return shopMapper.toShopResponseFromShop(updatedShop);
@@ -188,7 +220,16 @@ public class ShopService {
 
         String effectiveName = hasText(request.getName()) ? request.getName().trim() : shop.getName();
         String effectiveAddress = hasText(request.getAddress()) ? request.getAddress().trim() : shop.getAddress();
-        String effectiveDescription = hasText(request.getDescription()) ? request.getDescription().trim() : shop.getDescription();
+        String effectiveDescription = resolveDetailedDescription(
+                request.getDetailedDescription(),
+                request.getDescription(),
+                shop.getDescription()
+        );
+        String effectiveShortDescription = resolveShortDescription(
+                request.getShortDescription(),
+                effectiveDescription,
+                shop.getShortDescription()
+        );
         String effectiveCategory = shop.getShopType() != null ? shop.getShopType().getName() : null;
         ensureShopContentAllowedForOwner(
                 effectiveName,
@@ -204,6 +245,8 @@ public class ShopService {
             request.setLng(coordinates.lng());
         }
         shopMapper.updateShopInfo(shop, request);
+        shop.setDescription(effectiveDescription);
+        shop.setShortDescription(effectiveShortDescription);
         var updatedShop = shopRepository.save(shop);
         syncPoiAfterShopUpdate(updatedShop, true);
         log.info("Shop {} updated successfully by owner {}", updatedShop.getId(), ownerId);
@@ -356,6 +399,37 @@ public class ShopService {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private String resolveDetailedDescription(String detailedDescription, String legacyDescription, String fallback) {
+        if (hasText(detailedDescription)) {
+            return detailedDescription.trim();
+        }
+        if (hasText(legacyDescription)) {
+            return legacyDescription.trim();
+        }
+        return fallback == null ? "" : fallback.trim();
+    }
+
+    private String resolveShortDescription(String shortDescription, String detailedDescription, String fallback) {
+        if (hasText(shortDescription)) {
+            return shortDescription.trim();
+        }
+        if (hasText(fallback)) {
+            return fallback.trim();
+        }
+        return toShortDescription(detailedDescription);
+    }
+
+    private String toShortDescription(String detailedDescription) {
+        if (!hasText(detailedDescription)) {
+            return "";
+        }
+        String normalized = detailedDescription.trim();
+        if (normalized.length() <= SHORT_DESCRIPTION_LIMIT) {
+            return normalized;
+        }
+        return normalized.substring(0, SHORT_DESCRIPTION_LIMIT).trim();
     }
 
     private boolean isValidRange(Double lat, Double lng) {

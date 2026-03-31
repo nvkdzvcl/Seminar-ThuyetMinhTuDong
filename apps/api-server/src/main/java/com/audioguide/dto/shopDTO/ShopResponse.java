@@ -22,7 +22,9 @@ public class ShopResponse {
 
     String name;
     String  address;
+    String shortDescription;
     String description;
+    String detailedDescription;
     String imageName;
     String audioURL;
     Integer shopTypeId;

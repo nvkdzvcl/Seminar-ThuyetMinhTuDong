@@ -122,7 +122,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const [shopId, setShopId] = useState<number | null>(null)
   const [shopName, setShopName] = useState("Quán của tôi")
   const [shopAddress, setShopAddress] = useState("")
-  const [shopDescription, setShopDescription] = useState("")
+  const [shopShortDescription, setShopShortDescription] = useState("")
+  const [shopDetailedDescription, setShopDetailedDescription] = useState("")
   const [shopLat, setShopLat] = useState<number | null>(null)
   const [shopLng, setShopLng] = useState<number | null>(null)
   const [dishReloadToken, setDishReloadToken] = useState(0)
@@ -199,6 +200,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
       const shop = await getMyShop()
       if (!shop) {
         setShopId(null)
+        setShopShortDescription("")
+        setShopDetailedDescription("")
         setShopLat(null)
         setShopLng(null)
         setPoiApprovalStatus("unregistered")
@@ -213,13 +216,18 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
       setShopId(shop.id)
       setShopName(shop.name || "Quán của tôi")
       setShopAddress(shop.address || "")
-      setShopDescription(shop.description || "")
+      const resolvedDetailedDescription = shop.detailedDescription || shop.description || ""
+      const resolvedShortDescription = shop.shortDescription || resolvedDetailedDescription.slice(0, 140)
+      setShopDetailedDescription(resolvedDetailedDescription)
+      setShopShortDescription(resolvedShortDescription)
       setShopLat(typeof shop.lat === "number" ? shop.lat : null)
       setShopLng(typeof shop.lng === "number" ? shop.lng : null)
       await loadApprovalSummary(shop.id)
       setNotice(null)
     } catch (error) {
       setShopId(null)
+      setShopShortDescription("")
+      setShopDetailedDescription("")
       setShopLat(null)
       setShopLng(null)
       setPoiApprovalStatus("unregistered")
@@ -384,6 +392,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     const payload: CreateShopPayload = {
       name: createShopName.trim(),
       address: createShopAddress.trim(),
+      shortDescription: createShopDescription.trim().slice(0, 140),
+      detailedDescription: createShopDescription.trim(),
       description: createShopDescription.trim(),
       lat,
       lng,
@@ -489,7 +499,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
             onLogout={onLogout}
             initialShopName={shopName}
             initialShopAddress={shopAddress}
-            initialShopDescription={shopDescription}
+            initialShortDescription={shopShortDescription}
+            initialDetailedDescription={shopDetailedDescription}
             initialShopLat={shopLat}
             initialShopLng={shopLng}
             isSaving={isSavingShop}
@@ -507,7 +518,10 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 setShopId(updatedShop.id)
                 setShopName(updatedShop.name || "Quán của tôi")
                 setShopAddress(updatedShop.address || "")
-                setShopDescription(updatedShop.description || "")
+                const resolvedDetailedDescription = updatedShop.detailedDescription || updatedShop.description || ""
+                const resolvedShortDescription = updatedShop.shortDescription || resolvedDetailedDescription.slice(0, 140)
+                setShopDetailedDescription(resolvedDetailedDescription)
+                setShopShortDescription(resolvedShortDescription)
                 setShopLat(typeof updatedShop.lat === "number" ? updatedShop.lat : null)
                 setShopLng(typeof updatedShop.lng === "number" ? updatedShop.lng : null)
                 await loadApprovalSummary(updatedShop.id)

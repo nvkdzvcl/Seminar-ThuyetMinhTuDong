@@ -311,6 +311,8 @@ export default function NearbyShopPage() {
         import.meta.env.VITE_SHOP_IMAGE_API,
         "https://placehold.co/800x500?text=Shop"
     );
+    const currentShopDisplayDescription =
+        currentShop?.shortDescription || "Chưa cập nhật mô tả ngắn";
 
     const handleOpenDirections = () => {
         if (!currentShop) return;
@@ -351,6 +353,8 @@ export default function NearbyShopPage() {
                 title: poi.name,
                 shopId: poi.shopId,
                 trigger: "MANUAL",
+                transcript: narrationRes.result?.script,
+                transcriptLanguage: narrationRes.result?.language,
             });
         } catch (playError) {
             console.error("Play POI narration failed:", playError);
@@ -573,7 +577,7 @@ export default function NearbyShopPage() {
                                     <div className="mt-5 rounded-2xl bg-slate-50 p-4">
                                         <p className="text-sm text-slate-500">Mô tả</p>
                                         <p className="mt-1 text-sm text-slate-700">
-                                            {currentShop.description || "Chưa có mô tả"}
+                                            {currentShopDisplayDescription}
                                         </p>
                                     </div>
                                 </div>

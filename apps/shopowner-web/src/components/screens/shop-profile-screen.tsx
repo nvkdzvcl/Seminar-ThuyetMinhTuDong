@@ -45,11 +45,20 @@ interface ShopProfileScreenProps {
   onLogout: () => void
   initialShopName: string
   initialShopAddress: string
-  initialShopDescription: string
+  initialShortDescription: string
+  initialDetailedDescription: string
   initialShopLat?: number | null
   initialShopLng?: number | null
   isSaving: boolean
-  onSaveShop: (payload: { name: string; address: string; description: string; lat?: number; lng?: number }) => Promise<void>
+  onSaveShop: (payload: {
+    name: string
+    address: string
+    shortDescription: string
+    detailedDescription: string
+    description: string
+    lat?: number
+    lng?: number
+  }) => Promise<void>
 }
 
 const touristTags = [
@@ -79,7 +88,8 @@ export function ShopProfileScreen({
   onLogout,
   initialShopName,
   initialShopAddress,
-  initialShopDescription,
+  initialShortDescription,
+  initialDetailedDescription,
   initialShopLat,
   initialShopLng,
   isSaving,
@@ -178,7 +188,10 @@ export function ShopProfileScreen({
   useEffect(() => {
     setShopName(initialShopName || "Quán của tôi")
     setAddress(initialShopAddress || "")
-    setDetailedDescription(initialShopDescription || "")
+    const resolvedDetailedDescription = initialDetailedDescription || ""
+    const resolvedShortDescription = initialShortDescription || resolvedDetailedDescription.slice(0, SHORT_DESCRIPTION_LIMIT)
+    setDetailedDescription(resolvedDetailedDescription)
+    setShortDescription(resolvedShortDescription)
     setLatitude(typeof initialShopLat === "number" ? String(initialShopLat) : "")
     setLongitude(typeof initialShopLng === "number" ? String(initialShopLng) : "")
     setCoordinateRaw("")
@@ -186,10 +199,7 @@ export function ShopProfileScreen({
     setHasEditedDetailedDescription(false)
     setAutoModerationPaused(false)
     lastAutoModerationFingerprintRef.current = ""
-    if (initialShopDescription) {
-      setShortDescription(initialShopDescription.slice(0, SHORT_DESCRIPTION_LIMIT))
-    }
-  }, [initialShopName, initialShopAddress, initialShopDescription, initialShopLat, initialShopLng])
+  }, [initialShopName, initialShopAddress, initialShortDescription, initialDetailedDescription, initialShopLat, initialShopLng])
 
   const highlightedDescriptionPreview = useMemo(() => {
     const sourceText = deferredDetailedDescription || ""
@@ -388,6 +398,8 @@ export function ShopProfileScreen({
     await onSaveShop({
       name: shopName.trim(),
       address: address.trim(),
+      shortDescription: shortDescription.trim(),
+      detailedDescription: detailedDescription.trim(),
       description: detailedDescription.trim(),
       lat,
       lng,

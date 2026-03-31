@@ -3,6 +3,8 @@ export type ShopResponse = {
   ownerId: string;
   name: string;
   address: string;
+  shortDescription?: string;
+  detailedDescription?: string;
   description: string;
   imageName: string;
   audioURL: string;
@@ -20,6 +22,8 @@ export type ShopResponse = {
 export type ShopCreationRequest = {
   name: string;
   address: string;
+  shortDescription?: string;
+  detailedDescription?: string;
   description: string;
   lat: number;
   lng: number;
@@ -33,6 +37,7 @@ export type ShopNarrationResponse = {
   language: string;
   requestedLanguage?: string;
   voice: string;
+  script?: string;
   audioUrl: string;
   cached: boolean;
   fallbackApplied?: boolean;

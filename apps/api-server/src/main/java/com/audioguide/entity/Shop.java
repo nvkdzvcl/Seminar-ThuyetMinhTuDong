@@ -34,6 +34,8 @@ public class Shop {
 
     String name;
     String  address;
+    @Column(name = "short_description")
+    String shortDescription;
     String description;
     String imageName;
     String audioURL;

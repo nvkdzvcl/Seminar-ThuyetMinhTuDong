@@ -5,6 +5,8 @@ export interface OwnerShop {
   ownerId: string
   name: string
   address: string
+  shortDescription?: string
+  detailedDescription?: string
   description: string
   imageName?: string
   audioURL?: string
@@ -20,6 +22,8 @@ export interface OwnerShop {
 export interface UpdateMyShopPayload {
   name?: string
   address?: string
+  shortDescription?: string
+  detailedDescription?: string
   description?: string
   lat?: number
   lng?: number
@@ -32,6 +36,8 @@ export interface UpdateMyShopPayload {
 export interface CreateShopPayload {
   name: string
   address: string
+  shortDescription?: string
+  detailedDescription?: string
   description: string
   lat: number
   lng: number

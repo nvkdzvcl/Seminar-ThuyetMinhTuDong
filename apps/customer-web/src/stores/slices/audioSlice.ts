@@ -10,11 +10,20 @@ export type AudioPayload = {
     title?: string;
     shopId?: number;
     trigger?: AudioTriggerType;
+    transcript?: string;
+    transcriptLanguage?: string;
+};
+
+export type AudioProgressPayload = {
+    progress: number;
+    currentTimeSec: number;
+    durationSec: number;
 };
 
 type AudioState = {
     isPlaying: boolean;
     current: AudioPayload | null;
+    progress: AudioProgressPayload;
     autoTurnOnNearbyShopAudio: boolean;
 };
 
@@ -28,6 +37,11 @@ const getStoredAutoAudio = () => {
 const initialState: AudioState = {
     isPlaying: false,
     current: null,
+    progress: {
+        progress: 0,
+        currentTimeSec: 0,
+        durationSec: 0,
+    },
     autoTurnOnNearbyShopAudio: getStoredAutoAudio(),
 };
 
@@ -41,6 +55,9 @@ const audioSlice = createSlice({
         setAudioPlaying: (state, action: PayloadAction<boolean>) => {
             state.isPlaying = action.payload;
         },
+        setAudioProgress: (state, action: PayloadAction<AudioProgressPayload>) => {
+            state.progress = action.payload;
+        },
         setAutoTurnOnNearbyShopAudio: (state, action: PayloadAction<boolean>) => {
             state.autoTurnOnNearbyShopAudio = action.payload;
             if (typeof window !== "undefined") {
@@ -50,6 +67,11 @@ const audioSlice = createSlice({
         clearAudioState: (state) => {
             state.isPlaying = false;
             state.current = null;
+            state.progress = {
+                progress: 0,
+                currentTimeSec: 0,
+                durationSec: 0,
+            };
         },
     },
 });
@@ -57,6 +79,7 @@ const audioSlice = createSlice({
 export const {
     setCurrentAudio,
     setAudioPlaying,
+    setAudioProgress,
     setAutoTurnOnNearbyShopAudio,
     clearAudioState,
 } = audioSlice.actions;

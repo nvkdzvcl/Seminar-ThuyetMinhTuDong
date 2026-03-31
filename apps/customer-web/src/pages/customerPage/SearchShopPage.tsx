@@ -1,10 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import axios from "axios";
 import { routePath } from "../../routes/route";
 import ShopCard from "../../components/shop/ShopCard";
 import { shopService } from "../../services/shopService";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
+import { resolvePreferredLanguage } from "../../utils/language";
+import { notifyError, notifyWarning } from "../../utils/notify";
+
+function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
+    if (!rawAudioPath) return undefined;
+    if (/^https?:\/\//i.test(rawAudioPath)) return rawAudioPath;
+
+    const base = (import.meta.env.VITE_BACKEND_API || "").replace(/\/+$/, "");
+    const normalizedPath = rawAudioPath.startsWith("/") ? rawAudioPath : `/${rawAudioPath}`;
+
+    if (!base) {
+        return normalizedPath;
+    }
+
+    return `${base}${normalizedPath}`;
+}
+
+function resolveRequestErrorMessage(error: unknown, fallback: string): string {
+    if (axios.isAxiosError(error)) {
+        const responseData = error.response?.data as { message?: string; code?: string } | undefined;
+        if (responseData?.message) {
+            return responseData.message;
+        }
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return fallback;
+}
 
 function SearchShopPage() {
     const navigate = useNavigate();
@@ -116,15 +148,29 @@ function SearchShopPage() {
         if (!targetShop) return;
 
         try {
+            const preferredLanguage = resolvePreferredLanguage();
+            const narrationRes = await shopService.getShopNarration(targetShop.id, preferredLanguage);
+            const narrationAudioUrl = resolveBackendAudioUrl(narrationRes.result?.audioUrl);
+
+            if (!narrationAudioUrl) {
+                notifyWarning(`Không tạo được audio cho quán ${targetShop.name}.`);
+                return;
+            }
+
             await toggleAudio({
                 id: targetShop.id,
                 type: "SHOP",
-                url: targetShop.audioURL,
+                url: narrationAudioUrl,
                 title: targetShop.name,
                 shopId: targetShop.id,
+                transcript: narrationRes.result?.script,
+                transcriptLanguage: narrationRes.result?.language,
             });
         } catch (error) {
             console.error("Nghe audio quán lỗi:", error);
+            notifyError(
+                resolveRequestErrorMessage(error, `Không thể phát audio của quán ${targetShop.name}. Vui lòng thử lại.`)
+            );
         }
     };
 
