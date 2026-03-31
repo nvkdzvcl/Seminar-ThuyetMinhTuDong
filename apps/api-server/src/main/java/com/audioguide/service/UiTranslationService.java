@@ -4,6 +4,12 @@ import com.audioguide.dto.translationDTO.UiTranslationRequest;
 import com.audioguide.dto.translationDTO.UiTranslationResponse;
 import com.audioguide.dto.translationDTO.UiLanguageListResponse;
 import com.audioguide.dto.translationDTO.UiLanguageOption;
+import com.audioguide.entity.Dish;
+import com.audioguide.entity.Shop;
+import com.audioguide.enums.Status;
+import com.audioguide.repository.DishRepository;
+import com.audioguide.repository.ShopRepository;
+import com.audioguide.utils.TranslationTextProtector;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
@@ -24,6 +30,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,11 +46,17 @@ public class UiTranslationService {
 
     static final Set<String> TRADITIONAL_CHINESE_COUNTRIES = Set.of("TW", "HK", "MO");
     static final Duration UI_LANGUAGE_CACHE_TTL = Duration.ofHours(24);
+    static final Duration PROTECTED_TERM_CACHE_TTL = Duration.ofMinutes(10);
 
     final ObjectMapper objectMapper;
+    final ShopRepository shopRepository;
+    final DishRepository dishRepository;
     final AtomicLong uiLanguageCacheLoadedAtMillis = new AtomicLong(0L);
     final Object uiLanguageCacheLock = new Object();
     volatile List<UiLanguageOption> cachedUiLanguages = List.of();
+    final AtomicLong protectedTermCacheLoadedAtMillis = new AtomicLong(0L);
+    final Object protectedTermCacheLock = new Object();
+    volatile List<String> cachedProtectedTerms = List.of();
 
     @Value("${azure.translator.key:}")
     String translatorKey;
@@ -88,13 +101,18 @@ public class UiTranslationService {
                     .build();
         }
 
-        List<String> translated = callTranslator(sourceTexts, targetCode);
+        TranslationTextProtector.ProtectedBatch protectedBatch =
+                TranslationTextProtector.protectTexts(sourceTexts, getOrRefreshProtectedTerms());
+
+        List<String> translated = callTranslator(protectedBatch.maskedTexts(), targetCode);
         if (translated == null && !"en".equalsIgnoreCase(targetCode)) {
             log.warn("Target language '{}' is unavailable for UI translation, fallback to English", targetCode);
-            translated = callTranslator(sourceTexts, "en");
+            translated = callTranslator(protectedBatch.maskedTexts(), "en");
         }
         if (translated == null) {
             translated = sourceTexts;
+        } else {
+            translated = protectedBatch.restore(translated);
         }
 
         return UiTranslationResponse.builder()
@@ -102,6 +120,61 @@ public class UiTranslationService {
                 .texts(translated)
                 .translated(!translated.equals(sourceTexts))
                 .build();
+    }
+
+    private List<String> getOrRefreshProtectedTerms() {
+        long now = System.currentTimeMillis();
+        long loadedAt = protectedTermCacheLoadedAtMillis.get();
+        if (!cachedProtectedTerms.isEmpty() && now - loadedAt < PROTECTED_TERM_CACHE_TTL.toMillis()) {
+            return cachedProtectedTerms;
+        }
+
+        synchronized (protectedTermCacheLock) {
+            now = System.currentTimeMillis();
+            loadedAt = protectedTermCacheLoadedAtMillis.get();
+            if (!cachedProtectedTerms.isEmpty() && now - loadedAt < PROTECTED_TERM_CACHE_TTL.toMillis()) {
+                return cachedProtectedTerms;
+            }
+
+            List<String> freshTerms = loadProtectedTermsFromDatabase();
+            if (!freshTerms.isEmpty()) {
+                cachedProtectedTerms = freshTerms;
+                protectedTermCacheLoadedAtMillis.set(now);
+                return cachedProtectedTerms;
+            }
+
+            return cachedProtectedTerms;
+        }
+    }
+
+    private List<String> loadProtectedTermsFromDatabase() {
+        LinkedHashSet<String> terms = new LinkedHashSet<>();
+
+        List<Shop> activeShops = shopRepository.findAllByStatus(Status.ACTIVE);
+        for (Shop shop : activeShops) {
+            addProtectedTerm(terms, shop.getName());
+            addProtectedTerm(terms, shop.getAddress());
+        }
+
+        List<Dish> activeDishes = dishRepository.findAllByStatus(Status.ACTIVE);
+        for (Dish dish : activeDishes) {
+            addProtectedTerm(terms, dish.getName());
+        }
+
+        List<String> protectedTerms = new ArrayList<>(terms);
+        protectedTerms.sort(Comparator.comparingInt(String::length).reversed());
+        return protectedTerms;
+    }
+
+    private void addProtectedTerm(LinkedHashSet<String> terms, String value) {
+        if (isBlank(value)) {
+            return;
+        }
+        String normalized = value.trim();
+        if (normalized.length() < 2) {
+            return;
+        }
+        terms.add(normalized);
     }
 
     private List<String> callTranslator(List<String> sourceTexts, String targetCode) {

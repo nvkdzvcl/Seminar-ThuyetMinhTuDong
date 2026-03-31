@@ -1,10 +1,14 @@
 package com.audioguide.service;
 
 import com.audioguide.dto.shopDTO.ShopNarrationResponse;
+import com.audioguide.entity.Dish;
 import com.audioguide.entity.Shop;
+import com.audioguide.enums.Status;
 import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;
+import com.audioguide.repository.DishRepository;
 import com.audioguide.repository.ShopRepository;
+import com.audioguide.utils.TranslationTextProtector;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
@@ -29,6 +33,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -68,6 +73,7 @@ public class ShopNarrationService {
     static final String SPEECH_OUTPUT_FORMAT = "audio-16khz-64kbitrate-mono-mp3";
 
     final ShopRepository shopRepository;
+    final DishRepository dishRepository;
     final ObjectMapper objectMapper;
     final AtomicLong voiceCacheLoadedAtMillis = new AtomicLong(0L);
     final Object voiceCacheLock = new Object();
@@ -112,7 +118,12 @@ public class ShopNarrationService {
         String effectiveLanguageTag = voice.locale();
 
         String sourceText = buildShopNarrationText(shop);
-        TranslationResult translationResult = translateWithFallback(sourceText, voice.translatorCode());
+        TranslationTextProtector.ProtectedText protectedText = TranslationTextProtector.protectText(
+                sourceText,
+                collectShopProtectedTerms(shop)
+        );
+        TranslationResult translationResult = translateWithFallback(protectedText.maskedText(), voice.translatorCode());
+        String translatedNarrationText = protectedText.restore(translationResult.translatedText());
         boolean fallbackApplied = voice.fallbackApplied() || translationResult.fallbackApplied();
 
         if (translationResult.fallbackApplied() && !isEnglishLocale(effectiveLanguageTag)) {
@@ -122,7 +133,7 @@ public class ShopNarrationService {
             fallbackApplied = true;
         }
 
-        String contentSignature = createContentSignature(shop, effectiveLanguageTag, translationResult.translatedText(), voice.voiceName());
+        String contentSignature = createContentSignature(shop, effectiveLanguageTag, translatedNarrationText, voice.voiceName());
         String safeLanguage = effectiveLanguageTag.replace("-", "_").toLowerCase(Locale.ROOT);
         String fileName = "shop-" + shopId + "-" + safeLanguage + "-" + contentSignature + ".mp3";
 
@@ -143,7 +154,7 @@ public class ShopNarrationService {
                         .build();
             }
 
-            byte[] audioBytes = synthesizeSpeech(translationResult.translatedText(), voice);
+            byte[] audioBytes = synthesizeSpeech(translatedNarrationText, voice);
             Files.write(targetFile, audioBytes);
 
             return ShopNarrationResponse.builder()
@@ -159,6 +170,31 @@ public class ShopNarrationService {
             log.error("Cannot store generated narration audio for shop {}", shopId, exception);
             throw new AppException(ErrorCode.AZURE_TTS_FAILED);
         }
+    }
+
+    private List<String> collectShopProtectedTerms(Shop shop) {
+        LinkedHashSet<String> terms = new LinkedHashSet<>();
+        addProtectedTerm(terms, shop.getName());
+        addProtectedTerm(terms, shop.getAddress());
+
+        if (shop.getId() != null) {
+            List<Dish> dishes = dishRepository.findByShopIdAndStatus(shop.getId(), Status.ACTIVE);
+            for (Dish dish : dishes) {
+                addProtectedTerm(terms, dish.getName());
+            }
+        }
+        return new ArrayList<>(terms);
+    }
+
+    private void addProtectedTerm(LinkedHashSet<String> terms, String value) {
+        if (isBlank(value)) {
+            return;
+        }
+        String normalized = value.trim();
+        if (normalized.length() < 2) {
+            return;
+        }
+        terms.add(normalized);
     }
 
     private void ensureAzureConfigPresent() {

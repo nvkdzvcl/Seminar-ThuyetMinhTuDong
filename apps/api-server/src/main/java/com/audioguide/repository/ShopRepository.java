@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 
@@ -17,6 +18,7 @@ public interface ShopRepository extends JpaRepository<Shop, Integer> {
         boolean existsById(Integer shopId);
         Optional<Shop> findByOwnerId(Integer ownerId);
         Page<Shop> findAllByStatus(Status status, Pageable pageable);
+        List<Shop> findAllByStatus(Status status);
         long countByStatus(Status status);
         Page<Shop> findByNameContainingIgnoreCaseAndStatus(String name, Status status, Pageable pageable);
 

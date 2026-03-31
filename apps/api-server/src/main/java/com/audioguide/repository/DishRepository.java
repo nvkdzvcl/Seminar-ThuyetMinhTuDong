@@ -13,6 +13,7 @@ import java.util.List;
 public interface DishRepository extends JpaRepository<Dish, Integer> {
 
     Page<Dish> findAllByStatus(Status status, Pageable pageable);
+    List<Dish> findAllByStatus(Status status);
     Page<Dish> findByNameContainingIgnoreCaseAndStatus(String name, Status status, Pageable pageable);
     Page<Dish> findByIsSignatureAndStatus(boolean isSignature, Status status, Pageable pageable);
     Page<Dish> findByShopIdAndStatus(Integer shopId, Status status, Pageable pageable);
