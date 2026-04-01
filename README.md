@@ -99,6 +99,22 @@ Them cac bien sau vao `apps/api-server/.env`:
 
 Neu chua cau hinh du, backend van chay theo fallback heuristic va khong crash luong tao POI.
 
+### Khong co Ollama/Qwen van chay duoc khong?
+
+Co. Tren may khong cai Ollama/Qwen, du an van chay binh thuong.
+
+- Khuyen nghi set:
+  - `LLM_PROVIDER=disabled`
+- Khi do moderation van hoat dong theo:
+  - Heuristic (bat buoc)
+  - Azure Content Safety (neu da cau hinh key)
+- Nghia la tinh nang duyet noi dung mo ta POI van dung duoc, chi giam do "hieu ngu canh" so voi khi co LLM local.
+
+### Customer map POI visibility
+
+- Customer web chi hien thi POI da duoc duyet (`PUBLISHED`).
+- Cac POI `DRAFT`, `FLAGGED`, `HIDDEN` khong duoc len ban do customer.
+
 `application.yaml` da duoc cau hinh de tu dong nap `.env` tu:
 
 - `./.env`
@@ -116,6 +132,5 @@ for /f "tokens=5" %p in ('netstat -aon ^| findstr :8080 ^| findstr LISTENING') d
 - `GET /shop/{id}/narration` tra `500` voi code `AZURE_CONFIG_MISSING`:
   - Kiem tra `apps/api-server/.env` da co du 6 bien
   - Restart backend sau khi cap nhat env
-```
 
 Tai lieu yeu cau hien duoc dat trong `docs/requirements`.

@@ -23,7 +23,7 @@ function ShopCard({
     const imageSrc = resolveMediaUrl(
         image,
         import.meta.env.VITE_SHOP_IMAGE_API,
-        "https://placehold.co/800x500?text=Shop"
+        "https://placehold.co/800x500?text=Cua+hang"
     );
 
     return (

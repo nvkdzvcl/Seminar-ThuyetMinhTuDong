@@ -41,6 +41,8 @@ Before coding, read these files first:
 11. `apps/api-server/src/main/java/com/audioguide/utils/CoordinateParserUtil.java` (flexible coordinate parser on BE)
 12. `apps/api-server/src/main/java/com/audioguide/service/ShopNarrationService.java` (Azure translate + TTS flow)
 13. `apps/api-server/.env.example` (required Azure env keys for narration)
+14. `apps/api-server/src/main/java/com/audioguide/service/PoiModerationService.java` (heuristic + Content Safety + optional Ollama moderation)
+15. `apps/customer-web/src/hooks/usePoiMapData.ts` (customer map POI data source and status filter)
 
 ## 3) Runtime Contracts (Do Not Break)
 
@@ -108,6 +110,23 @@ If FE uses `PATCH` and CORS omits `PATCH`, preflight fails.
   - `AZURE_SPEECH_REGION`
   - `AZURE_SPEECH_TTS_ENDPOINT`
 - If missing, API returns `AZURE_CONFIG_MISSING` (HTTP 500).
+
+### 3.6 POI Moderation Config (LLM Optional)
+
+- POI moderation pipeline supports 3 layers:
+  - Heuristic (always available)
+  - Azure Content Safety (optional via env keys)
+  - Ollama/Qwen LLM (optional)
+- Project must still run on machines without Ollama/Qwen.
+- If local machine does not have Ollama, set:
+  - `LLM_PROVIDER=disabled`
+- With `LLM_PROVIDER=disabled`, moderation still works via heuristic (+ Content Safety if configured), and backend must not fail startup.
+- If `LLM_PROVIDER=ollama` but Ollama is unreachable, moderation may be slower due to timeout but flow should not crash.
+
+### 3.7 Customer POI Visibility Contract
+
+- Customer map screens must show only approved POIs (`status = PUBLISHED`).
+- Draft/flagged/hidden POIs must not appear on customer map.
 
 ## 4) Product Behavior Baseline (Shopowner)
 

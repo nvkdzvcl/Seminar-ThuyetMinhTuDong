@@ -18,7 +18,7 @@ import { resolveMediaUrl } from "../../utils/media";
 import { resolvePreferredLanguage } from "../../utils/language";
 import { usePoiMapData } from "../../hooks/usePoiMapData";
 import { getPoiCategoryLabel, getPoiMarkerIcon, getPoiStatusLabel } from "../../utils/poiMap";
-import { notifyError, notifyWarning } from "../../utils/notify";
+import { notifyError, notifyInfo, notifyWarning } from "../../utils/notify";
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -28,6 +28,31 @@ L.Icon.Default.mergeOptions({
 });
 
 type PositionTuple = [number, number];
+const NEARBY_RADIUS_KM = 2;
+const POI_PROXIMITY_ALERT_RADIUS_KM = 0.1;
+const POI_ALERT_MAX_ITEMS = 5;
+
+function calculateDistanceKm(from: PositionTuple, to: PositionTuple): number {
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const dLat = toRad(to[0] - from[0]);
+    const dLng = toRad(to[1] - from[1]);
+    const lat1 = toRad(from[0]);
+    const lat2 = toRad(to[0]);
+
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return 6371 * c;
+}
+
+function formatDistance(distanceKm: number): string {
+    const distanceMeter = Math.round(distanceKm * 1000);
+    if (distanceMeter < 1000) {
+        return `${distanceMeter}m`;
+    }
+    return `${distanceKm.toFixed(2)}km`;
+}
 
 function RoutingMachine({ from, to }: { from: PositionTuple; to: PositionTuple }) {
     const map = useMap();
@@ -160,10 +185,16 @@ export default function NearbyShopPage() {
     const token = localStorage.getItem(import.meta.env.VITE_LS_ACCESS) || "";
     const currentShopIdRef = useRef<number | null>(null);
     const autoAudioRef = useRef<boolean>(autoTurnOnNearbyShopAudio);
+    const currentPositionRef = useRef<PositionTuple>(currentPosition);
+    const lastNearbyPoiAlertRef = useRef<string | null>(null);
 
     useEffect(() => {
         currentShopIdRef.current = currentShop?.id ?? null;
     }, [currentShop]);
+
+    useEffect(() => {
+        currentPositionRef.current = currentPosition;
+    }, [currentPosition]);
 
     useEffect(() => {
         autoAudioRef.current = autoTurnOnNearbyShopAudio;
@@ -205,15 +236,21 @@ export default function NearbyShopPage() {
             token,
             (response) => {
                 const items = response.result?.items || [];
-                dispatch(setNearbyShops(items));
+                const position = currentPositionRef.current;
+                const sortedItems = [...items].sort(
+                    (a, b) =>
+                        calculateDistanceKm(position, [a.lat, a.lng]) -
+                        calculateDistanceKm(position, [b.lat, b.lng])
+                );
+                dispatch(setNearbyShops(sortedItems));
                 setError("");
 
-                if (items.length === 0) {
+                if (sortedItems.length === 0) {
                     dispatch(setCurrentShop(null));
                     return;
                 }
 
-                const nearestShop = items[0];
+                const nearestShop = sortedItems[0];
                 const isSameCurrentShop = currentShopIdRef.current === nearestShop.id;
 
                 dispatch(setCurrentShop(nearestShop));
@@ -283,7 +320,7 @@ export default function NearbyShopPage() {
                 locationSocketService.sendLocation({
                     lat,
                     lng,
-                    radius: 500000000,
+                    radius: NEARBY_RADIUS_KM,
                     page: 1,
                     size: 10,
                 });
@@ -310,10 +347,22 @@ export default function NearbyShopPage() {
     const otherShops = useMemo(() => {
         return shops.filter((shop) => shop.id !== currentShop?.id);
     }, [shops, currentShop]);
+    const nearbyPoiCandidates = useMemo(() => {
+        return pois
+            .filter((poi) => Boolean(poi.shopId))
+            .map((poi) => ({
+                ...poi,
+                distanceKm: calculateDistanceKm(currentPosition, [poi.lat, poi.lng]),
+            }))
+            .filter((poi) => poi.distanceKm <= POI_PROXIMITY_ALERT_RADIUS_KM)
+            .sort((a, b) => a.distanceKm - b.distanceKm)
+            .slice(0, POI_ALERT_MAX_ITEMS);
+    }, [pois, currentPosition]);
+    const nearestNearbyPoi = nearbyPoiCandidates[0] ?? null;
     const currentShopImageSrc = resolveMediaUrl(
         currentShop?.imageName,
         import.meta.env.VITE_SHOP_IMAGE_API,
-        "https://placehold.co/800x500?text=Shop"
+        "https://placehold.co/800x500?text=Cua+hang"
     );
     const currentShopDisplayDescription =
         currentShop?.shortDescription || "Chưa cập nhật mô tả ngắn";
@@ -374,6 +423,24 @@ export default function NearbyShopPage() {
         console.log("Xem quán:", shopId);
     };
 
+    useEffect(() => {
+        if (!nearestNearbyPoi) {
+            lastNearbyPoiAlertRef.current = null;
+            return;
+        }
+
+        if (lastNearbyPoiAlertRef.current === nearestNearbyPoi.id) {
+            return;
+        }
+
+        lastNearbyPoiAlertRef.current = nearestNearbyPoi.id;
+        notifyInfo(
+            `Bạn đang gần ${nearestNearbyPoi.name} (${formatDistance(nearestNearbyPoi.distanceKm)}). Nhấn "Phát audio" để nghe mô tả.`,
+            "POI gần bạn",
+            3200
+        );
+    }, [nearestNearbyPoi]);
+
     return (
         <div className="min-h-screen bg-slate-50">
             <style>{`
@@ -386,7 +453,7 @@ export default function NearbyShopPage() {
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
-                            Shop gần bạn
+                            Cửa hàng gần bạn
                         </h1>
                         <p className="mt-1 text-sm text-slate-500">
                             {connected ? "Đã kết nối realtime" : "Đang kết nối realtime..."}
@@ -417,16 +484,60 @@ export default function NearbyShopPage() {
                         {poiError}
                     </div>
                 )}
+                {nearbyPoiCandidates.length > 0 ? (
+                    <div className="mb-4 rounded-2xl border border-cyan-200 bg-cyan-50 p-3 shadow-sm">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                            <h3 className="text-sm font-semibold text-cyan-900">
+                                Bạn đang ở gần {nearbyPoiCandidates.length} POI trong bán kính {Math.round(POI_PROXIMITY_ALERT_RADIUS_KM * 1000)}m
+                            </h3>
+                            <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-cyan-700">
+                                Gần nhất lên đầu
+                            </span>
+                        </div>
+                        <div className="space-y-2">
+                            {nearbyPoiCandidates.map((poi, index) => (
+                                <div
+                                    key={`nearby-poi-alert-${poi.id}`}
+                                    className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${
+                                        index === 0
+                                            ? "border-emerald-200 bg-emerald-50"
+                                            : "border-cyan-200 bg-white"
+                                    }`}
+                                >
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-slate-900">
+                                            {index === 0 ? "Gần nhất: " : ""}
+                                            {poi.name}
+                                        </p>
+                                        <p className="truncate text-xs text-slate-600">
+                                            Cách bạn {formatDistance(poi.distanceKm)}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            void handlePlayPoiNarration(poi);
+                                        }}
+                                        disabled={loadingPoiId === poi.id || !poi.shopId}
+                                        className="shrink-0 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {loadingPoiId === poi.id ? "Đang tải..." : "Phát audio"}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : null}
 
                 {currentShop ? (
                     <>
                         <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
                             <div className="border-b border-slate-100 px-4 py-3">
                                 <h2 className="text-lg font-bold text-slate-900">
-                                    Bản đồ shop gần nhất
+                                    Bản đồ cửa hàng gần nhất
                                 </h2>
                                 <p className="text-sm text-slate-500">
-                                    Hiển thị vị trí hiện tại, các POI và đường đi tới quán gần nhất.
+                                    Hiển thị vị trí hiện tại, các POI đã duyệt và đường đi tới cửa hàng gần nhất.
                                     POI: {pois.length}
                                 </p>
                             </div>
@@ -590,16 +701,16 @@ export default function NearbyShopPage() {
                     </>
                 ) : (
                     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 shadow-sm">
-                        Chưa có shop nào gần bạn. Hệ thống sẽ tự tìm lại sau mỗi 10 giây.
+                        Chưa có cửa hàng nào gần bạn. Hệ thống sẽ tự tìm lại sau mỗi 10 giây.
                     </div>
                 )}
 
                 <div className="mt-8">
-                    <h3 className="mb-4 text-xl font-bold text-slate-900">Các shop khác</h3>
+                    <h3 className="mb-4 text-xl font-bold text-slate-900">Các cửa hàng khác</h3>
 
                     {otherShops.length === 0 ? (
                         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
-                            Chưa có shop khác trong bán kính 2km
+                            Chưa có cửa hàng khác trong bán kính 2km
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
