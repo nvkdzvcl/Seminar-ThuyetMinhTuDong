@@ -40,4 +40,5 @@ build/
 
 **/coverage/
 *.yaml
+!src/main/resources/application.yaml
 /note.md

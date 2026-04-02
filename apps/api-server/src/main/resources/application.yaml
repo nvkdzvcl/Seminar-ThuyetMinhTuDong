@@ -1,0 +1,75 @@
+server:
+    port: ${PORT:8080}
+    servlet:
+        context-path: ${SERVER_SERVLET_CONTEXT_PATH:/vinhkhanhfoodtour/api}
+
+spring:
+    config:
+        import: optional:file:./.env[.properties],optional:file:./apps/api-server/.env[.properties]
+    datasource:
+        url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/vinhkhanhfoodtour}
+        username: ${SPRING_DATASOURCE_USERNAME:root2}
+        password: ${SPRING_DATASOURCE_PASSWORD:012345678910}
+    jpa:
+        hibernate:
+            ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+        show-sql: ${SPRING_JPA_SHOW_SQL:true}
+    servlet:
+        multipart:
+            max-file-size: 50MB
+            max-request-size: 50MB
+
+jwt:
+    signerKey: ${JWT_SIGNERKEY:AgAOx4qyAzSy8CqqI4zuNJgm3vozakUHD8JICWkLh1j6AHcIzDfjXeyz1YkG8Amu}
+
+
+
+app:
+    fe:
+        verify: "http://localhost:5173/auth/google/verify-otp"
+        login: "http://localhost:5173/login"
+    cors:
+        allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,https://*.devtunnels.ms,https://*.vercel.app}
+    otp:
+        max-attempts: 5
+        expiration-minutes: 5
+    reset-token:
+        expiration-minutes: 10
+
+springdoc:
+    swagger-ui:
+        path: /swagger
+    api-docs:
+        path: /api-docs
+
+file:
+    upload-dir: ${FILE_UPLOAD_DIR:D:/Study/SGU/NAM_3/Ki_2/SEMINAR/VinhKhanh_Audio_Guide/backend/uploads/}
+
+azure:
+  translator:
+    key: ${AZURE_TRANSLATOR_KEY:}
+    region: ${AZURE_TRANSLATOR_REGION:southeastasia}
+    endpoint: ${AZURE_TRANSLATOR_ENDPOINT:https://api.cognitive.microsofttranslator.com}
+  content-safety:
+    key: ${AZURE_CONTENT_SAFETY_KEY:}
+    endpoint: ${AZURE_CONTENT_SAFETY_ENDPOINT:}
+    api-version: ${AZURE_CONTENT_SAFETY_API_VERSION:2024-09-01}
+  speech:
+    key: ${AZURE_SPEECH_KEY:}
+    region: ${AZURE_SPEECH_REGION:southeastasia}
+    endpoint: ${AZURE_SPEECH_ENDPOINT:https://southeastasia.api.cognitive.microsoft.com}
+    tts-endpoint: ${AZURE_SPEECH_TTS_ENDPOINT:https://southeastasia.tts.speech.microsoft.com/cognitiveservices/v1}
+    default-voice: ${AZURE_SPEECH_DEFAULT_VOICE:en-US-JennyNeural}
+
+moderation:
+  poi:
+    enabled: ${POI_MODERATION_ENABLED:true}
+
+llm:
+  provider: ${LLM_PROVIDER:ollama}
+  ollama:
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    model: ${OLLAMA_MODEL:qwen3:4b}
+    timeout-ms: ${OLLAMA_TIMEOUT_MS:30000}
+    think: ${OLLAMA_THINK:false}
+
