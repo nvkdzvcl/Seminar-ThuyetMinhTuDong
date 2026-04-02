@@ -58,6 +58,22 @@ Backend mac dinh:
 - port: `8080`
 - context path: `/vinhkhanhfoodtour/api`
 
+Ban cloud duoc override bang env:
+
+- `PORT`
+- `SERVER_SERVLET_CONTEXT_PATH`
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_JPA_HIBERNATE_DDL_AUTO`
+- `JWT_SIGNERKEY`
+- `FILE_UPLOAD_DIR`
+
+Luu y:
+
+- `application.yaml` cua backend la file config duoc track trong repo.
+- Khong dua secret that vao file nay; secret phai di qua env.
+
 ## Azure narration (shop audio TTS)
 
 Backend narration endpoint (`/shop/{id}/narration`) can cau hinh Azure Translator + Speech.
@@ -120,6 +136,113 @@ Co. Tren may khong cai Ollama/Qwen, du an van chay binh thuong.
 - `./.env`
 - `./apps/api-server/.env`
 
+## Deploy backend len Railway
+
+Khuyen nghi deploy `apps/api-server` len Railway.
+
+Root Directory:
+
+```txt
+apps/api-server
+```
+
+Build Command:
+
+```txt
+mvn clean package -DskipTests
+```
+
+Start Command:
+
+```txt
+java -Dserver.port=$PORT -jar target/api-server-1.0.0.jar
+```
+
+Bien moi truong toi thieu:
+
+```txt
+SPRING_DATASOURCE_URL=jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+SPRING_DATASOURCE_USERNAME=${{MySQL.MYSQLUSER}}
+SPRING_DATASOURCE_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
+JWT_SIGNERKEY=<your-jwt-signer-key>
+FILE_UPLOAD_DIR=uploads
+LLM_PROVIDER=disabled
+```
+
+Neu deploy frontend ra Internet, backend can CORS phu hop. Mac dinh backend da allow:
+
+- localhost dev ports
+- `https://*.devtunnels.ms`
+- `https://*.vercel.app`
+
+Neu dung custom domain frontend, them:
+
+```txt
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=https://your-admin-domain,https://your-customer-domain,https://your-shopowner-domain
+```
+
+## Deploy frontend len Vercel
+
+Ca 3 frontend deu la Vite app va da co `vercel.json` rewrite SPA san.
+
+### customer-web
+
+Root Directory:
+
+```txt
+apps/customer-web
+```
+
+Build settings:
+
+```txt
+Framework Preset: Vite
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+```
+
+Environment Variables:
+
+```txt
+VITE_BACKEND_API=https://<backend-domain>/vinhkhanhfoodtour/api
+VITE_DISH_IMAGE_API=https://<backend-domain>/vinhkhanhfoodtour/api/uploads/dish-images/
+VITE_SHOP_IMAGE_API=https://<backend-domain>/vinhkhanhfoodtour/api/uploads/shop-images/
+VITE_WS_API=wss://<backend-domain>/vinhkhanhfoodtour/api
+VITE_LS_ACCESS=VINH_KHANH_FOOD_TOUR_ACCESS_TOKEN
+```
+
+### shopowner-web
+
+Root Directory:
+
+```txt
+apps/shopowner-web
+```
+
+Environment Variables:
+
+```txt
+VITE_API_BASE_URL=https://<backend-domain>/vinhkhanhfoodtour/api
+VITE_CUSTOMER_WEB_URL=https://<customer-domain>
+```
+
+### admin-web
+
+Root Directory:
+
+```txt
+apps/admin-web
+```
+
+Environment Variables:
+
+```txt
+VITE_API_BASE_URL=https://<backend-domain>/vinhkhanhfoodtour/api
+VITE_CUSTOMER_WEB_URL=https://<customer-domain>
+```
+
 ## Troubleshooting nhanh
 
 - `Port 8080 is already in use`:
@@ -132,5 +255,12 @@ for /f "tokens=5" %p in ('netstat -aon ^| findstr :8080 ^| findstr LISTENING') d
 - `GET /shop/{id}/narration` tra `500` voi code `AZURE_CONFIG_MISSING`:
   - Kiem tra `apps/api-server/.env` da co du 6 bien
   - Restart backend sau khi cap nhat env
+- Railway backend `502` khi vua deploy:
+  - Kiem tra `SPRING_DATASOURCE_*`
+  - Kiem tra `JWT_SIGNERKEY`
+  - Kiem tra `SPRING_JPA_HIBERNATE_DDL_AUTO=update`
+- Vercel frontend goi API bi CORS:
+  - Kiem tra backend dang dung build moi co `https://*.vercel.app`
+  - Neu dung custom domain, set `APP_CORS_ALLOWED_ORIGIN_PATTERNS`
 
 Tai lieu yeu cau hien duoc dat trong `docs/requirements`.

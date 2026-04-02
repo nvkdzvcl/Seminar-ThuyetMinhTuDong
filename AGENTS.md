@@ -50,6 +50,9 @@ Before coding, read these files first:
 
 - Backend runs on `http://localhost:8080`.
 - Context path is `/vinhkhanhfoodtour/api`.
+- Backend cloud config can override these via env:
+  - `PORT`
+  - `SERVER_SERVLET_CONTEXT_PATH`
 - Shopowner FE default API base (`apps/shopowner-web/src/lib/api.ts`):
   - `VITE_API_BASE_URL` env var OR
   - fallback: `http://localhost:8080/vinhkhanhfoodtour/api`
@@ -81,13 +84,19 @@ Defined in `apps/shopowner-web/src/lib/auth.ts`.
 
 ### 3.4 CORS Rules
 
-`SecurityConfig` currently allows origins:
+`SecurityConfig` currently reads allowed origins from:
+
+- `app.cors.allowed-origin-patterns`
+- env override: `APP_CORS_ALLOWED_ORIGIN_PATTERNS`
+
+Default patterns include:
 
 - `http://localhost:5173`
 - `http://localhost:5174`
 - `http://localhost:5175`
 - `http://localhost:3000`
 - `https://*.devtunnels.ms`
+- `https://*.vercel.app`
 
 Allowed methods must include:
 
@@ -127,6 +136,38 @@ If FE uses `PATCH` and CORS omits `PATCH`, preflight fails.
 
 - Customer map screens must show only approved POIs (`status = PUBLISHED`).
 - Draft/flagged/hidden POIs must not appear on customer map.
+
+### 3.8 Cloud Deployment Contract
+
+- Backend is expected to run on Railway.
+- Frontends are expected to run on Vercel.
+- `apps/api-server/src/main/resources/application.yaml` is intentionally tracked now and must stay deployable via env placeholders.
+- Do not move secrets back into committed YAML.
+
+Railway backend minimum env:
+
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_JPA_HIBERNATE_DDL_AUTO`
+- `JWT_SIGNERKEY`
+- `FILE_UPLOAD_DIR`
+- `LLM_PROVIDER`
+
+Frontend env contracts:
+
+- `admin-web`
+  - `VITE_API_BASE_URL`
+  - `VITE_CUSTOMER_WEB_URL`
+- `shopowner-web`
+  - `VITE_API_BASE_URL`
+  - `VITE_CUSTOMER_WEB_URL`
+- `customer-web`
+  - `VITE_BACKEND_API`
+  - `VITE_DISH_IMAGE_API`
+  - `VITE_SHOP_IMAGE_API`
+  - `VITE_WS_API`
+  - `VITE_LS_ACCESS`
 
 ## 4) Product Behavior Baseline (Shopowner)
 
@@ -179,6 +220,7 @@ Rules:
 6. Do not rename request/response fields without syncing FE + BE in same change.
 7. Do not commit real secrets (JWT signer keys, DB passwords, Azure keys) in new files.
 8. Never commit `apps/api-server/.env`; keep it local-only.
+9. Do not re-ignore `apps/api-server/src/main/resources/application.yaml`; cloud deploy depends on it.
 
 ## 6) Safe Change Workflow For Any Agent
 
