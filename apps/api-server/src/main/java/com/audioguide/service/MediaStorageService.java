@@ -52,6 +52,8 @@ public class MediaStorageService {
     }
 
     private String uploadToR2(MultipartFile file, String remoteFolder) {
+        String resolvedBucket = normalizeConfigValue(bucket);
+        String resolvedEndpoint = normalizeConfigValue(endpoint);
         String key = buildObjectKey(file, remoteFolder);
         String contentType = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
 
@@ -59,25 +61,30 @@ public class MediaStorageService {
              InputStream inputStream = file.getInputStream()) {
 
             PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucket)
+                    .bucket(resolvedBucket)
                     .key(key)
                     .contentType(contentType)
                     .build();
 
             s3Client.putObject(request, RequestBody.fromInputStream(inputStream, file.getSize()));
             String publicUrl = resolvePublicUrl(key);
-            log.info("Uploaded media to R2 bucket {}, key {}", bucket, key);
+            log.info("Uploaded media to R2 bucket {}, key {}", resolvedBucket, key);
             return publicUrl;
         } catch (Exception exception) {
+            log.error("R2 upload failed. endpoint={}, bucket={}, key={}, reason={}",
+                    resolvedEndpoint, resolvedBucket, key, exception.getMessage(), exception);
             throw new RuntimeException("Upload image to R2 failed", exception);
         }
     }
 
     private S3Client buildS3Client() {
+        String resolvedEndpoint = normalizeConfigValue(endpoint);
+        String resolvedAccessKeyId = normalizeConfigValue(accessKeyId);
+        String resolvedSecretAccessKey = normalizeConfigValue(secretAccessKey);
         return S3Client.builder()
-                .endpointOverride(URI.create(endpoint))
+                .endpointOverride(URI.create(resolvedEndpoint))
                 .credentialsProvider(
-                        StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey))
+                        StaticCredentialsProvider.create(AwsBasicCredentials.create(resolvedAccessKeyId, resolvedSecretAccessKey))
                 )
                 .region(Region.of(resolveRegion()))
                 .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
@@ -85,7 +92,7 @@ public class MediaStorageService {
     }
 
     private String resolvePublicUrl(String key) {
-        String normalizedBase = trimTrailingSlash(publicBaseUrl);
+        String normalizedBase = trimTrailingSlash(normalizeConfigValue(publicBaseUrl));
         if (normalizedBase.isEmpty()) {
             throw new IllegalStateException("R2_PUBLIC_BASE_URL is required when R2 is configured");
         }
@@ -132,20 +139,37 @@ public class MediaStorageService {
     }
 
     private String resolveRegion() {
-        String normalizedRegion = region == null ? "" : region.trim();
+        String normalizedRegion = normalizeConfigValue(region);
         return normalizedRegion.isEmpty() ? "auto" : normalizedRegion;
     }
 
     private boolean isR2Configured() {
-        return hasText(bucket)
-                && hasText(endpoint)
-                && hasText(accessKeyId)
-                && hasText(secretAccessKey)
-                && hasText(publicBaseUrl);
+        return hasText(normalizeConfigValue(bucket))
+                && hasText(normalizeConfigValue(endpoint))
+                && hasText(normalizeConfigValue(accessKeyId))
+                && hasText(normalizeConfigValue(secretAccessKey))
+                && hasText(normalizeConfigValue(publicBaseUrl));
     }
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private String normalizeConfigValue(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        String normalized = value.trim();
+        if (normalized.length() >= 2) {
+            boolean wrappedByDoubleQuotes = normalized.startsWith("\"") && normalized.endsWith("\"");
+            boolean wrappedBySingleQuotes = normalized.startsWith("'") && normalized.endsWith("'");
+            if (wrappedByDoubleQuotes || wrappedBySingleQuotes) {
+                normalized = normalized.substring(1, normalized.length() - 1).trim();
+            }
+        }
+
+        return normalized;
     }
 
     private String trimTrailingSlash(String value) {
