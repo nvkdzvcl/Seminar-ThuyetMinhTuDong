@@ -16,13 +16,12 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class OwnerInsightsResponse {
     Integer shopId;
-    Long totalOrders7Days;
-    Long totalRevenue7Days;
-    Long avgDailyOrders;
-    Long uniqueCustomers7Days;
+    Long totalVisits7Days;
+    Long avgDailyVisits;
+    Long totalAudioCompletions7Days;
+    Long uniqueSessions7Days;
     Integer growthPercent;
     List<OwnerDailyMetricResponse> dailyMetrics;
     List<OwnerLanguageMetricResponse> languageMetrics;
     List<OwnerTopDishMetricResponse> topDishMetrics;
 }
-

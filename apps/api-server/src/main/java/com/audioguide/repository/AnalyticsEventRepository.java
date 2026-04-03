@@ -18,6 +18,20 @@ public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEvent, 
             LocalDateTime toDate
     );
 
+    long countByShopIdAndEventTypeInAndOccurredAtBetween(
+            Integer shopId,
+            List<AnalyticsEventType> eventTypes,
+            LocalDateTime fromDate,
+            LocalDateTime toDate
+    );
+
+    long countDistinctSessionIdByShopIdAndEventTypeInAndOccurredAtBetween(
+            Integer shopId,
+            List<AnalyticsEventType> eventTypes,
+            LocalDateTime fromDate,
+            LocalDateTime toDate
+    );
+
     @Query("""
             SELECT COALESCE(NULLIF(TRIM(e.languageCode), ''), 'unknown'), COUNT(e.id)
             FROM AnalyticsEvent e
@@ -47,6 +61,24 @@ public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEvent, 
             LIMIT 1
             """, nativeQuery = true)
     List<Object[]> findTopAudioDishByShop(
+            @Param("shopId") Integer shopId,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate
+    );
+
+    @Query(value = """
+            SELECT COALESCE(d.name, 'Khác') AS dish_name, COUNT(ae.id) AS total
+            FROM analytics_event ae
+            LEFT JOIN dish d ON d.id = ae.dish_id
+            WHERE ae.shop_id = :shopId
+            AND ae.event_type = 'AUDIO_PLAY_COMPLETE'
+            AND ae.dish_id IS NOT NULL
+            AND ae.occurred_at BETWEEN :fromDate AND :toDate
+            GROUP BY d.name
+            ORDER BY total DESC
+            LIMIT 6
+            """, nativeQuery = true)
+    List<Object[]> findTopAudioDishesByShop(
             @Param("shopId") Integer shopId,
             @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate
