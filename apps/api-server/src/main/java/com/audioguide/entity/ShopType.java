@@ -18,8 +18,10 @@ public class ShopType {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
+    @Column(length = 100)
     String name;
 
+    @Column(length = 500)
     String description;
 
 }
