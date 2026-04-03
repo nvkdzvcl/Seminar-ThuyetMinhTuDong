@@ -5,8 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+function parseAppDate(dateString: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return new Date(`${dateString}T00:00:00`)
+  }
+  return new Date(dateString)
+}
+
 export function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('vi-VN', {
+  return parseAppDate(dateString).toLocaleDateString('vi-VN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -14,7 +21,7 @@ export function formatDate(dateString: string): string {
 }
 
 export function formatDateTime(dateString: string): string {
-  return new Date(dateString).toLocaleString('vi-VN', {
+  return parseAppDate(dateString).toLocaleString('vi-VN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -24,7 +31,7 @@ export function formatDateTime(dateString: string): string {
 }
 
 export function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString)
+  const date = parseAppDate(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffMins = Math.floor(diffMs / 60000)

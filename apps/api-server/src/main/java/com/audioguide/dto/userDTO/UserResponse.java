@@ -3,7 +3,7 @@ package com.audioguide.dto.userDTO;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -24,7 +24,7 @@ public class UserResponse {
 
     String role;
 
-    LocalDate createdAt;
+    LocalDateTime createdAt;
 
     String status;
 

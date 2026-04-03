@@ -1,6 +1,6 @@
 package com.audioguide.dto.adminDTO;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,5 +21,5 @@ public class AdminUserResponse {
     String language;
     String role;
     String status;
-    LocalDate createdAt;
+    LocalDateTime createdAt;
 }
