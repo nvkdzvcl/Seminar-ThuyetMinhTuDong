@@ -68,11 +68,41 @@ Ban cloud duoc override bang env:
 - `SPRING_JPA_HIBERNATE_DDL_AUTO`
 - `JWT_SIGNERKEY`
 - `FILE_UPLOAD_DIR`
+- `R2_BUCKET` (optional, but recommended on cloud)
+- `R2_PUBLIC_BASE_URL` (optional)
+- `R2_ENDPOINT` (optional)
+- `R2_ACCESS_KEY_ID` (optional)
+- `R2_SECRET_ACCESS_KEY` (optional)
+- `R2_REGION` (optional, default `auto`)
 
 Luu y:
 
 - `application.yaml` cua backend la file config duoc track trong repo.
 - Khong dua secret that vao file nay; secret phai di qua env.
+
+## Luu tru anh mon/an tren cloud (Cloudflare R2)
+
+Backend ho tro 2 che do luu anh:
+
+- R2 mode (khuyen nghi tren Railway): upload anh len R2, DB luu URL public.
+- Local mode (fallback): luu vao `${FILE_UPLOAD_DIR}` va phuc vu qua `/uploads/**`.
+
+R2 mode duoc bat khi day du cac bien sau:
+
+- `R2_BUCKET`
+- `R2_PUBLIC_BASE_URL`
+- `R2_ENDPOINT`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_REGION` (de `auto`)
+
+Neu thieu bat ky bien nao, backend se tu dong fallback local va van chay.
+
+Luu y:
+
+- Anh cu da luu local truoc do khong tu dong co tren R2.
+- Sau khi bat R2, can upload lai anh (hoac viet script migrate 1 lan).
+- Audio van dang luu local theo `FILE_UPLOAD_DIR`.
 
 ## Azure narration (shop audio TTS)
 
@@ -170,6 +200,17 @@ FILE_UPLOAD_DIR=uploads
 LLM_PROVIDER=disabled
 ```
 
+Neu dung Cloudflare R2 cho image (khuyen nghi):
+
+```txt
+R2_BUCKET=vkfoodtour-media
+R2_PUBLIC_BASE_URL=https://<your-public-r2-domain-or-r2.dev>
+R2_ENDPOINT=https://<your-account-id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=<your-access-key-id>
+R2_SECRET_ACCESS_KEY=<your-secret-access-key>
+R2_REGION=auto
+```
+
 Neu deploy frontend ra Internet, backend can CORS phu hop. Mac dinh backend da allow:
 
 - localhost dev ports
@@ -259,6 +300,9 @@ for /f "tokens=5" %p in ('netstat -aon ^| findstr :8080 ^| findstr LISTENING') d
   - Kiem tra `SPRING_DATASOURCE_*`
   - Kiem tra `JWT_SIGNERKEY`
   - Kiem tra `SPRING_JPA_HIBERNATE_DDL_AUTO=update`
+- Upload anh luc co luc khong:
+  - Neu dang luu local, image co the mat sau restart/redeploy tren cloud
+  - Khuyen nghi bat R2 env de image on dinh
 - Vercel frontend goi API bi CORS:
   - Kiem tra backend dang dung build moi co `https://*.vercel.app`
   - Neu dung custom domain, set `APP_CORS_ALLOWED_ORIGIN_PATTERNS`

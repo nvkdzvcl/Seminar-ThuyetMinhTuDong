@@ -43,6 +43,7 @@ Before coding, read these files first:
 13. `apps/api-server/.env.example` (required Azure env keys for narration)
 14. `apps/api-server/src/main/java/com/audioguide/service/PoiModerationService.java` (heuristic + Content Safety + optional Ollama moderation)
 15. `apps/customer-web/src/hooks/usePoiMapData.ts` (customer map POI data source and status filter)
+16. `apps/api-server/src/main/java/com/audioguide/service/MediaStorageService.java` (R2 image upload + local fallback)
 
 ## 3) Runtime Contracts (Do Not Break)
 
@@ -144,6 +145,15 @@ If FE uses `PATCH` and CORS omits `PATCH`, preflight fails.
 - `apps/api-server/src/main/resources/application.yaml` is intentionally tracked now and must stay deployable via env placeholders.
 - Do not move secrets back into committed YAML.
 
+### 3.9 Media Storage Contract (Dish/Shop Images)
+
+- Backend supports 2 image storage modes:
+  - **R2 mode** (preferred on cloud): upload to Cloudflare R2 and persist public URL to DB.
+  - **Local mode** (fallback): save to `${FILE_UPLOAD_DIR}` and serve via `/uploads/**`.
+- R2 mode is enabled only when all required `R2_*` env vars are present.
+- If R2 vars are missing, backend must continue to work with local storage and must not fail startup.
+- Audio files still use local file storage (`FILE_UPLOAD_DIR`) unless explicitly refactored.
+
 Railway backend minimum env:
 
 - `SPRING_DATASOURCE_URL`
@@ -153,6 +163,15 @@ Railway backend minimum env:
 - `JWT_SIGNERKEY`
 - `FILE_UPLOAD_DIR`
 - `LLM_PROVIDER`
+
+Railway backend R2 env (recommended for production images):
+
+- `R2_BUCKET`
+- `R2_PUBLIC_BASE_URL`
+- `R2_ENDPOINT`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_REGION` (use `auto`)
 
 Frontend env contracts:
 
