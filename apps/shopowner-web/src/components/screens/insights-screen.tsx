@@ -165,7 +165,7 @@ export function InsightsScreen() {
 
   if (isLoading) {
     return (
-      <div className="px-4 pt-6 pb-4">
+      <div className="px-4 pt-6 pb-6 md:px-6 lg:px-8">
         <Card className="bg-card border-border">
           <CardContent className="p-6 text-sm text-muted-foreground">
             Đang tải thống kê thực tế...
@@ -177,7 +177,7 @@ export function InsightsScreen() {
 
   if (errorMessage) {
     return (
-      <div className="px-4 pt-6 pb-4">
+      <div className="px-4 pt-6 pb-6 md:px-6 lg:px-8">
         <Card className="bg-card border-destructive/30">
           <CardContent className="p-6 text-sm text-destructive">
             {errorMessage}
@@ -191,13 +191,13 @@ export function InsightsScreen() {
   const growthText = `${growthPercent >= 0 ? "+" : ""}${growthPercent}%`
 
   return (
-    <div className="px-4 pt-6 pb-4 space-y-6">
+    <div className="space-y-6 px-4 pt-6 pb-6 md:px-6 lg:px-8">
       <div>
         <h1 className="text-xl font-bold text-foreground">Thống kê</h1>
         <p className="text-sm text-muted-foreground">Dữ liệu thật từ 7 ngày gần nhất</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Card className="bg-card border-border">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -376,7 +376,7 @@ export function InsightsScreen() {
           <h2 className="text-base font-semibold text-foreground">Insights</h2>
         </div>
 
-        <div className="space-y-3">
+        <div className="grid gap-3 xl:grid-cols-2">
           {aiInsights.map((insight, index) => {
             const Icon = insight.icon
             return (

@@ -218,7 +218,7 @@ export function DishEditorScreen({
   return (
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="flex items-center justify-between p-4">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between p-4 md:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={onBack}>
               <ArrowLeft className="w-5 h-5" />
@@ -243,7 +243,7 @@ export function DishEditorScreen({
         </div>
       </div>
 
-      <div className="px-4 py-6 pb-32 space-y-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 pb-32 md:px-6 lg:px-8">
         {!isApproved ? (
           <Card className="border-amber-500/40 bg-amber-500/10">
             <CardContent className="p-3 text-sm text-muted-foreground">
@@ -364,8 +364,8 @@ export function DishEditorScreen({
         )}
       </div>
 
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border">
-        <div className="max-w-md mx-auto">
+      <div className="fixed bottom-20 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur md:bottom-0 md:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-7xl">
           <Button
             className="w-full h-12 text-base font-semibold gap-2"
             onClick={() => {

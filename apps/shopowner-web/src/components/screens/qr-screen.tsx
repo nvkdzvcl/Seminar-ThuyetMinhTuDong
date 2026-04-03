@@ -153,7 +153,7 @@ export function QRScreen({ shopId, shopName }: QRScreenProps) {
   }
 
   return (
-    <div className="px-4 pt-6 pb-4 space-y-6">
+    <div className="space-y-6 px-4 pt-6 pb-6 md:px-6 lg:px-8">
       {/* Header */}
       <div className="text-center">
         <h1 className="text-xl font-bold text-foreground">Mã QR của quán</h1>
@@ -163,10 +163,10 @@ export function QRScreen({ shopId, shopName }: QRScreenProps) {
       </div>
 
       {/* QR Code Display */}
-      <Card className="bg-card border-border overflow-hidden">
+      <Card className="overflow-hidden border-border bg-card lg:mx-auto lg:max-w-3xl">
         <CardContent className="p-6">
           {/* QR Code */}
-          <div className="bg-white p-6 rounded-2xl shadow-inner mx-auto max-w-[280px]">
+          <div className="mx-auto max-w-[320px] rounded-2xl bg-white p-6 shadow-inner lg:max-w-[360px]">
             <div className="aspect-square relative overflow-hidden rounded-xl border border-slate-100">
               {isGeneratingQr ? (
                 <div className="flex h-full w-full items-center justify-center bg-slate-50 text-sm text-slate-500">
@@ -206,7 +206,7 @@ export function QRScreen({ shopId, shopName }: QRScreenProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 lg:mx-auto lg:max-w-3xl">
         <Button
           variant="outline"
           className="h-auto py-4 flex flex-col items-center gap-2 border-border"
@@ -257,7 +257,7 @@ export function QRScreen({ shopId, shopName }: QRScreenProps) {
       ) : null}
 
       {/* Poster Preview */}
-      <Card className="bg-[oklch(0.25_0.03_30)] border-0 overflow-hidden">
+      <Card className="overflow-hidden border-0 bg-[oklch(0.25_0.03_30)] lg:mx-auto lg:max-w-3xl">
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
             {/* Mini poster mockup */}

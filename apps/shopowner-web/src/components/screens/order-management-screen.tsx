@@ -160,7 +160,7 @@ export function OrderManagementScreen({ shopId }: OrderManagementScreenProps) {
 
   if (isLoading) {
     return (
-      <div className="px-4 pt-6 pb-4">
+      <div className="px-4 pt-6 pb-6 md:px-6 lg:px-8">
         <Card className="bg-card border-border">
           <CardContent className="p-6 text-sm text-muted-foreground">Đang tải danh sách đơn...</CardContent>
         </Card>
@@ -169,8 +169,8 @@ export function OrderManagementScreen({ shopId }: OrderManagementScreenProps) {
   }
 
   return (
-    <div className="px-4 pt-6 pb-4 space-y-4">
-      <div className="flex items-start justify-between gap-3">
+    <div className="space-y-4 px-4 pt-6 pb-6 md:px-6 lg:px-8">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-foreground">Xử lý đơn hàng</h1>
           <p className="text-sm text-muted-foreground">Theo dõi và cập nhật trạng thái đơn của quán</p>
@@ -200,7 +200,7 @@ export function OrderManagementScreen({ shopId }: OrderManagementScreenProps) {
         </Card>
       ) : null}
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-wrap gap-2 pb-1">
         {TABS.map((tab) => (
           <Button
             key={tab.id}
@@ -219,7 +219,7 @@ export function OrderManagementScreen({ shopId }: OrderManagementScreenProps) {
           <CardContent className="p-6 text-center text-sm text-muted-foreground">Chưa có đơn hàng nào.</CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 xl:grid-cols-2">
           {filteredOrders.map((order) => {
             const isBusy = updatingOrderId === order.id
             const isExpanded = expandedOrderId === order.id

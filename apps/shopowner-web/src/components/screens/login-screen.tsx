@@ -65,9 +65,9 @@ export function LoginScreen({
   }
 
   return (
-    <div className="min-h-screen bg-[oklch(0.22_0.03_30)] flex flex-col">
+    <div className="min-h-screen bg-[oklch(0.22_0.03_30)] md:grid md:grid-cols-[1.05fr_0.95fr]">
       {/* Hero section with food street atmosphere */}
-      <div className="relative px-6 pt-12 pb-8">
+      <div className="relative px-6 pt-12 pb-8 md:flex md:flex-col md:justify-center md:px-10 md:py-12 lg:px-14">
         {/* Decorative street light elements */}
         <div className="absolute top-4 left-6 w-2 h-2 rounded-full bg-[oklch(0.85_0.15_85)] animate-pulse" />
         <div className="absolute top-8 right-8 w-3 h-3 rounded-full bg-[oklch(0.7_0.16_55)] animate-pulse" style={{ animationDelay: '0.5s' }} />
@@ -110,8 +110,8 @@ export function LoginScreen({
       </div>
 
       {/* Login Form Card */}
-      <div className="flex-1 bg-background rounded-t-3xl px-6 pt-8 pb-8">
-        <Tabs defaultValue="login" className="w-full">
+      <div className="flex-1 rounded-t-3xl bg-background px-6 pt-8 pb-8 md:rounded-none md:rounded-l-3xl md:px-10 md:py-12 lg:px-12">
+        <Tabs defaultValue="login" className="w-full md:mx-auto md:max-w-xl">
           <TabsList className="grid w-full grid-cols-2 mb-6 bg-secondary">
             <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Đăng nhập

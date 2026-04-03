@@ -103,7 +103,7 @@ export function MenuScreen({ onNavigate, poiApprovalStatus, shopId, reloadToken 
   }
 
   return (
-    <div className="px-4 pt-6 pb-4 space-y-4">
+    <div className="space-y-4 px-4 pt-6 pb-6 md:px-6 lg:px-8">
       {poiApprovalStatus !== "approved" && (
         <Card className="border-amber-500/40 bg-amber-500/10">
           <CardContent className="p-3 text-sm text-muted-foreground">
@@ -118,7 +118,7 @@ export function MenuScreen({ onNavigate, poiApprovalStatus, shopId, reloadToken 
         </Card>
       ) : null}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-foreground">Thực đơn</h1>
           <p className="text-sm text-muted-foreground">{dishes.length} món ăn</p>
@@ -129,7 +129,7 @@ export function MenuScreen({ onNavigate, poiApprovalStatus, shopId, reloadToken 
         </Button>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -156,7 +156,7 @@ export function MenuScreen({ onNavigate, poiApprovalStatus, shopId, reloadToken 
       {isLoading ? (
         <div className="text-sm text-muted-foreground py-8 text-center">Đang tải thực đơn...</div>
       ) : (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {filteredDishes.map((dish) => {
             const dishImage = resolveDishImageUrl(dish.image)
             const isBusy = deletingDishId === dish.id || updatingDishId === dish.id

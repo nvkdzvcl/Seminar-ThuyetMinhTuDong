@@ -107,8 +107,8 @@ export function AudioManagementScreen({ onBack, poiApprovalStatus }: AudioManage
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="flex items-center gap-3 p-4">
+      <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 p-4 md:px-6 lg:px-8">
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -119,7 +119,7 @@ export function AudioManagementScreen({ onBack, poiApprovalStatus }: AudioManage
         </div>
       </div>
 
-      <div className="px-4 py-6 space-y-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 md:px-6 lg:px-8">
         {!isApproved && (
           <Card className="border-amber-500/40 bg-amber-500/10">
             <CardContent className="p-3 text-sm text-muted-foreground">
@@ -129,7 +129,7 @@ export function AudioManagementScreen({ onBack, poiApprovalStatus }: AudioManage
         )}
 
         {/* Language Status Overview */}
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 xl:grid-cols-6">
           {languages.map((lang) => (
             <button
               key={lang.code}
@@ -285,7 +285,7 @@ export function AudioManagementScreen({ onBack, poiApprovalStatus }: AudioManage
         {/* Language Stats */}
         <div className="space-y-3">
           <h3 className="font-semibold text-foreground">Thống kê theo ngôn ngữ</h3>
-          <div className="space-y-2">
+          <div className="grid gap-2 md:grid-cols-2">
             {languages.map((lang) => (
               <div key={lang.code} className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border">
                 <span className="text-lg">{lang.flag}</span>

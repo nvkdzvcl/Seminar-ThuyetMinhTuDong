@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { BarChart3, LayoutDashboard, QrCode, ReceiptText, Store, UtensilsCrossed } from "lucide-react"
 import { BottomNavigation } from "./bottom-navigation"
 import { DashboardScreen } from "./screens/dashboard-screen"
 import { MenuScreen } from "./screens/menu-screen"
@@ -69,6 +70,19 @@ const SHOP_CATEGORIES: Array<{ key: ShopCategoryKey; label: string; matchers: st
   { key: "com", label: "Cơm", matchers: ["com", "rice"] },
   { key: "pho", label: "Phở", matchers: ["pho", "noodle", "bun", "hu tieu", "mi"] },
   { key: "giai_khat", label: "Giải khát", matchers: ["giai khat", "drink", "beverage", "tra", "coffee"] },
+]
+
+const DESKTOP_NAV_ITEMS: Array<{
+  id: "dashboard" | "menu" | "qr" | "insights" | "order-management" | "shop-profile"
+  label: string
+  icon: typeof LayoutDashboard
+}> = [
+  { id: "dashboard", label: "Tổng quan", icon: LayoutDashboard },
+  { id: "menu", label: "Thực đơn", icon: UtensilsCrossed },
+  { id: "order-management", label: "Đơn hàng", icon: ReceiptText },
+  { id: "qr", label: "Mã QR", icon: QrCode },
+  { id: "insights", label: "Thống kê", icon: BarChart3 },
+  { id: "shop-profile", label: "Hồ sơ quán", icon: Store },
 ]
 
 function normalizeCategoryText(value: string): string {
@@ -299,6 +313,14 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     }
     setCurrentScreen(tab)
   }
+
+  const isDesktopMainScreen =
+    currentScreen === "dashboard" ||
+    currentScreen === "menu" ||
+    currentScreen === "qr" ||
+    currentScreen === "insights" ||
+    currentScreen === "order-management" ||
+    currentScreen === "shop-profile"
 
   const navigateTo = (screen: Screen, dishId?: string) => {
     const requiresShop = screen !== "dashboard"
@@ -644,16 +666,16 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
 
   if (!shopId) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
-        <div className="max-w-md w-full rounded-2xl border bg-card p-5 space-y-4">
+      <div className="min-h-screen bg-background px-4 py-8 md:px-6 md:py-12 lg:px-8">
+        <div className="mx-auto w-full max-w-6xl rounded-2xl border bg-card p-5 space-y-4 md:p-6">
           <h2 className="text-lg font-semibold">Chưa có dữ liệu cửa hàng</h2>
           <p className="text-sm text-muted-foreground">
             {notice?.message ||
               "Tài khoản chưa được liên kết với cửa hàng hoặc backend chưa sẵn sàng."}
           </p>
 
-          <div className="space-y-3">
-            <div className="space-y-1.5">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5 md:col-span-2">
               <Label htmlFor="create-shop-name">Tên cửa hàng</Label>
               <Input
                 id="create-shop-name"
@@ -662,7 +684,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 placeholder="Ví dụ: Quán Ốc Bà Sáu"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 md:col-span-2">
               <Label htmlFor="create-shop-address">Địa chỉ</Label>
               <Input
                 id="create-shop-address"
@@ -671,7 +693,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 placeholder="Ví dụ: 45 Vĩnh Khánh, Quận 4, TP.HCM"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 md:col-span-2">
               <Label htmlFor="create-shop-description">Mô tả cửa hàng</Label>
               <Textarea
                 id="create-shop-description"
@@ -728,7 +750,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 Nếu bạn điền ô này, hệ thống sẽ tự đổi ra vĩ độ/kinh độ bên dưới.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:col-span-2">
               <div className="space-y-1.5">
                 <Label htmlFor="create-shop-lat">Vĩ độ</Label>
                 <Input
@@ -752,16 +774,16 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
                 />
               </div>
             </div>
-            <Button className="w-full" onClick={() => { void handleCreateShop() }} disabled={isCreatingShop}>
+            <Button className="w-full md:col-span-2 md:max-w-sm" onClick={() => { void handleCreateShop() }} disabled={isCreatingShop}>
               {isCreatingShop ? "Đang tạo cửa hàng..." : "Tạo cửa hàng mới"}
             </Button>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => { void loadOwnerContext() }}>
+          <div className="grid gap-2 sm:grid-cols-2 md:max-w-sm">
+            <Button variant="outline" onClick={() => { void loadOwnerContext() }}>
               Tải lại
             </Button>
-            <Button variant="destructive" className="flex-1" onClick={onLogout}>
+            <Button variant="destructive" onClick={onLogout}>
               Đăng xuất
             </Button>
           </div>
@@ -770,17 +792,43 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     )
   }
 
-  const usesWideDesktopLayout = currentScreen === "shop-profile"
-  const contentContainerClass = usesWideDesktopLayout
-    ? "relative mx-auto max-w-md pb-24 md:max-w-none"
-    : "relative mx-auto max-w-md pb-24"
-
   return (
     <div className="min-h-screen bg-background">
-      <div className={contentContainerClass}>
+      {isDesktopMainScreen ? (
+        <div className="sticky top-0 z-20 hidden border-b bg-background/95 backdrop-blur md:block">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Shop Owner Portal</p>
+              <p className="truncate text-sm font-semibold text-foreground">{shopName}</p>
+            </div>
+            <div className="flex items-center gap-1">
+              {DESKTOP_NAV_ITEMS.map((item) => {
+                const Icon = item.icon
+                const isActive = currentScreen === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => navigateTo(item.id)}
+                    className={
+                      isActive
+                        ? "inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm text-primary-foreground"
+                        : "inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden lg:inline">{item.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="relative mx-auto w-full max-w-7xl pb-24 md:pb-10">
         {notice ? (
           <div
-            className={`mx-3 mt-3 rounded-lg border px-3 py-2 text-sm ${
+            className={`mx-4 mt-3 rounded-lg border px-3 py-2 text-sm md:mx-6 lg:mx-8 ${
               notice.type === "success"
                 ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                 : notice.type === "error"
@@ -792,7 +840,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
           </div>
         ) : null}
         {poiSubmitProgressMessage ? (
-          <div className="mx-3 mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          <div className="mx-4 mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700 md:mx-6 lg:mx-8">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
               <span>{poiSubmitProgressMessage}</span>

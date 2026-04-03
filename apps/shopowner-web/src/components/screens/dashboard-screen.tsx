@@ -112,7 +112,7 @@ export function DashboardScreen({
   }, [audioPlaysToday, qrScansToday, topDish, topLanguage])
 
   return (
-    <div className="px-4 pt-6 pb-4 space-y-6">
+    <div className="space-y-6 px-4 pt-6 pb-6 md:px-6 lg:px-8">
       {/* Header with shop info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export function DashboardScreen({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Card className="bg-card border-border shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -263,7 +263,7 @@ export function DashboardScreen({
 
       <div className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">Thao tác nhanh</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <Button
             variant="outline"
             className="h-auto py-4 flex flex-col items-center gap-2 border-border hover:bg-secondary hover:border-primary/30"
