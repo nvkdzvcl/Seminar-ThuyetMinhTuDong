@@ -115,7 +115,7 @@ function BottomNav() {
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur">
-            <div className="mx-auto grid h-16 w-full max-w-5xl grid-cols-6">
+            <div className="mx-auto flex h-16 w-full max-w-5xl flex-nowrap">
                 {navItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = item.isActive(pathname);
@@ -124,12 +124,14 @@ function BottomNav() {
                         <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 px-1 text-[11px] transition ${
+                            className={`flex min-h-[44px] flex-1 basis-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] transition ${
                                 isActive ? "text-blue-600" : "text-slate-500 hover:text-slate-800"
                             }`}
                         >
                             <Icon className="h-5 w-5" />
-                            <span className={isActive ? "font-semibold" : "font-medium"}>{item.label}</span>
+                            <span className={`w-full truncate whitespace-nowrap text-center ${isActive ? "font-semibold" : "font-medium"}`}>
+                                {item.label}
+                            </span>
                         </NavLink>
                     );
                 })}
