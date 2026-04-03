@@ -16,7 +16,6 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -105,19 +104,31 @@ public class MediaStorageService {
     }
 
     private String extractExtension(String originalFileName) {
-        if (originalFileName == null || originalFileName.isBlank()) {
+        String fileName = normalizeOriginalFilename(originalFileName);
+        if (fileName.isBlank()) {
             return "";
         }
-        String fileName = Paths.get(originalFileName).getFileName().toString();
+
         int dot = fileName.lastIndexOf('.');
         if (dot < 0 || dot == fileName.length() - 1) {
             return "";
         }
+
         String extension = fileName.substring(dot).toLowerCase(Locale.ROOT);
-        if (extension.length() > 12) {
+        if (!extension.matches("\\.[a-z0-9]{1,10}")) {
             return "";
         }
         return extension;
+    }
+
+    private String normalizeOriginalFilename(String originalFileName) {
+        if (originalFileName == null || originalFileName.isBlank()) {
+            return "";
+        }
+        String normalized = originalFileName.replace('\\', '/');
+        int slashIndex = normalized.lastIndexOf('/');
+        String fileName = slashIndex >= 0 ? normalized.substring(slashIndex + 1) : normalized;
+        return fileName.trim();
     }
 
     private String resolveRegion() {
