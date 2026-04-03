@@ -12,18 +12,9 @@ import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import { resolvePreferredLanguage } from "../../utils/language";
-import { resolveMediaUrl } from "../../utils/media";
+import { resolveBackendAudioUrl, resolveMediaUrl } from "../../utils/media";
 import { notifyError, notifyInfo, notifySuccess, notifyWarning } from "../../utils/notify";
 import { routePath } from "../../routes/route";
-
-function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
-    if (!rawAudioPath) return undefined;
-    if (/^https?:\/\//i.test(rawAudioPath)) return rawAudioPath;
-
-    const base = (import.meta.env.VITE_BACKEND_API || "").replace(/\/+$/, "");
-    const normalizedPath = rawAudioPath.startsWith("/") ? rawAudioPath : `/${rawAudioPath}`;
-    return `${base}${normalizedPath}`;
-}
 
 function resolveRequestErrorMessage(error: unknown, fallback: string): string {
     if (axios.isAxiosError(error)) {
@@ -144,15 +135,29 @@ function ShopDetailPage() {
         if (!targetDish) return;
 
         try {
+            const preferredLanguage = resolvePreferredLanguage(requestedLanguage);
+            const narrationRes = await dishService.getDishNarration(targetDish.id, preferredLanguage);
+            const narration = narrationRes.result;
+            const narrationAudioUrl = resolveBackendAudioUrl(narration?.audioUrl);
+            if (!narrationAudioUrl) {
+                notifyWarning(`Không tạo được audio cho món ${targetDish.name}.`);
+                return;
+            }
+
             await toggleAudio({
                 id: targetDish.id,
                 type: "DISH",
-                url: targetDish.audioURL,
+                url: narrationAudioUrl,
                 title: targetDish.name,
                 shopId: targetDish.shopId,
+                transcript: narration?.script,
+                transcriptLanguage: narration?.language,
             });
         } catch (error) {
             console.error("Nghe audio món lỗi", error);
+            notifyError(
+                resolveRequestErrorMessage(error, `Không thể phát audio của món ${targetDish.name}. Vui lòng thử lại.`)
+            );
         }
     };
 

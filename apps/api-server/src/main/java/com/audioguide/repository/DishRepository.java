@@ -19,6 +19,7 @@ public interface DishRepository extends JpaRepository<Dish, Integer> {
     Page<Dish> findByShopIdAndStatus(Integer shopId, Status status, Pageable pageable);
      List<Dish> findByShopIdAndStatus(Integer shopId, Status status);
      boolean existsByIdAndShopId(Integer dishId, Integer shopId);
+     boolean existsByIdAndShopOwnerId(Integer dishId, Integer ownerId);
      boolean existsById(Integer dishId);
 
 }

@@ -169,31 +169,61 @@ export default function NearbyShopPage() {
         autoAudioRef.current = autoTurnOnNearbyShopAudio;
     }, [autoTurnOnNearbyShopAudio]);
 
-    const playShopAudio = async (shop: ShopResponse, trigger: "MANUAL" | "REALTIME" = "MANUAL") => {
+    const playShopNarration = async (shop: ShopResponse, trigger: "MANUAL" | "REALTIME" = "MANUAL") => {
         try {
+            const preferredLanguage = resolvePreferredLanguage();
+            const narrationRes = await shopService.getShopNarration(shop.id, preferredLanguage);
+            const narrationAudioUrl = resolveBackendAudioUrl(narrationRes.result?.audioUrl);
+
+            if (!narrationAudioUrl) {
+                if (trigger === "MANUAL") {
+                    notifyWarning(`KhÃ´ng táº¡o Ä‘Æ°á»£c audio cho quÃ¡n ${shop.name}.`);
+                }
+                return;
+            }
+
             await playAudio({
                 id: shop.id,
                 type: "SHOP",
-                url: shop.audioURL,
+                url: narrationAudioUrl,
                 title: shop.name,
                 shopId: shop.id,
                 trigger,
+                transcript: narrationRes.result?.script,
+                transcriptLanguage: narrationRes.result?.language,
             });
         } catch (err) {
-            console.error("Play audio failed:", err);
+            console.error("Play shop narration failed:", err);
+            if (trigger === "MANUAL") {
+                notifyError(
+                    resolveRequestErrorMessage(err, `KhÃ´ng thá»ƒ phÃ¡t audio cá»§a quÃ¡n ${shop.name}. Vui lÃ²ng thá»­ láº¡i.`)
+                );
+            }
         }
     };
 
     const toggleCurrentShopAudio = async () => {
-        if (!currentShop?.audioURL) return;
+        if (!currentShop) return;
 
         try {
+            const isCurrentShopAudio =
+                currentAudio?.type === "SHOP" &&
+                currentAudio.id === currentShop.id &&
+                Boolean(currentAudio.url);
+
+            if (!isCurrentShopAudio) {
+                await playShopNarration(currentShop, "MANUAL");
+                return;
+            }
+
             await toggleAudio({
                 id: currentShop.id,
                 type: "SHOP",
-                url: currentShop.audioURL,
+                url: currentAudio?.url,
                 title: currentShop.name,
                 shopId: currentShop.id,
+                transcript: currentAudio?.transcript,
+                transcriptLanguage: currentAudio?.transcriptLanguage,
             });
         } catch (err) {
             console.error("Toggle audio failed:", err);
@@ -220,10 +250,9 @@ export default function NearbyShopPage() {
 
                 if (
                     autoAudioRef.current &&
-                    nearestShop.audioURL &&
                     !isSameCurrentShop
                 ) {
-                    playShopAudio(nearestShop, "REALTIME");
+                    void playShopNarration(nearestShop, "REALTIME");
                 }
             },
             (errorResponse) => {
@@ -329,7 +358,7 @@ export default function NearbyShopPage() {
         const shop = otherShops.find((item) => item.id === shopId);
         if (!shop) return;
 
-        void playShopAudio(shop);
+        void playShopNarration(shop);
         dispatch(setCurrentShop(shop));
     };
 

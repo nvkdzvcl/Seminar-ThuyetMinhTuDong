@@ -4,6 +4,7 @@ package com.audioguide.controller;
 import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.authDTO.LoginRequest;
 import com.audioguide.dto.authDTO.LoginResponse;
+import com.audioguide.dto.authDTO.UpdateCurrentLanguageRequest;
 import com.audioguide.dto.userDTO.UserResponse;
 import com.audioguide.service.AuthenticationService;
 import com.nimbusds.jose.JOSEException;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -59,6 +61,17 @@ public class AuthenticationController {
         authenticationService.logout(authorizationHeader);
         return ApiResponse.<Void>builder()
                 .message("Logout successfully")
+                .build();
+    }
+
+    @PatchMapping("/me/language")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER','OWNER_SHOP','ADMIN','SUPER_ADMIN')")
+    ApiResponse<UserResponse> updateCurrentUserLanguage(
+            @RequestBody @Valid UpdateCurrentLanguageRequest request
+    ) {
+        return ApiResponse.<UserResponse>builder()
+                .message("Update current user language successfully")
+                .result(authenticationService.updateCurrentUserLanguage(request.getLanguage()))
                 .build();
     }
 

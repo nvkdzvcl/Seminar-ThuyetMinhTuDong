@@ -48,6 +48,7 @@ public enum ErrorCode {
     AUDIO_ALREADY_EXISTS( "AUDIO_ALREADY_EXISTS", HttpStatus.BAD_REQUEST, "Audio for this dish and language already exists"),
     AZURE_CONFIG_MISSING("AZURE_CONFIG_MISSING", HttpStatus.INTERNAL_SERVER_ERROR, "Azure configuration is missing"),
     AZURE_TTS_FAILED("AZURE_TTS_FAILED", HttpStatus.BAD_GATEWAY, "Cannot generate narration audio right now"),
+    NARRATION_DESCRIPTION_BLANK("NARRATION_DESCRIPTION_BLANK", HttpStatus.BAD_REQUEST, "Narration description is required"),
     DISH_NOT_FOUND( "DISH_NOT_FOUND", HttpStatus.NOT_FOUND, "Dish not found"),
     DISH_NOT_AVAILABLE("DISH_NOT_AVAILABLE", HttpStatus.BAD_REQUEST, "Dish is unavailable or out of stock"),
     DISH_ID_NOT_BLANK("DISH_ID_NOT_BLANK", HttpStatus.BAD_REQUEST, "Dish ID is required"),

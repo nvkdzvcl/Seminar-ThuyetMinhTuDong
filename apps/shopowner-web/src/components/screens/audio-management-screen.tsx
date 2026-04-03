@@ -1,112 +1,245 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { ArrowLeft, Loader2, Music2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { 
-  ArrowLeft, 
-  Check, 
-  AlertCircle, 
-  Clock,
-  Play,
-  Pause,
-  RefreshCw,
-  Sparkles,
-  Volume2,
-  Edit3,
-  Save
-} from "lucide-react"
+import { Label } from "@/components/ui/label"
 import type { PoiApprovalStatus } from "@/components/app-shell"
+import { getDishesByShopId, type Dish } from "@/services/dish-service"
+import {
+  generateDishNarration,
+  generateShopNarration,
+  listDishNarrations,
+  listShopNarrations,
+  resolveNarrationAudioUrl,
+  type DishNarrationItem,
+  type ShopNarrationItem,
+} from "@/services/narration-service"
 
 interface AudioManagementScreenProps {
   onBack: () => void
   poiApprovalStatus: PoiApprovalStatus
+  shopId: number
+  initialShopDescription: string
 }
 
-const languages = [
-  { 
-    code: "vi", 
-    name: "Tiếng Việt", 
-    flag: "🇻🇳",
-    status: "ready" as const,
-    text: "Quán Ốc Bà Sáu là quán ốc gia truyền 30 năm tại phố ẩm thực Vĩnh Khánh, Quận 4, TP.HCM. Chuyên phục vụ các món ốc tươi sống, hải sản nướng và lẩu hải sản. Món đặc biệt của quán là ốc hương nướng mỡ hành và sò điệp nướng phô mai."
-  },
-  { 
-    code: "en", 
-    name: "English", 
-    flag: "🇺🇸",
-    status: "ready" as const,
-    text: "Ba Sau Snail Restaurant is a 30-year family-owned establishment on Vinh Khanh Food Street, District 4, Ho Chi Minh City. We specialize in fresh snails, grilled seafood, and seafood hotpot. Our signature dishes include grilled snails with scallion oil and cheese-baked scallops."
-  },
-  { 
-    code: "ko", 
-    name: "한국어", 
-    flag: "🇰🇷",
-    status: "ready" as const,
-    text: "바 사우 달팽이 레스토랑은 호치민시 4군 빈카인 음식 거리에서 30년 전통의 가족 경영 레스토랑입니다. 신선한 달팽이, 구운 해산물, 해산물 전골을 전문으로 합니다."
-  },
-  { 
-    code: "ja", 
-    name: "日本語", 
-    flag: "🇯🇵",
-    status: "ready" as const,
-    text: "バーサウ・スネイル・レストランは、ホーチミン市4区のヴィンカン・フードストリートにある創業30年の家族経営のレストランです。新鮮なカタツムリ、グリルシーフード、シーフード鍋を専門としています。"
-  },
-  { 
-    code: "zh", 
-    name: "中文", 
-    flag: "🇨🇳",
-    status: "needs-review" as const,
-    text: "巴绍蜗牛餐厅是一家位于胡志明市第四区永康美食街的30年家族餐厅。我们专门提供新鲜蜗牛、烤海鲜和海鲜火锅。"
-  },
+type NarrationTab = "shop" | "dish"
+
+const NARRATION_LANGUAGES = [
+  { value: "vi", label: "Tiếng Việt" },
+  { value: "en", label: "English" },
+  { value: "ko", label: "한국어" },
+  { value: "ja", label: "日本語" },
+  { value: "zh", label: "中文" },
+  { value: "th", label: "ไทย" },
+  { value: "fr", label: "Français" },
 ]
 
-function getStatusBadge(status: "ready" | "missing" | "needs-review") {
-  switch (status) {
-    case "ready":
-      return (
-        <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/30 gap-1">
-          <Check className="w-3 h-3" />
-          Sẵn sàng
-        </Badge>
-      )
-    case "missing":
-      return (
-        <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30 gap-1">
-          <AlertCircle className="w-3 h-3" />
-          Thiếu
-        </Badge>
-      )
-    case "needs-review":
-      return (
-        <Badge className="bg-[oklch(0.7_0.16_55)]/15 text-[oklch(0.6_0.14_55)] hover:bg-[oklch(0.7_0.16_55)]/20 border-[oklch(0.7_0.16_55)]/30 gap-1">
-          <Clock className="w-3 h-3" />
-          Cần xem lại
-        </Badge>
-      )
-  }
+function formatDateTime(raw?: string): string {
+  if (!raw) return "Chưa có thời gian"
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return raw
+  return parsed.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
-export function AudioManagementScreen({ onBack, poiApprovalStatus }: AudioManagementScreenProps) {
-  const [activeTab, setActiveTab] = useState("vi")
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
+function resolveLanguageLabel(language?: string, languageKey?: string): string {
+  const key = (languageKey || language || "").toLowerCase()
+  const base = key.split("-")[0]
+  const found = NARRATION_LANGUAGES.find((item) => item.value === key || item.value === base)
+  if (found) {
+    return found.label
+  }
+  return language || languageKey || "Ngôn ngữ khác"
+}
+
+export function AudioManagementScreen({
+  onBack,
+  poiApprovalStatus,
+  shopId,
+  initialShopDescription,
+}: AudioManagementScreenProps) {
   const isApproved = poiApprovalStatus === "approved"
+  const [activeTab, setActiveTab] = useState<NarrationTab>("shop")
+  const [selectedLanguage, setSelectedLanguage] = useState("vi")
+  const [shopDescription, setShopDescription] = useState(initialShopDescription || "")
+  const [shopNarrations, setShopNarrations] = useState<ShopNarrationItem[]>([])
+  const [isLoadingShopNarrations, setIsLoadingShopNarrations] = useState(false)
+  const [isGeneratingShopNarration, setIsGeneratingShopNarration] = useState(false)
 
-  const activeLanguage = languages.find(l => l.code === activeTab)
+  const [dishes, setDishes] = useState<Dish[]>([])
+  const [selectedDishId, setSelectedDishId] = useState<number | null>(null)
+  const [dishDescription, setDishDescription] = useState("")
+  const [dishNarrations, setDishNarrations] = useState<DishNarrationItem[]>([])
+  const [isLoadingDishes, setIsLoadingDishes] = useState(false)
+  const [isLoadingDishNarrations, setIsLoadingDishNarrations] = useState(false)
+  const [isGeneratingDishNarration, setIsGeneratingDishNarration] = useState(false)
 
-  const handleGenerate = async () => {
-    setIsGenerating(true)
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsGenerating(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const selectedDish = useMemo(
+    () => dishes.find((dish) => dish.id === selectedDishId) || null,
+    [dishes, selectedDishId],
+  )
+
+  const loadShopNarrations = async () => {
+    if (!shopId) return
+    setIsLoadingShopNarrations(true)
+    try {
+      const result = await listShopNarrations(shopId)
+      setShopNarrations(result)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Không thể tải audio của quán.")
+    } finally {
+      setIsLoadingShopNarrations(false)
+    }
+  }
+
+  const loadDishes = async () => {
+    if (!shopId) return
+    setIsLoadingDishes(true)
+    try {
+      const response = await getDishesByShopId(shopId, { status: "ACTIVE", page: 1, size: 200 })
+      setDishes(response.items)
+      if (response.items.length > 0) {
+        setSelectedDishId((current) => current ?? response.items[0].id)
+      } else {
+        setSelectedDishId(null)
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Không thể tải danh sách món.")
+    } finally {
+      setIsLoadingDishes(false)
+    }
+  }
+
+  const loadDishNarrations = async (dishId: number) => {
+    setIsLoadingDishNarrations(true)
+    try {
+      const result = await listDishNarrations(dishId)
+      setDishNarrations(result)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Không thể tải audio của món.")
+    } finally {
+      setIsLoadingDishNarrations(false)
+    }
+  }
+
+  useEffect(() => {
+    setShopDescription(initialShopDescription || "")
+  }, [initialShopDescription])
+
+  useEffect(() => {
+    void loadShopNarrations()
+    void loadDishes()
+  }, [shopId])
+
+  useEffect(() => {
+    if (!selectedDish) {
+      setDishDescription("")
+      setDishNarrations([])
+      return
+    }
+    setDishDescription(selectedDish.description || "")
+    void loadDishNarrations(selectedDish.id)
+  }, [selectedDish?.id])
+
+  const handleGenerateShopNarration = async () => {
+    if (!shopId) return
+    if (!shopDescription.trim()) {
+      setErrorMessage("Vui lòng nhập description của quán trước khi tạo audio.")
+      return
+    }
+
+    setErrorMessage(null)
+    setNotice(null)
+    setIsGeneratingShopNarration(true)
+    try {
+      await generateShopNarration(shopId, {
+        lang: selectedLanguage,
+        description: shopDescription.trim(),
+      })
+      await loadShopNarrations()
+      setNotice("Đã tạo/cập nhật audio của quán theo ngôn ngữ đã chọn.")
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Tạo audio quán thất bại.")
+    } finally {
+      setIsGeneratingShopNarration(false)
+    }
+  }
+
+  const handleGenerateDishNarration = async () => {
+    if (!selectedDishId) {
+      setErrorMessage("Vui lòng chọn món trước khi tạo audio.")
+      return
+    }
+    if (!dishDescription.trim()) {
+      setErrorMessage("Vui lòng nhập description của món trước khi tạo audio.")
+      return
+    }
+
+    setErrorMessage(null)
+    setNotice(null)
+    setIsGeneratingDishNarration(true)
+    try {
+      await generateDishNarration(selectedDishId, {
+        lang: selectedLanguage,
+        description: dishDescription.trim(),
+      })
+      await loadDishNarrations(selectedDishId)
+      setNotice("Đã tạo/cập nhật audio của món theo ngôn ngữ đã chọn.")
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Tạo audio món thất bại.")
+    } finally {
+      setIsGeneratingDishNarration(false)
+    }
+  }
+
+  const renderNarrationList = (items: Array<ShopNarrationItem | DishNarrationItem>, loading: boolean) => {
+    if (loading) {
+      return <p className="text-sm text-muted-foreground">Đang tải danh sách audio...</p>
+    }
+    if (items.length === 0) {
+      return <p className="text-sm text-muted-foreground">Chưa có audio nào được tạo.</p>
+    }
+    return (
+      <div className="space-y-3">
+        {items.map((item, index) => {
+          const audioSrc = resolveNarrationAudioUrl(item.audioUrl)
+          return (
+            <Card key={`${item.languageKey || item.language}-${index}`} className="border-border">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-foreground">
+                    {resolveLanguageLabel(item.language, item.languageKey)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{formatDateTime(item.updatedAt)}</p>
+                </div>
+                {audioSrc ? (
+                  <audio controls preload="none" className="w-full">
+                    <source src={audioSrc} type="audio/mpeg" />
+                  </audio>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Audio URL chưa sẵn sàng.</p>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl items-center gap-3 p-4 md:px-6 lg:px-8">
           <Button variant="ghost" size="icon" onClick={onBack}>
@@ -114,202 +247,118 @@ export function AudioManagementScreen({ onBack, poiApprovalStatus }: AudioManage
           </Button>
           <div>
             <h1 className="text-lg font-semibold text-foreground">Thuyết minh đa ngôn ngữ</h1>
-            <p className="text-xs text-muted-foreground">Quản lý nội dung audio cho du khách</p>
+            <p className="text-xs text-muted-foreground">Nhập description, chọn ngôn ngữ và tạo audio</p>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 md:px-6 lg:px-8">
-        {!isApproved && (
+      <div className="mx-auto w-full max-w-7xl space-y-4 px-4 py-6 md:px-6 lg:px-8">
+        {!isApproved ? (
           <Card className="border-amber-500/40 bg-amber-500/10">
             <CardContent className="p-3 text-sm text-muted-foreground">
-              POI chưa duyệt: nội dung audio đang ở trạng thái nháp, chưa public cho du khách.
+              POI chưa duyệt: audio đang ở trạng thái nháp, chưa public cho khách.
             </CardContent>
           </Card>
-        )}
+        ) : null}
 
-        {/* Language Status Overview */}
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 xl:grid-cols-6">
-          {languages.map((lang) => (
-            <button
-              key={lang.code}
-              onClick={() => setActiveTab(lang.code)}
-              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                activeTab === lang.code
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "bg-card border border-border hover:bg-secondary"
-              }`}
-            >
-              <span className="text-xl">{lang.flag}</span>
-              <span className="text-xs font-medium">{lang.code.toUpperCase()}</span>
-              <div className={`w-2 h-2 rounded-full ${
-                lang.status === "ready" 
-                  ? "bg-emerald-500" 
-                  : lang.status === "needs-review"
-                  ? "bg-[oklch(0.7_0.16_55)]"
-                  : "bg-destructive"
-              }`} />
-            </button>
-          ))}
+        {notice ? (
+          <Card className="border-emerald-500/40 bg-emerald-500/10">
+            <CardContent className="p-3 text-sm text-emerald-700">{notice}</CardContent>
+          </Card>
+        ) : null}
+
+        {errorMessage ? (
+          <Card className="border-destructive/40 bg-destructive/10">
+            <CardContent className="p-3 text-sm text-destructive">{errorMessage}</CardContent>
+          </Card>
+        ) : null}
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant={activeTab === "shop" ? "default" : "outline"} onClick={() => setActiveTab("shop")}>
+            Audio quán
+          </Button>
+          <Button variant={activeTab === "dish" ? "default" : "outline"} onClick={() => setActiveTab("dish")}>
+            Audio món
+          </Button>
         </div>
 
-        {/* Active Language Content */}
-        {activeLanguage && (
-          <Card className="bg-card border-border">
-            <CardContent className="p-4 space-y-4">
-              {/* Language Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{activeLanguage.flag}</span>
-                  <div>
-                    <h3 className="font-semibold text-foreground">{activeLanguage.name}</h3>
-                    <p className="text-xs text-muted-foreground">Mô tả quán</p>
-                  </div>
-                </div>
-                {getStatusBadge(activeLanguage.status)}
-              </div>
-
-              {/* Text Content */}
-              <div className="space-y-2">
-                {isEditing ? (
-                  <Textarea
-                    defaultValue={activeLanguage.text}
-                    className="min-h-[120px] resize-none"
-                  />
-                ) : (
-                  <div className="p-3 rounded-lg bg-secondary/50 text-sm text-foreground leading-relaxed">
-                    {activeLanguage.text}
-                  </div>
-                )}
-              </div>
-
-              {/* Audio Preview */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="h-10 w-10 rounded-full"
-                  onClick={() => setIsPlaying(!isPlaying)}
-                >
-                  {isPlaying ? (
-                    <Pause className="w-5 h-5" />
-                  ) : (
-                    <Play className="w-5 h-5 ml-0.5" />
-                  )}
-                </Button>
-                <div className="flex-1">
-                  <div className="h-1 rounded-full bg-border overflow-hidden">
-                    <div 
-                      className="h-full bg-primary rounded-full transition-all duration-300"
-                      style={{ width: isPlaying ? "60%" : "0%" }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-xs text-muted-foreground">
-                      {isPlaying ? "0:18" : "0:00"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">0:32</span>
-                  </div>
-                </div>
-                <Volume2 className="w-5 h-5 text-muted-foreground" />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => setIsEditing(!isEditing)}
-                >
-                  {isEditing ? (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Lưu văn bản
-                    </>
-                  ) : (
-                    <>
-                      <Edit3 className="w-4 h-4" />
-                      Sửa văn bản
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="gap-2"
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {isGenerating ? "Đang tạo..." : "Tạo với AI"}
-                </Button>
-              </div>
-
-              {/* Additional Actions */}
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="flex-1 gap-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Tạo lại audio
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="flex-1 gap-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Dịch lại
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Tips Card */}
-        <Card className="bg-[oklch(0.85_0.15_85)]/10 border-[oklch(0.85_0.15_85)]/30">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <Sparkles className="w-5 h-5 text-[oklch(0.7_0.12_85)] shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-foreground mb-1">Mẹo hay</h4>
-                <p className="text-sm text-muted-foreground">
-                  Mô tả nên ngắn gọn, súc tích (30-60 giây audio). Nên bao gồm thông tin về lịch sử quán, món đặc biệt và điểm nổi bật.
-                </p>
-              </div>
+        <Card className="border-border">
+          <CardContent className="space-y-4 p-4">
+            <div className="space-y-2">
+              <Label htmlFor="language-select">Ngôn ngữ</Label>
+              <select
+                id="language-select"
+                value={selectedLanguage}
+                onChange={(event) => setSelectedLanguage(event.target.value)}
+                className="border-input bg-transparent h-10 w-full rounded-md border px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              >
+                {NARRATION_LANGUAGES.map((language) => (
+                  <option key={language.value} value={language.value}>
+                    {language.label}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {activeTab === "shop" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="shop-description">Description của quán</Label>
+                  <Textarea
+                    id="shop-description"
+                    value={shopDescription}
+                    onChange={(event) => setShopDescription(event.target.value)}
+                    className="min-h-[120px] resize-none"
+                    placeholder="Nhập mô tả quán để tạo audio..."
+                  />
+                </div>
+                <Button onClick={() => { void handleGenerateShopNarration() }} disabled={isGeneratingShopNarration}>
+                  {isGeneratingShopNarration ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  Tạo audio cho quán
+                </Button>
+                {renderNarrationList(shopNarrations, isLoadingShopNarrations)}
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="dish-select">Chọn món</Label>
+                  <select
+                    id="dish-select"
+                    value={selectedDishId ?? ""}
+                    onChange={(event) => setSelectedDishId(event.target.value ? Number(event.target.value) : null)}
+                    className="border-input bg-transparent h-10 w-full rounded-md border px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                    disabled={isLoadingDishes || dishes.length === 0}
+                  >
+                    {dishes.length === 0 ? <option value="">Chưa có món</option> : null}
+                    {dishes.map((dish) => (
+                      <option key={dish.id} value={dish.id}>
+                        {dish.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dish-description">Description của món</Label>
+                  <Textarea
+                    id="dish-description"
+                    value={dishDescription}
+                    onChange={(event) => setDishDescription(event.target.value)}
+                    className="min-h-[120px] resize-none"
+                    placeholder="Nhập mô tả món để tạo audio..."
+                    disabled={!selectedDishId}
+                  />
+                </div>
+                <Button onClick={() => { void handleGenerateDishNarration() }} disabled={isGeneratingDishNarration || !selectedDishId}>
+                  {isGeneratingDishNarration ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Music2 className="mr-2 h-4 w-4" />}
+                  Tạo audio cho món
+                </Button>
+                {renderNarrationList(dishNarrations, isLoadingDishNarrations)}
+              </>
+            )}
           </CardContent>
         </Card>
-
-        {/* Language Stats */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-foreground">Thống kê theo ngôn ngữ</h3>
-          <div className="grid gap-2 md:grid-cols-2">
-            {languages.map((lang) => (
-              <div key={lang.code} className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border">
-                <span className="text-lg">{lang.flag}</span>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-foreground">{lang.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {lang.code === "en" ? "42%" : lang.code === "ko" ? "28%" : lang.code === "ja" ? "15%" : lang.code === "zh" ? "10%" : "5%"}
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div 
-                      className="h-full rounded-full bg-primary"
-                      style={{ 
-                        width: lang.code === "en" ? "42%" : lang.code === "ko" ? "28%" : lang.code === "ja" ? "15%" : lang.code === "zh" ? "10%" : "5%" 
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   )
 }
+

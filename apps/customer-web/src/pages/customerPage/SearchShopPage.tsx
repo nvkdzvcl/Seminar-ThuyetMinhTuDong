@@ -7,21 +7,8 @@ import { shopService } from "../../services/shopService";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import { resolvePreferredLanguage } from "../../utils/language";
+import { resolveBackendAudioUrl } from "../../utils/media";
 import { notifyError, notifyWarning } from "../../utils/notify";
-
-function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
-    if (!rawAudioPath) return undefined;
-    if (/^https?:\/\//i.test(rawAudioPath)) return rawAudioPath;
-
-    const base = (import.meta.env.VITE_BACKEND_API || "").replace(/\/+$/, "");
-    const normalizedPath = rawAudioPath.startsWith("/") ? rawAudioPath : `/${rawAudioPath}`;
-
-    if (!base) {
-        return normalizedPath;
-    }
-
-    return `${base}${normalizedPath}`;
-}
 
 function resolveRequestErrorMessage(error: unknown, fallback: string): string {
     if (axios.isAxiosError(error)) {

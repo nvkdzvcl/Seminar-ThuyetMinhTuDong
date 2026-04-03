@@ -1,12 +1,30 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 import DishCard from "../../components/ui/DishCard";
 import { dishService } from "../../services/dishService";
 import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
-import { resolveMediaUrl } from "../../utils/media";
+import { resolvePreferredLanguage } from "../../utils/language";
+import { resolveBackendAudioUrl, resolveMediaUrl } from "../../utils/media";
+import { notifyError, notifyWarning } from "../../utils/notify";
+
+function resolveRequestErrorMessage(error: unknown, fallback: string): string {
+    if (axios.isAxiosError(error)) {
+        const responseData = error.response?.data as { message?: string; code?: string } | undefined;
+        if (responseData?.message) {
+            return responseData.message;
+        }
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return fallback;
+}
 
 function DishDetailPage() {
     const { dishId } = useParams();
@@ -86,15 +104,29 @@ function DishDetailPage() {
         if (!dish) return;
 
         try {
+            const preferredLanguage = resolvePreferredLanguage();
+            const narrationRes = await dishService.getDishNarration(dish.id, preferredLanguage);
+            const narration = narrationRes.result;
+            const narrationAudioUrl = resolveBackendAudioUrl(narration?.audioUrl);
+            if (!narrationAudioUrl) {
+                notifyWarning(`Không tạo được audio cho món ${dish.name}.`);
+                return;
+            }
+
             await toggleAudio({
                 id: dish.id,
                 type: "DISH",
-                url: dish.audioURL,
+                url: narrationAudioUrl,
                 title: dish.name,
                 shopId: dish.shopId,
+                transcript: narration?.script,
+                transcriptLanguage: narration?.language,
             });
         } catch (error) {
             console.error("Nghe audio món lỗi:", error);
+            notifyError(
+                resolveRequestErrorMessage(error, `Không thể phát audio của món ${dish.name}. Vui lòng thử lại.`)
+            );
         }
     };
 
@@ -273,13 +305,39 @@ function DishDetailPage() {
                                     onListenAudio={(id) => {
                                         const targetDish = otherDishes.find((item) => item.id === id);
                                         if (!targetDish) return;
-                                        void toggleAudio({
-                                            id: targetDish.id,
-                                            type: "DISH",
-                                            url: targetDish.audioURL,
-                                            title: targetDish.name,
-                                            shopId: targetDish.shopId,
-                                        });
+                                        void (async () => {
+                                            try {
+                                                const preferredLanguage = resolvePreferredLanguage();
+                                                const narrationRes = await dishService.getDishNarration(
+                                                    targetDish.id,
+                                                    preferredLanguage
+                                                );
+                                                const narration = narrationRes.result;
+                                                const narrationAudioUrl = resolveBackendAudioUrl(narration?.audioUrl);
+                                                if (!narrationAudioUrl) {
+                                                    notifyWarning(`Không tạo được audio cho món ${targetDish.name}.`);
+                                                    return;
+                                                }
+
+                                                await toggleAudio({
+                                                    id: targetDish.id,
+                                                    type: "DISH",
+                                                    url: narrationAudioUrl,
+                                                    title: targetDish.name,
+                                                    shopId: targetDish.shopId,
+                                                    transcript: narration?.script,
+                                                    transcriptLanguage: narration?.language,
+                                                });
+                                            } catch (error) {
+                                                console.error("Nghe audio món lỗi:", error);
+                                                notifyError(
+                                                    resolveRequestErrorMessage(
+                                                        error,
+                                                        `Không thể phát audio của món ${targetDish.name}. Vui lòng thử lại.`
+                                                    )
+                                                );
+                                            }
+                                        })();
                                     }}
                                     onViewMenu={handleNavigateDish}
                                 />

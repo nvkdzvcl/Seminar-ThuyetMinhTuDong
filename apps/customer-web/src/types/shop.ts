@@ -35,10 +35,13 @@ export type ShopCreationRequest = {
 export type ShopNarrationResponse = {
   shopId: number;
   language: string;
+  languageKey?: string;
   requestedLanguage?: string;
   voice: string;
+  sourceText?: string;
   script?: string;
   audioUrl: string;
   cached: boolean;
   fallbackApplied?: boolean;
+  updatedAt?: string;
 };

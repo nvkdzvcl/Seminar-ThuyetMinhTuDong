@@ -12,6 +12,21 @@ export type Dish = {
   status: string;
 };
 
+export type DishNarrationResponse = {
+  dishId: number;
+  shopId?: number;
+  language: string;
+  languageKey?: string;
+  requestedLanguage?: string;
+  voice?: string;
+  sourceText?: string;
+  script?: string;
+  audioUrl: string;
+  cached: boolean;
+  fallbackApplied?: boolean;
+  updatedAt?: string;
+};
+
 export type DishCreationRequest = {
   shopId: number;
   name: string;

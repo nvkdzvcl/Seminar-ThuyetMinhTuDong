@@ -629,6 +629,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
           <AudioManagementScreen
             onBack={() => setCurrentScreen("qr")}
             poiApprovalStatus={poiApprovalStatus}
+            shopId={shopId ?? 0}
+            initialShopDescription={shopDetailedDescription}
           />
         )
       case "order-management":

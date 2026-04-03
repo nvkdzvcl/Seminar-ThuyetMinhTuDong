@@ -74,6 +74,20 @@ public class AuthenticationService {
         return userMapper.toUserResponseFromUser(user);
     }
 
+    public UserResponse updateCurrentUserLanguage(String language) {
+        if (language == null || language.trim().isEmpty()) {
+            throw new AppException(ErrorCode.REQUEST_BODY_INVALID);
+        }
+
+        Integer userId = getCurrentUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        user.setLanguage(language.trim());
+        User savedUser = userRepository.save(user);
+        return userMapper.toUserResponseFromUser(savedUser);
+    }
+
 
     public SignedJWT verifyToken(String token) throws JOSEException, ParseException {
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
@@ -180,6 +194,18 @@ public class AuthenticationService {
         UserResponse user = getUserFromToken();
         assertAdminRole(user.getRole());
         return user;
+    }
+
+    private Integer getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        try {
+            return Integer.parseInt(authentication.getName());
+        } catch (NumberFormatException exception) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
     }
 
     private void assertAdminRole(String role) {

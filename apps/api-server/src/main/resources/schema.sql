@@ -69,6 +69,23 @@ CREATE TABLE IF NOT EXISTS audio (
     CONSTRAINT fk_audio_language FOREIGN KEY (language_id) REFERENCES language(id)
 );
 
+CREATE TABLE IF NOT EXISTS narration_asset (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    entity_type VARCHAR(20) NOT NULL,
+    entity_id INT NOT NULL,
+    language_key VARCHAR(40) NOT NULL,
+    effective_language_tag VARCHAR(60) NOT NULL,
+    voice_name VARCHAR(120) NOT NULL,
+    source_text TEXT NULL,
+    script_text TEXT NULL,
+    audio_url VARCHAR(600) NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    fallback_applied BIT(1) NOT NULL DEFAULT b'0',
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CONSTRAINT uk_narration_asset_entity_language UNIQUE (entity_type, entity_id, language_key)
+);
+
 CREATE TABLE IF NOT EXISTS poi (
     id INT AUTO_INCREMENT PRIMARY KEY,
     shop_id INT NOT NULL,

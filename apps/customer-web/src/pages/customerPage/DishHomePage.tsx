@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import DishCard from "../../components/ui/DishCard";
 import HomeSearchBar from "../../components/home/HomeSearchBar";
 import NearbyMap from "../../components/home/NearbyMap";
@@ -13,6 +14,24 @@ import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import { routePath } from "../../routes/route";
+import { resolvePreferredLanguage } from "../../utils/language";
+import { resolveBackendAudioUrl } from "../../utils/media";
+import { notifyError, notifyWarning } from "../../utils/notify";
+
+function resolveRequestErrorMessage(error: unknown, fallback: string): string {
+    if (axios.isAxiosError(error)) {
+        const responseData = error.response?.data as { message?: string; code?: string } | undefined;
+        if (responseData?.message) {
+            return responseData.message;
+        }
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return fallback;
+}
 
 function HomePage() {
     const navigate = useNavigate();
@@ -106,15 +125,29 @@ function HomePage() {
         if (!targetDish) return;
 
         try {
+            const preferredLanguage = resolvePreferredLanguage();
+            const narrationRes = await dishService.getDishNarration(targetDish.id, preferredLanguage);
+            const narration = narrationRes.result;
+            const narrationAudioUrl = resolveBackendAudioUrl(narration?.audioUrl);
+            if (!narrationAudioUrl) {
+                notifyWarning(`Không tạo được audio cho món ${targetDish.name}.`);
+                return;
+            }
+
             await toggleAudio({
                 id: targetDish.id,
                 type: "DISH",
-                url: targetDish.audioURL,
+                url: narrationAudioUrl,
                 title: targetDish.name,
                 shopId: targetDish.shopId,
+                transcript: narration?.script,
+                transcriptLanguage: narration?.language,
             });
         } catch (error) {
             console.error("Nghe audio món lỗi:", error);
+            notifyError(
+                resolveRequestErrorMessage(error, `Không thể phát audio của món ${targetDish.name}. Vui lòng thử lại.`)
+            );
         }
     };
 

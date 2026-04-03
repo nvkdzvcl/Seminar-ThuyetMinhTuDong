@@ -25,3 +25,17 @@ export function resolveMediaUrl(
 
     return `${baseUrl}${normalizedValue.replace(/^\/+/, "")}`;
 }
+
+export function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
+    if (!rawAudioPath) return undefined;
+    if (ABSOLUTE_URL_PATTERN.test(rawAudioPath)) return rawAudioPath;
+
+    const base = (import.meta.env.VITE_BACKEND_API || "").replace(/\/+$/, "");
+    const normalizedPath = rawAudioPath.startsWith("/") ? rawAudioPath : `/${rawAudioPath}`;
+
+    if (!base) {
+        return normalizedPath;
+    }
+
+    return `${base}${normalizedPath}`;
+}

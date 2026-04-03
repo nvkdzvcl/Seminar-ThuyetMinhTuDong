@@ -4,6 +4,7 @@ package com.audioguide.controller;
 import com.audioguide.dto.apiDTO.ApiResponse;
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.shopDTO.ShopCreationRequest;
+import com.audioguide.dto.shopDTO.ShopNarrationGenerateRequest;
 import com.audioguide.dto.shopDTO.ShopNarrationResponse;
 import com.audioguide.dto.shopDTO.ShopResponse;
 import com.audioguide.dto.shopDTO.ShopTypeResponse;
@@ -93,6 +94,27 @@ public class ShopController {
         return ApiResponse.<ShopNarrationResponse>builder()
                 .message("Get shop narration successfully")
                 .result(shopNarrationService.getOrCreateNarration(shopId, lang))
+                .build();
+    }
+
+    @GetMapping("/{shopId}/narrations")
+    @PreAuthorize("hasAnyAuthority('OWNER_SHOP','ADMIN','SUPER_ADMIN') and @securityService.isOwnerOrAmin(#shopId)")
+    ApiResponse<List<ShopNarrationResponse>> getShopNarrations(@PathVariable Integer shopId) {
+        return ApiResponse.<List<ShopNarrationResponse>>builder()
+                .message("Get shop narrations successfully")
+                .result(shopNarrationService.getShopNarrations(shopId))
+                .build();
+    }
+
+    @PostMapping("/{shopId}/narration")
+    @PreAuthorize("hasAnyAuthority('OWNER_SHOP','ADMIN','SUPER_ADMIN') and @securityService.isOwnerOrAmin(#shopId)")
+    ApiResponse<ShopNarrationResponse> createOrUpdateShopNarration(
+            @PathVariable Integer shopId,
+            @RequestBody ShopNarrationGenerateRequest request
+    ) {
+        return ApiResponse.<ShopNarrationResponse>builder()
+                .message("Create or update shop narration successfully")
+                .result(shopNarrationService.createOrUpdateShopNarration(shopId, request.getLang(), request.getDescription()))
                 .build();
     }
 

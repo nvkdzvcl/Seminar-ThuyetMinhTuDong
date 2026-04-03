@@ -32,4 +32,11 @@ export const authService = {
         const res = await axiosClient.post<ApiResponse<User>>("/auth/me");
         return res.data; // ApiResponse<User>
     },
+
+    updateMyLanguage: async (language: string) => {
+        const res = await axiosClient.patch<ApiResponse<User>>("/auth/me/language", {
+            language,
+        });
+        return res.data;
+    },
 };

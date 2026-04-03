@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { authService } from "../../services/authService";
 import { notifyLanguageChanged } from "../../utils/language";
 import { resolveLanguageOptionValue, useSupportedLanguages } from "../../hooks/useSupportedLanguages";
+import { notifyError, notifySuccess } from "../../utils/notify";
 
 const LS_ACCESS = "VINH_KHANH_FOOD_TOUR_ACCESS_TOKEN";
 const LS_REFRESH = "VINH_KHANH_FOOD_TOUR_REFRESH_TOKEN";
@@ -16,6 +19,7 @@ function ProfilePage() {
     const [autoAudio, setAutoAudio] = useState(localStorage.getItem("autoTurnOnNearbyShopAudio") === "true");
     const [speed, setSpeed] = useState("1.0");
     const [lang, setLang] = useState(String(user?.language || "en"));
+    const [isUpdatingLanguage, setIsUpdatingLanguage] = useState(false);
 
     useEffect(() => {
         if (languageOptions.length === 0) return;
@@ -37,24 +41,58 @@ function ProfilePage() {
         localStorage.setItem("autoTurnOnNearbyShopAudio", String(checked));
     };
 
-    const handleLanguageChange = (value: string) => {
+    const resolveRequestErrorMessage = (error: unknown): string => {
+        if (axios.isAxiosError(error)) {
+            const responseData = error.response?.data as { message?: string } | undefined;
+            if (responseData?.message) {
+                return responseData.message;
+            }
+        }
+
+        if (error instanceof Error && error.message) {
+            return error.message;
+        }
+
+        return "KhÃ´ng thá»ƒ cáº­p nháº­t ngÃ´n ngá»¯ lÃºc nÃ y. Vui lÃ²ng thá»­ láº¡i.";
+    };
+
+    const handleLanguageChange = async (value: string) => {
         const selectedLanguage = value.trim();
+        if (!selectedLanguage || selectedLanguage === lang) return;
+
+        const previousLanguage = lang;
         setLang(selectedLanguage);
+        setIsUpdatingLanguage(true);
 
         try {
+            const response = await authService.updateMyLanguage(selectedLanguage);
+            const persistedLanguage = String(response.result?.language || selectedLanguage).trim();
+
             const rawUser = localStorage.getItem(LS_USER);
-            if (!rawUser) return;
-            const currentUser = JSON.parse(rawUser) as Record<string, unknown>;
+            let currentUser: Record<string, unknown> = {};
+            if (rawUser) {
+                try {
+                    currentUser = JSON.parse(rawUser) as Record<string, unknown>;
+                } catch {
+                    currentUser = {};
+                }
+            }
             localStorage.setItem(
                 LS_USER,
                 JSON.stringify({
                     ...currentUser,
-                    language: selectedLanguage,
+                    ...response.result,
+                    language: persistedLanguage,
                 })
             );
+            setLang(persistedLanguage);
             notifyLanguageChanged();
-        } catch {
-            // ignore invalid local user payload
+            notifySuccess("ÄÃ£ cáº­p nháº­t ngÃ´n ngá»¯ pháº£n há»“i theo chá»n cá»§a báº¡n.");
+        } catch (error) {
+            setLang(previousLanguage);
+            notifyError(resolveRequestErrorMessage(error));
+        } finally {
+            setIsUpdatingLanguage(false);
         }
     };
 
@@ -77,8 +115,10 @@ function ProfilePage() {
                         <select
                             data-no-auto-translate="true"
                             value={lang}
-                            onChange={(e) => handleLanguageChange(e.target.value)}
-                            disabled={languageLoading || languageOptions.length === 0}
+                            onChange={(e) => {
+                                void handleLanguageChange(e.target.value);
+                            }}
+                            disabled={languageLoading || languageOptions.length === 0 || isUpdatingLanguage}
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-56"
                         >
                             {languageOptions.map((option) => (

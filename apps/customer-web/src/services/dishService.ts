@@ -1,6 +1,6 @@
 import axiosClient from "./axiosClient";
 import type { ApiResponse, PagingDto } from "../types/api";
-import type { Dish, DishCreationRequest, DishUpdateRequest } from "../types/dish";
+import type { Dish, DishCreationRequest, DishNarrationResponse, DishUpdateRequest } from "../types/dish";
 
 export const dishService = {
     createDish: async (payload: DishCreationRequest) => {
@@ -33,6 +33,15 @@ export const dishService = {
 
     getDishById: async (dishId: number) => {
         const res = await axiosClient.get<ApiResponse<Dish>>(`/dish/${dishId}`);
+        return res.data;
+    },
+
+    getDishNarration: async (dishId: number, lang?: string) => {
+        const res = await axiosClient.get<ApiResponse<DishNarrationResponse>>(`/dish/${dishId}/narration`, {
+            params: {
+                lang,
+            },
+        });
         return res.data;
     },
 

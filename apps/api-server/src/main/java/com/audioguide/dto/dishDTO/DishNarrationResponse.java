@@ -1,4 +1,4 @@
-package com.audioguide.dto.shopDTO;
+package com.audioguide.dto.dishDTO;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ShopNarrationResponse {
+public class DishNarrationResponse {
+    Integer dishId;
     Integer shopId;
     String language;
     String languageKey;
@@ -27,3 +28,4 @@ public class ShopNarrationResponse {
     boolean fallbackApplied;
     LocalDateTime updatedAt;
 }
+

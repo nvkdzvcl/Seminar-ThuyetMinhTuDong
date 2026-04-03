@@ -1,12 +1,16 @@
 package com.audioguide.service;
 
+import com.audioguide.dto.dishDTO.DishNarrationResponse;
 import com.audioguide.dto.shopDTO.ShopNarrationResponse;
 import com.audioguide.entity.Dish;
+import com.audioguide.entity.NarrationAsset;
 import com.audioguide.entity.Shop;
+import com.audioguide.enums.NarrationEntityType;
 import com.audioguide.enums.Status;
 import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;
 import com.audioguide.repository.DishRepository;
+import com.audioguide.repository.NarrationAssetRepository;
 import com.audioguide.repository.ShopRepository;
 import com.audioguide.utils.TranslationTextProtector;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,15 +35,8 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
@@ -66,14 +63,17 @@ public class ShopNarrationService {
             Map.entry("ar", new VoiceProfile("ar-EG", "ar-EG-SalmaNeural", "ar", false)),
             Map.entry("hi", new VoiceProfile("hi-IN", "hi-IN-SwaraNeural", "hi", false))
     );
-
     static final VoiceProfile DEFAULT_ENGLISH_VOICE = FALLBACK_VOICE_BY_LANGUAGE.get("en");
     static final Set<String> TRADITIONAL_CHINESE_COUNTRIES = Set.of("TW", "HK", "MO");
     static final Duration VOICE_CACHE_TTL = Duration.ofHours(6);
     static final String SPEECH_OUTPUT_FORMAT = "audio-16khz-64kbitrate-mono-mp3";
+    static final String FALLBACK_SHOP_DESCRIPTION = "Quán hiện chưa có mô tả chi tiết.";
+    static final String FALLBACK_DISH_DESCRIPTION = "Món ăn hiện chưa có mô tả chi tiết.";
+    static final String UPLOAD_PREFIX = "/uploads/";
 
     final ShopRepository shopRepository;
     final DishRepository dishRepository;
+    final NarrationAssetRepository narrationAssetRepository;
     final ObjectMapper objectMapper;
     final AtomicLong voiceCacheLoadedAtMillis = new AtomicLong(0L);
     final Object voiceCacheLock = new Object();
@@ -113,65 +113,221 @@ public class ShopNarrationService {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
 
-        String requestedLanguageTag = normalizeLanguageTag(requestedLanguage);
-        VoiceProfile voice = resolveVoice(requestedLanguageTag);
-        String effectiveLanguageTag = voice.locale();
-
         String sourceText = buildShopNarrationText(shop);
-        TranslationTextProtector.ProtectedText protectedText = TranslationTextProtector.protectText(
+        GenerationResult generation = generateNarration(
+                NarrationEntityType.SHOP,
+                shop.getId(),
+                requestedLanguage,
                 sourceText,
                 collectShopProtectedTerms(shop)
+        );
+        return toShopNarrationResponse(shop.getId(), generation.asset(), requestedLanguage, generation.cached());
+    }
+
+    public ShopNarrationResponse createOrUpdateShopNarration(Integer shopId, String requestedLanguage, String description) {
+        ensureAzureConfigPresent();
+
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
+
+        String sourceText = normalizeRequiredDescription(description);
+        GenerationResult generation = generateNarration(
+                NarrationEntityType.SHOP,
+                shop.getId(),
+                requestedLanguage,
+                sourceText,
+                collectShopProtectedTerms(shop)
+        );
+        return toShopNarrationResponse(shop.getId(), generation.asset(), requestedLanguage, generation.cached());
+    }
+
+    public List<ShopNarrationResponse> getShopNarrations(Integer shopId) {
+        shopRepository.findById(shopId).orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
+        List<NarrationAsset> assets = narrationAssetRepository.findByEntityTypeAndEntityIdOrderByLanguageKeyAsc(
+                NarrationEntityType.SHOP,
+                shopId
+        );
+        return assets.stream()
+                .map(asset -> toShopNarrationResponse(shopId, asset, asset.getLanguageKey(), true))
+                .toList();
+    }
+
+    public DishNarrationResponse getOrCreateDishNarration(Integer dishId, String requestedLanguage) {
+        ensureAzureConfigPresent();
+
+        Dish dish = dishRepository.findById(dishId)
+                .orElseThrow(() -> new AppException(ErrorCode.DISH_NOT_FOUND));
+
+        String sourceText = buildDishNarrationText(dish);
+        GenerationResult generation = generateNarration(
+                NarrationEntityType.DISH,
+                dish.getId(),
+                requestedLanguage,
+                sourceText,
+                collectDishProtectedTerms(dish)
+        );
+        return toDishNarrationResponse(dish, generation.asset(), requestedLanguage, generation.cached());
+    }
+
+    public DishNarrationResponse createOrUpdateDishNarration(Integer dishId, String requestedLanguage, String description) {
+        ensureAzureConfigPresent();
+
+        Dish dish = dishRepository.findById(dishId)
+                .orElseThrow(() -> new AppException(ErrorCode.DISH_NOT_FOUND));
+
+        String sourceText = normalizeRequiredDescription(description);
+        GenerationResult generation = generateNarration(
+                NarrationEntityType.DISH,
+                dish.getId(),
+                requestedLanguage,
+                sourceText,
+                collectDishProtectedTerms(dish)
+        );
+        return toDishNarrationResponse(dish, generation.asset(), requestedLanguage, generation.cached());
+    }
+
+    public List<DishNarrationResponse> getDishNarrations(Integer dishId) {
+        Dish dish = dishRepository.findById(dishId)
+                .orElseThrow(() -> new AppException(ErrorCode.DISH_NOT_FOUND));
+
+        List<NarrationAsset> assets = narrationAssetRepository.findByEntityTypeAndEntityIdOrderByLanguageKeyAsc(
+                NarrationEntityType.DISH,
+                dishId
+        );
+        return assets.stream()
+                .map(asset -> toDishNarrationResponse(dish, asset, asset.getLanguageKey(), true))
+                .toList();
+    }
+
+    private GenerationResult generateNarration(
+            NarrationEntityType entityType,
+            Integer entityId,
+            String requestedLanguage,
+            String sourceText,
+            List<String> protectedTerms
+    ) {
+        String requestedLanguageTag = normalizeLanguageTag(requestedLanguage);
+        String languageKey = resolveLanguageKey(requestedLanguageTag);
+        String normalizedSourceText = sourceText.trim();
+        String sourceHash = createSourceHash(normalizedSourceText, languageKey);
+
+        Optional<NarrationAsset> existingAsset = narrationAssetRepository
+                .findFirstByEntityTypeAndEntityIdAndLanguageKeyIgnoreCase(entityType, entityId, languageKey);
+
+        if (existingAsset.isPresent()
+                && sourceHash.equals(existingAsset.get().getSourceHash())
+                && narrationFileExists(existingAsset.get().getAudioUrl())) {
+            return new GenerationResult(existingAsset.get(), true);
+        }
+
+        VoiceProfile voice = resolveVoice(requestedLanguageTag);
+        TranslationTextProtector.ProtectedText protectedText = TranslationTextProtector.protectText(
+                normalizedSourceText,
+                protectedTerms
         );
         TranslationResult translationResult = translateWithFallback(protectedText.maskedText(), voice.translatorCode());
         String translatedNarrationText = protectedText.restore(translationResult.translatedText());
         boolean fallbackApplied = voice.fallbackApplied() || translationResult.fallbackApplied();
 
-        if (translationResult.fallbackApplied() && !isEnglishLocale(effectiveLanguageTag)) {
-            // If translation already fell back to English, force an English voice for natural pronunciation.
+        if (translationResult.fallbackApplied() && !isEnglishLocale(voice.locale())) {
             voice = DEFAULT_ENGLISH_VOICE.withFallback(true);
-            effectiveLanguageTag = voice.locale();
             fallbackApplied = true;
         }
 
-        String contentSignature = createContentSignature(shop, effectiveLanguageTag, translatedNarrationText, voice.voiceName());
-        String safeLanguage = effectiveLanguageTag.replace("-", "_").toLowerCase(Locale.ROOT);
-        String fileName = "shop-" + shopId + "-" + safeLanguage + "-" + contentSignature + ".mp3";
-
-        Path targetDir = Paths.get(uploadDir, "shop-audios", "tts");
-        Path targetFile = targetDir.resolve(fileName).normalize();
-
+        String audioUrl = buildAudioUrl(entityType, entityId, languageKey);
+        Path targetFile = resolveUploadFilePath(audioUrl);
         try {
-            Files.createDirectories(targetDir);
-            if (Files.exists(targetFile)) {
-                return ShopNarrationResponse.builder()
-                        .shopId(shopId)
-                        .language(effectiveLanguageTag)
-                        .requestedLanguage(requestedLanguageTag)
-                        .voice(voice.voiceName())
-                        .script(translatedNarrationText)
-                        .audioUrl("/uploads/shop-audios/tts/" + fileName)
-                        .cached(true)
-                        .fallbackApplied(fallbackApplied)
-                        .build();
-            }
-
+            Files.createDirectories(targetFile.getParent());
             byte[] audioBytes = synthesizeSpeech(translatedNarrationText, voice);
             Files.write(targetFile, audioBytes);
-
-            return ShopNarrationResponse.builder()
-                    .shopId(shopId)
-                    .language(effectiveLanguageTag)
-                    .requestedLanguage(requestedLanguageTag)
-                    .voice(voice.voiceName())
-                    .script(translatedNarrationText)
-                    .audioUrl("/uploads/shop-audios/tts/" + fileName)
-                    .cached(false)
-                    .fallbackApplied(fallbackApplied)
-                    .build();
         } catch (IOException exception) {
-            log.error("Cannot store generated narration audio for shop {}", shopId, exception);
+            log.error("Cannot store generated narration audio for {} {}", entityType, entityId, exception);
             throw new AppException(ErrorCode.AZURE_TTS_FAILED);
         }
+
+        LocalDateTime now = LocalDateTime.now();
+        NarrationAsset asset = existingAsset.orElseGet(NarrationAsset::new);
+        if (asset.getId() == null) {
+            asset.setCreatedAt(now);
+        }
+        asset.setEntityType(entityType);
+        asset.setEntityId(entityId);
+        asset.setLanguageKey(languageKey);
+        asset.setEffectiveLanguageTag(voice.locale());
+        asset.setVoiceName(voice.voiceName());
+        asset.setSourceText(normalizedSourceText);
+        asset.setScriptText(translatedNarrationText);
+        asset.setAudioUrl(audioUrl);
+        asset.setSourceHash(sourceHash);
+        asset.setFallbackApplied(fallbackApplied);
+        asset.setUpdatedAt(now);
+        asset = narrationAssetRepository.save(asset);
+
+        return new GenerationResult(asset, false);
+    }
+
+    private ShopNarrationResponse toShopNarrationResponse(
+            Integer shopId,
+            NarrationAsset asset,
+            String requestedLanguage,
+            boolean cached
+    ) {
+        return ShopNarrationResponse.builder()
+                .shopId(shopId)
+                .language(asset.getEffectiveLanguageTag())
+                .languageKey(asset.getLanguageKey())
+                .requestedLanguage(normalizeLanguageTag(requestedLanguage))
+                .voice(asset.getVoiceName())
+                .sourceText(asset.getSourceText())
+                .script(asset.getScriptText())
+                .audioUrl(asset.getAudioUrl())
+                .cached(cached)
+                .fallbackApplied(asset.isFallbackApplied())
+                .updatedAt(asset.getUpdatedAt())
+                .build();
+    }
+
+    private DishNarrationResponse toDishNarrationResponse(
+            Dish dish,
+            NarrationAsset asset,
+            String requestedLanguage,
+            boolean cached
+    ) {
+        return DishNarrationResponse.builder()
+                .dishId(dish.getId())
+                .shopId(dish.getShop() != null ? dish.getShop().getId() : null)
+                .language(asset.getEffectiveLanguageTag())
+                .languageKey(asset.getLanguageKey())
+                .requestedLanguage(normalizeLanguageTag(requestedLanguage))
+                .voice(asset.getVoiceName())
+                .sourceText(asset.getSourceText())
+                .script(asset.getScriptText())
+                .audioUrl(asset.getAudioUrl())
+                .cached(cached)
+                .fallbackApplied(asset.isFallbackApplied())
+                .updatedAt(asset.getUpdatedAt())
+                .build();
+    }
+
+    private String normalizeRequiredDescription(String description) {
+        if (isBlank(description)) {
+            throw new AppException(ErrorCode.NARRATION_DESCRIPTION_BLANK);
+        }
+        return description.trim();
+    }
+
+    private String buildShopNarrationText(Shop shop) {
+        if (!isBlank(shop.getDescription())) {
+            return shop.getDescription().trim();
+        }
+        return FALLBACK_SHOP_DESCRIPTION;
+    }
+
+    private String buildDishNarrationText(Dish dish) {
+        if (!isBlank(dish.getDescription())) {
+            return dish.getDescription().trim();
+        }
+        return FALLBACK_DISH_DESCRIPTION;
     }
 
     private List<String> collectShopProtectedTerms(Shop shop) {
@@ -188,6 +344,17 @@ public class ShopNarrationService {
         return new ArrayList<>(terms);
     }
 
+    private List<String> collectDishProtectedTerms(Dish dish) {
+        LinkedHashSet<String> terms = new LinkedHashSet<>();
+        addProtectedTerm(terms, dish.getName());
+        addProtectedTerm(terms, dish.getDescription());
+        if (dish.getShop() != null) {
+            addProtectedTerm(terms, dish.getShop().getName());
+            addProtectedTerm(terms, dish.getShop().getAddress());
+        }
+        return new ArrayList<>(terms);
+    }
+
     private void addProtectedTerm(LinkedHashSet<String> terms, String value) {
         if (isBlank(value)) {
             return;
@@ -197,6 +364,55 @@ public class ShopNarrationService {
             return;
         }
         terms.add(normalized);
+    }
+
+    private String resolveLanguageKey(String languageTag) {
+        return resolveTranslatorCode(languageTag).toLowerCase(Locale.ROOT);
+    }
+
+    private String buildAudioUrl(NarrationEntityType entityType, Integer entityId, String languageKey) {
+        String typeFolder = entityType == NarrationEntityType.SHOP ? "shop" : "dish";
+        String safeLanguage = sanitizePathSegment(languageKey);
+        return UPLOAD_PREFIX + "narrations/" + typeFolder + "/" + entityId + "/" + safeLanguage + ".mp3";
+    }
+
+    private String sanitizePathSegment(String value) {
+        String raw = isBlank(value) ? "en" : value.trim().toLowerCase(Locale.ROOT);
+        return raw.replaceAll("[^a-z0-9_-]", "_");
+    }
+
+    private Path resolveUploadFilePath(String audioUrl) {
+        String relative = audioUrl;
+        if (relative.startsWith(UPLOAD_PREFIX)) {
+            relative = relative.substring(UPLOAD_PREFIX.length());
+        }
+        return Paths.get(uploadDir, relative).normalize();
+    }
+
+    private boolean narrationFileExists(String audioUrl) {
+        if (isBlank(audioUrl)) {
+            return false;
+        }
+        Path filePath = resolveUploadFilePath(audioUrl);
+        return Files.exists(filePath);
+    }
+
+    private String createSourceHash(String sourceText, String languageKey) {
+        return sha256(sourceText + "|" + languageKey);
+    }
+
+    private String sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
+        }
     }
 
     private void ensureAzureConfigPresent() {
@@ -222,13 +438,6 @@ public class ShopNarrationService {
         }
     }
 
-    private String buildShopNarrationText(Shop shop) {
-        if (!isBlank(shop.getDescription())) {
-            return shop.getDescription().trim();
-        }
-        return "Quán hiện chưa có mô tả chi tiết.";
-    }
-
     private TranslationResult translateWithFallback(String text, String preferredTargetLanguageCode) {
         String safeTarget = isBlank(preferredTargetLanguageCode) ? "en" : preferredTargetLanguageCode;
         try {
@@ -250,7 +459,7 @@ public class ShopNarrationService {
                     + URLEncoder.encode(targetLanguageCode, StandardCharsets.UTF_8);
 
             String requestBody = objectMapper.writeValueAsString(
-                    java.util.List.of(Map.of("Text", text))
+                    List.of(Map.of("Text", text))
             );
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -532,30 +741,6 @@ public class ShopNarrationService {
         return normalizeLanguageTag(languageTag).toLowerCase(Locale.ROOT).startsWith("en");
     }
 
-    private String createContentSignature(Shop shop, String languageTag, String translatedText, String voiceName) {
-        String payload = String.join("|",
-                defaultText(shop.getDescription(), ""),
-                languageTag,
-                voiceName,
-                translatedText
-        );
-        return sha256(payload).substring(0, 16);
-    }
-
-    private String sha256(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
-        }
-    }
-
     private String trimTrailingSlash(String value) {
         if (isBlank(value)) {
             return "";
@@ -580,10 +765,6 @@ public class ShopNarrationService {
         return value == null || value.trim().isEmpty();
     }
 
-    private String defaultText(String value, String fallback) {
-        return isBlank(value) ? fallback : value.trim();
-    }
-
     private record TranslationResult(String translatedText, String translatedLanguageCode, boolean fallbackApplied) {}
 
     private record AzureVoice(String locale, String shortName, boolean neural) {}
@@ -593,4 +774,6 @@ public class ShopNarrationService {
             return new VoiceProfile(locale, voiceName, translatorCode, fallback);
         }
     }
+
+    private record GenerationResult(NarrationAsset asset, boolean cached) {}
 }
