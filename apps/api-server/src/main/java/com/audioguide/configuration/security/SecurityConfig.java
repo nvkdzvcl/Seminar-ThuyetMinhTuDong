@@ -1,6 +1,7 @@
 package com.audioguide.configuration.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,6 +19,7 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -26,6 +28,9 @@ import java.util.List;
 public class SecurityConfig {
 
     private final CustomJwtDecoder customJwtDecoder;
+
+    @Value("${app.cors.allowed-origin-patterns:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,https://*.devtunnels.ms,https://*.vercel.app}")
+    private String allowedOriginPatterns;
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/auth/**",
@@ -93,13 +98,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:5175",
-                "http://localhost:3000",
-                "https://*.devtunnels.ms"
-        ));
+        config.setAllowedOriginPatterns(
+                List.of(allowedOriginPatterns.split(","))
+                        .stream()
+                        .map(String::trim)
+                        .filter(pattern -> !pattern.isBlank())
+                        .collect(Collectors.toList())
+        );
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));

@@ -15,7 +15,7 @@ const elementAttrLastAppliedMap = new WeakMap<Element, Map<string, string>>();
 const translationCache = new Map<string, Map<string, string>>();
 const translatedPageKeys = new Set<string>();
 
-const TRANSLATION_CACHE_STORAGE_KEY = "customer_ui_translation_cache_v1";
+const TRANSLATION_CACHE_STORAGE_KEY = "customer_ui_translation_cache_v2";
 const MAX_CACHE_LANGUAGES = 8;
 const MAX_CACHE_ENTRIES_PER_LANGUAGE = 1500;
 let translationCacheHydrated = false;
@@ -191,14 +191,18 @@ async function translateMissingTexts(targetLanguage: string, texts: string[]) {
         try {
             const response = await translationService.translateUiTexts(batch, targetLanguage);
             const translated = response.result?.texts ?? [];
+            const translatedSuccessfully = response.result?.translated === true;
+
+            if (!translatedSuccessfully) {
+                continue;
+            }
 
             batch.forEach((source, index) => {
                 cache.set(source, translated[index] || source);
             });
         } catch {
-            batch.forEach((source) => {
-                cache.set(source, source);
-            });
+            // Keep untranslated text out of persistent cache so the UI can recover
+            // automatically after backend translation/Azure config is fixed.
         }
     }
 

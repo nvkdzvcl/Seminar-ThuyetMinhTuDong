@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { MANUAL_POI_SEEDS } from "../data/manualPoiSeeds";
 import { poiService } from "../services/poiService";
 import type { MapPoi } from "../types/poi";
-import { mergeMapPois, toMapPoiFromApi, toMapPoiFromManual } from "../utils/poiMap";
+import { toMapPoiFromApi } from "../utils/poiMap";
 
 const POI_MAP_PAGE_SIZE = 100;
 const POI_MAP_MAX_PAGES = 50;
@@ -17,6 +16,7 @@ export function usePoiMapData() {
         const loadPois = async () => {
             try {
                 const rawPois = await poiService.getAllPois({
+                    status: "PUBLISHED",
                     pageSize: POI_MAP_PAGE_SIZE,
                     maxPages: POI_MAP_MAX_PAGES,
                 });
@@ -24,19 +24,18 @@ export function usePoiMapData() {
                 const apiPois = rawPois
                     .map(toMapPoiFromApi)
                     .filter((item): item is MapPoi => item !== null);
-                const manualPois = MANUAL_POI_SEEDS.map(toMapPoiFromManual);
 
                 if (!isDisposed) {
-                    setPois(mergeMapPois(apiPois, manualPois));
+                    setPois(apiPois);
                     setError("");
                 }
             } catch (err) {
                 if (!isDisposed) {
-                    setPois(MANUAL_POI_SEEDS.map(toMapPoiFromManual));
+                    setPois([]);
                     setError(
                         err instanceof Error
                             ? err.message
-                            : "Không tải được POI từ server, đang hiển thị dữ liệu nhập tay."
+                            : "Không tải được POI đã duyệt từ server."
                     );
                 }
             }

@@ -10,7 +10,6 @@ import {
   Users,
   Clock,
   Utensils,
-  Wallet,
 } from "lucide-react"
 import {
   AreaChart,
@@ -33,10 +32,6 @@ const LANGUAGE_COLORS = [
   "oklch(0.45 0.1 200)",
   "oklch(0.62 0.14 320)",
 ]
-
-function formatCurrency(value: number): string {
-  return `${Math.max(0, value || 0).toLocaleString("vi-VN")}đ`
-}
 
 export function InsightsScreen() {
   const [insights, setInsights] = useState<OwnerInsights | null>(null)
@@ -68,14 +63,14 @@ export function InsightsScreen() {
     }
   }, [])
 
-  const dailyOrderData = useMemo(() => {
+  const dailyVisitData = useMemo(() => {
     if (!insights?.dailyMetrics?.length) {
       return []
     }
     return insights.dailyMetrics.map((item) => ({
       day: item.date,
-      orders: item.orders ?? 0,
-      revenue: item.revenue ?? 0,
+      visits: item.visits ?? 0,
+      audioCompletions: item.audioCompletions ?? 0,
     }))
   }, [insights?.dailyMetrics])
 
@@ -105,14 +100,14 @@ export function InsightsScreen() {
   }, [insights?.topDishMetrics])
 
   const aiInsights = useMemo(() => {
-    if (!insights || insights.totalOrders7Days <= 0) {
+    if (!insights || insights.totalVisits7Days <= 0) {
       return [
         {
           icon: Sparkles,
           iconBg: "bg-primary/10",
           iconColor: "text-primary",
-          title: "Chưa có dữ liệu đơn hàng 7 ngày gần nhất",
-          description: "Khi có đơn hàng, hệ thống sẽ tự tạo thống kê thật cho quán của bạn.",
+          title: "Chưa có dữ liệu tương tác 7 ngày gần nhất",
+          description: "Khi khách quét QR hoặc nghe audio, thống kê hành vi sẽ hiển thị tại đây.",
         },
       ]
     }
@@ -126,8 +121,8 @@ export function InsightsScreen() {
         icon: QrCode,
         iconBg: "bg-primary/10",
         iconColor: "text-primary",
-        title: `Quán có ${insights.totalOrders7Days} lượt ghé trong 7 ngày`,
-        description: `Trung bình ${insights.avgDailyOrders} lượt/ngày, ${insights.uniqueCustomers7Days} khách hàng khác nhau.`,
+        title: `Quán có ${insights.totalVisits7Days} lượt ghé trong 7 ngày`,
+        description: `Trung bình ${insights.avgDailyVisits} lượt/ngày, ${insights.uniqueSessions7Days} phiên tương tác khác nhau.`,
       },
       topLanguage
         ? {
@@ -135,7 +130,7 @@ export function InsightsScreen() {
             iconBg: "bg-[oklch(0.7_0.16_55)]/10",
             iconColor: "text-[oklch(0.7_0.16_55)]",
             title: `Ngôn ngữ nổi bật: ${topLanguage.name}`,
-            description: `Chiếm khoảng ${topLanguage.percent}% dữ liệu khách có phát sinh đơn.`,
+            description: `Chiếm khoảng ${topLanguage.percent}% dữ liệu tương tác QR/audio.`,
           }
         : null,
       topDish
@@ -143,8 +138,8 @@ export function InsightsScreen() {
             icon: Utensils,
             iconBg: "bg-emerald-500/10",
             iconColor: "text-emerald-600",
-            title: `Món được gọi nhiều: ${topDish.dish}`,
-            description: `${topDish.quantity} lượt gọi trong 7 ngày gần nhất.`,
+            title: `Món được nghe nhiều: ${topDish.dish}`,
+            description: `${topDish.quantity} lượt phát audio hoàn tất trong 7 ngày gần nhất.`,
           }
         : null,
       {
@@ -205,7 +200,7 @@ export function InsightsScreen() {
               <span className="text-xs text-muted-foreground">Lượt ghé</span>
             </div>
             <div className="flex items-end gap-2">
-              <span className="text-2xl font-bold text-foreground">{insights?.totalOrders7Days ?? 0}</span>
+              <span className="text-2xl font-bold text-foreground">{insights?.totalVisits7Days ?? 0}</span>
               <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 mb-1">
                 <TrendingUp className="w-3 h-3 mr-1" />
                 {growthText}
@@ -220,17 +215,17 @@ export function InsightsScreen() {
               <Clock className="w-4 h-4 text-[oklch(0.7_0.16_55)]" />
               <span className="text-xs text-muted-foreground">TB/ngày</span>
             </div>
-            <span className="text-2xl font-bold text-foreground">{insights?.avgDailyOrders ?? 0}</span>
+            <span className="text-2xl font-bold text-foreground">{insights?.avgDailyVisits ?? 0}</span>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Wallet className="w-4 h-4 text-emerald-600" />
-              <span className="text-xs text-muted-foreground">Doanh thu 7 ngày</span>
+              <Utensils className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs text-muted-foreground">Audio hoàn tất 7 ngày</span>
             </div>
-            <span className="text-lg font-bold text-foreground">{formatCurrency(insights?.totalRevenue7Days ?? 0)}</span>
+            <span className="text-2xl font-bold text-foreground">{insights?.totalAudioCompletions7Days ?? 0}</span>
           </CardContent>
         </Card>
 
@@ -238,9 +233,9 @@ export function InsightsScreen() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-sky-600" />
-              <span className="text-xs text-muted-foreground">Khách duy nhất</span>
+              <span className="text-xs text-muted-foreground">Phiên duy nhất</span>
             </div>
-            <span className="text-2xl font-bold text-foreground">{insights?.uniqueCustomers7Days ?? 0}</span>
+            <span className="text-2xl font-bold text-foreground">{insights?.uniqueSessions7Days ?? 0}</span>
           </CardContent>
         </Card>
       </div>
@@ -252,7 +247,7 @@ export function InsightsScreen() {
         <CardContent className="pt-0">
           <div className="h-[180px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dailyOrderData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={dailyVisitData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="scanGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="oklch(0.5 0.18 25)" stopOpacity={0.3} />
@@ -280,7 +275,7 @@ export function InsightsScreen() {
                 />
                 <Area
                   type="monotone"
-                  dataKey="orders"
+                  dataKey="visits"
                   stroke="oklch(0.5 0.18 25)"
                   strokeWidth={2}
                   fill="url(#scanGradient)"
@@ -333,7 +328,7 @@ export function InsightsScreen() {
 
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Món được gọi nhiều</CardTitle>
+          <CardTitle className="text-base font-semibold">Món được nghe nhiều</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="h-[160px] w-full">
@@ -361,7 +356,7 @@ export function InsightsScreen() {
                     borderRadius: "8px",
                     fontSize: "12px",
                   }}
-                  formatter={(value: number) => [`${value}`, "Số lượt gọi"]}
+                  formatter={(value: number) => [`${value}`, "Số lượt nghe xong"]}
                 />
                 <Bar dataKey="quantity" fill="oklch(0.7 0.16 55)" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -400,4 +395,3 @@ export function InsightsScreen() {
     </div>
   )
 }
-

@@ -33,11 +33,14 @@ public class Shop {
 
 
     String name;
+    @Column(length = 500)
     String  address;
     @Column(name = "short_description")
     String shortDescription;
+    @Column(columnDefinition = "TEXT")
     String description;
     String imageName;
+    @Column(length = 500)
     String audioURL;
     Double lat;
     Double lng;

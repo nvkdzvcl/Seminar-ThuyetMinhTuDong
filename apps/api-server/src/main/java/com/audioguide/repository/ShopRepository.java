@@ -36,6 +36,13 @@ public interface ShopRepository extends JpaRepository<Shop, Integer> {
             * sin(radians(s.lat))
         )) <= :radius
         AND s.status = :status
+        ORDER BY (6371 * acos(
+            cos(radians(:lat))
+            * cos(radians(s.lat))
+            * cos(radians(s.lng) - radians(:lng))
+            + sin(radians(:lat))
+            * sin(radians(s.lat))
+        )) ASC
         """)
         Page<Shop> findNearbyShops(
                 @Param("lat") double lat,

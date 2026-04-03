@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import com.audioguide.exception.ErrorCode;
 import com.audioguide.enums.UserStatus;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -51,7 +51,7 @@ public class UserService {
         userEntity.setPassword(passwordEncoder.encode(request.getPassword()));
         userEntity.setStatus(UserStatus.ACTIVE);
         userEntity.setRole(UserRole.CUSTOMER);
-        userEntity.setCreatedAt(LocalDate.now());
+        userEntity.setCreatedAt(LocalDateTime.now());
         var savedUser = userRepository.save(userEntity);
         log.info("User with email {} created successfully", request.getEmail());
         return userMapper.toUserResponseFromUser(savedUser);
@@ -153,7 +153,7 @@ public class UserService {
         userEntity.setPassword(passwordEncoder.encode(register.getPassword()));
         userEntity.setStatus(UserStatus.ACTIVE);
         userEntity.setRole(role);
-        userEntity.setCreatedAt(LocalDate.now());
+        userEntity.setCreatedAt(LocalDateTime.now());
         userRepository.save(userEntity);
         log.info("User with email {} registered successfully as {}", register.getEmail(), role);
         return UserRegisterResponse.builder()
@@ -162,3 +162,4 @@ public class UserService {
     }
 
 }
+

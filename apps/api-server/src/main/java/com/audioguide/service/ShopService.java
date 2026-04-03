@@ -23,7 +23,9 @@ import com.audioguide.utils.CoordinateParserUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -51,9 +53,12 @@ public class ShopService {
     PoiRepository poiRepository;
     PoiApprovalHistoryRepository poiApprovalHistoryRepository;
     PoiModerationService poiModerationService;
+    MediaStorageService mediaStorageService;
 
-    Path IMAGE_DIR = Path.of("uploads/shop-images");
-    Path AUDIO_DIR = Path.of("uploads/shop-audios");
+    @NonFinal
+    @Value("${file.upload-dir}")
+    String uploadDir;
+
     static final int SHORT_DESCRIPTION_LIMIT = 140;
     static final List<RequiredShopType> REQUIRED_SHOP_TYPES = List.of(
             new RequiredShopType("Hải sản", "Quán chuyên hải sản, ốc và các món biển."),
@@ -281,7 +286,8 @@ public class ShopService {
             throw new AppException(ErrorCode.FORBIDDEN);
         }
 
-        String imageUrl =  FileStoreUtil.saveKeepingNameWithSuffix(file, IMAGE_DIR);
+        Path imageDir = Path.of(uploadDir, "shop-images");
+        String imageUrl = mediaStorageService.storeImage(file, imageDir, "shop-images");
 
         shop.setImageName(imageUrl);
         shopRepository.save(shop);
@@ -306,7 +312,8 @@ public class ShopService {
             throw new AppException(ErrorCode.FORBIDDEN);
         }
 
-        String audioUrl = FileStoreUtil.saveKeepingNameWithSuffix(file, AUDIO_DIR);
+        Path audioDir = Path.of(uploadDir, "shop-audios");
+        String audioUrl = FileStoreUtil.saveKeepingNameWithSuffix(file, audioDir);
 
         shop.setAudioURL(audioUrl);
 

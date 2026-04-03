@@ -40,7 +40,8 @@ function DishDetailPage() {
     const dishImageSrc = resolveMediaUrl(
         dish?.image,
         import.meta.env.VITE_DISH_IMAGE_API,
-        "https://placehold.co/1200x800?text=Dish"
+        "https://placehold.co/1200x800?text=Dish",
+        "uploads/dish-images"
     );
 
     useEffect(() => {

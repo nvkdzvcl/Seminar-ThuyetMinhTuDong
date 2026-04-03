@@ -41,6 +41,9 @@ Before coding, read these files first:
 11. `apps/api-server/src/main/java/com/audioguide/utils/CoordinateParserUtil.java` (flexible coordinate parser on BE)
 12. `apps/api-server/src/main/java/com/audioguide/service/ShopNarrationService.java` (Azure translate + TTS flow)
 13. `apps/api-server/.env.example` (required Azure env keys for narration)
+14. `apps/api-server/src/main/java/com/audioguide/service/PoiModerationService.java` (heuristic + Content Safety + optional Ollama moderation)
+15. `apps/customer-web/src/hooks/usePoiMapData.ts` (customer map POI data source and status filter)
+16. `apps/api-server/src/main/java/com/audioguide/service/MediaStorageService.java` (R2 image upload + local fallback)
 
 ## 3) Runtime Contracts (Do Not Break)
 
@@ -48,6 +51,9 @@ Before coding, read these files first:
 
 - Backend runs on `http://localhost:8080`.
 - Context path is `/vinhkhanhfoodtour/api`.
+- Backend cloud config can override these via env:
+  - `PORT`
+  - `SERVER_SERVLET_CONTEXT_PATH`
 - Shopowner FE default API base (`apps/shopowner-web/src/lib/api.ts`):
   - `VITE_API_BASE_URL` env var OR
   - fallback: `http://localhost:8080/vinhkhanhfoodtour/api`
@@ -79,13 +85,19 @@ Defined in `apps/shopowner-web/src/lib/auth.ts`.
 
 ### 3.4 CORS Rules
 
-`SecurityConfig` currently allows origins:
+`SecurityConfig` currently reads allowed origins from:
+
+- `app.cors.allowed-origin-patterns`
+- env override: `APP_CORS_ALLOWED_ORIGIN_PATTERNS`
+
+Default patterns include:
 
 - `http://localhost:5173`
 - `http://localhost:5174`
 - `http://localhost:5175`
 - `http://localhost:3000`
 - `https://*.devtunnels.ms`
+- `https://*.vercel.app`
 
 Allowed methods must include:
 
@@ -108,6 +120,73 @@ If FE uses `PATCH` and CORS omits `PATCH`, preflight fails.
   - `AZURE_SPEECH_REGION`
   - `AZURE_SPEECH_TTS_ENDPOINT`
 - If missing, API returns `AZURE_CONFIG_MISSING` (HTTP 500).
+
+### 3.6 POI Moderation Config (LLM Optional)
+
+- POI moderation pipeline supports 3 layers:
+  - Heuristic (always available)
+  - Azure Content Safety (optional via env keys)
+  - Ollama/Qwen LLM (optional)
+- Project must still run on machines without Ollama/Qwen.
+- If local machine does not have Ollama, set:
+  - `LLM_PROVIDER=disabled`
+- With `LLM_PROVIDER=disabled`, moderation still works via heuristic (+ Content Safety if configured), and backend must not fail startup.
+- If `LLM_PROVIDER=ollama` but Ollama is unreachable, moderation may be slower due to timeout but flow should not crash.
+
+### 3.7 Customer POI Visibility Contract
+
+- Customer map screens must show only approved POIs (`status = PUBLISHED`).
+- Draft/flagged/hidden POIs must not appear on customer map.
+
+### 3.8 Cloud Deployment Contract
+
+- Backend is expected to run on Railway.
+- Frontends are expected to run on Vercel.
+- `apps/api-server/src/main/resources/application.yaml` is intentionally tracked now and must stay deployable via env placeholders.
+- Do not move secrets back into committed YAML.
+
+### 3.9 Media Storage Contract (Dish/Shop Images)
+
+- Backend supports 2 image storage modes:
+  - **R2 mode** (preferred on cloud): upload to Cloudflare R2 and persist public URL to DB.
+  - **Local mode** (fallback): save to `${FILE_UPLOAD_DIR}` and serve via `/uploads/**`.
+- R2 mode is enabled only when all required `R2_*` env vars are present.
+- If R2 vars are missing, backend must continue to work with local storage and must not fail startup.
+- Audio files still use local file storage (`FILE_UPLOAD_DIR`) unless explicitly refactored.
+
+Railway backend minimum env:
+
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_JPA_HIBERNATE_DDL_AUTO`
+- `JWT_SIGNERKEY`
+- `FILE_UPLOAD_DIR`
+- `LLM_PROVIDER`
+
+Railway backend R2 env (recommended for production images):
+
+- `R2_BUCKET`
+- `R2_PUBLIC_BASE_URL`
+- `R2_ENDPOINT`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_REGION` (use `auto`)
+
+Frontend env contracts:
+
+- `admin-web`
+  - `VITE_API_BASE_URL`
+  - `VITE_CUSTOMER_WEB_URL`
+- `shopowner-web`
+  - `VITE_API_BASE_URL`
+  - `VITE_CUSTOMER_WEB_URL`
+- `customer-web`
+  - `VITE_BACKEND_API`
+  - `VITE_DISH_IMAGE_API`
+  - `VITE_SHOP_IMAGE_API`
+  - `VITE_WS_API`
+  - `VITE_LS_ACCESS`
 
 ## 4) Product Behavior Baseline (Shopowner)
 
@@ -160,6 +239,7 @@ Rules:
 6. Do not rename request/response fields without syncing FE + BE in same change.
 7. Do not commit real secrets (JWT signer keys, DB passwords, Azure keys) in new files.
 8. Never commit `apps/api-server/.env`; keep it local-only.
+9. Do not re-ignore `apps/api-server/src/main/resources/application.yaml`; cloud deploy depends on it.
 
 ## 6) Safe Change Workflow For Any Agent
 

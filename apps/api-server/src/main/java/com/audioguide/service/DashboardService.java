@@ -85,65 +85,83 @@ public class DashboardService {
         var shop = shopRepository.findByOwnerId(ownerId)
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_NOT_FOUND));
 
+        List<AnalyticsEventType> engagementEventTypes = List.of(
+                AnalyticsEventType.QR_SCAN,
+                AnalyticsEventType.AUDIO_PLAY_START,
+                AnalyticsEventType.AUDIO_PLAY_COMPLETE
+        );
+
         LocalDate toDate = LocalDate.now();
         LocalDate fromDate = toDate.minusDays(6);
-
-        List<Object[]> orderRows = orderRepository.countOrdersByDayForShop(shop.getId(), fromDate, toDate);
-        List<Object[]> revenueRows = orderRepository.sumRevenueByDayForShop(shop.getId(), fromDate, toDate);
-
-        Map<LocalDate, Long> ordersByDay = new HashMap<>();
-        for (Object[] row : orderRows) {
-            LocalDate date = (LocalDate) row[0];
-            Long count = ((Number) row[1]).longValue();
-            ordersByDay.put(date, count);
-        }
-
-        Map<LocalDate, Long> revenueByDay = new HashMap<>();
-        for (Object[] row : revenueRows) {
-            LocalDate date = (LocalDate) row[0];
-            Long revenue = row[1] == null ? 0L : ((Number) row[1]).longValue();
-            revenueByDay.put(date, revenue);
-        }
+        LocalDateTime rangeFrom = fromDate.atStartOfDay();
+        LocalDateTime rangeTo = LocalDateTime.now();
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
-        long totalOrders = 0L;
-        long totalRevenue = 0L;
+        long totalVisits = 0L;
+        long totalAudioCompletions = 0L;
         List<OwnerDailyMetricResponse> dailyMetrics = new java.util.ArrayList<>();
         for (int i = 0; i < 7; i++) {
             LocalDate day = fromDate.plusDays(i);
-            long orders = ordersByDay.getOrDefault(day, 0L);
-            long revenue = revenueByDay.getOrDefault(day, 0L);
-            totalOrders += orders;
-            totalRevenue += revenue;
+            LocalDateTime dayFrom = day.atStartOfDay();
+            LocalDateTime dayTo = day.equals(toDate)
+                    ? rangeTo
+                    : day.plusDays(1).atStartOfDay().minusNanos(1);
+
+            long visits = analyticsEventRepository.countDistinctSessionIdByShopIdAndEventTypeInAndOccurredAtBetween(
+                    shop.getId(),
+                    engagementEventTypes,
+                    dayFrom,
+                    dayTo
+            );
+            long audioCompletions = analyticsEventRepository.countByShopIdAndEventTypeAndOccurredAtBetween(
+                    shop.getId(),
+                    AnalyticsEventType.AUDIO_PLAY_COMPLETE,
+                    dayFrom,
+                    dayTo
+            );
+
+            totalVisits += visits;
+            totalAudioCompletions += audioCompletions;
 
             dailyMetrics.add(OwnerDailyMetricResponse.builder()
                     .date(day.format(formatter))
-                    .orders(orders)
-                    .revenue(revenue)
+                    .visits(visits)
+                    .audioCompletions(audioCompletions)
                     .build());
         }
 
-        long avgDailyOrders = Math.round(totalOrders / 7.0d);
-        long uniqueCustomers = orderRepository.countDistinctCustomersForShop(shop.getId(), fromDate, toDate);
-
-        LocalDate previousFromDate = fromDate.minusDays(7);
-        LocalDate previousToDate = fromDate.minusDays(1);
-        long previousTotalOrders = orderRepository.countByShop_IdAndStatusAndCreatedAtBetween(
+        long avgDailyVisits = Math.round(totalVisits / 7.0d);
+        long uniqueSessions = analyticsEventRepository.countDistinctSessionIdByShopIdAndEventTypeInAndOccurredAtBetween(
                 shop.getId(),
-                Status.ACTIVE,
-                previousFromDate,
-                previousToDate
+                engagementEventTypes,
+                rangeFrom,
+                rangeTo
         );
 
-        int growthPercent;
-        if (previousTotalOrders <= 0L) {
-            growthPercent = totalOrders > 0L ? 100 : 0;
-        } else {
-            growthPercent = (int) Math.round(((totalOrders - previousTotalOrders) * 100.0d) / previousTotalOrders);
+        LocalDate previousToDate = fromDate.minusDays(1);
+        LocalDate previousFromDate = previousToDate.minusDays(6);
+        long previousTotalVisits = 0L;
+        for (int i = 0; i < 7; i++) {
+            LocalDate day = previousFromDate.plusDays(i);
+            LocalDateTime dayFrom = day.atStartOfDay();
+            LocalDateTime dayTo = day.plusDays(1).atStartOfDay().minusNanos(1);
+            previousTotalVisits += analyticsEventRepository.countDistinctSessionIdByShopIdAndEventTypeInAndOccurredAtBetween(
+                    shop.getId(),
+                    engagementEventTypes,
+                    dayFrom,
+                    dayTo
+            );
         }
 
-        List<OwnerLanguageMetricResponse> languageMetrics = orderRepository
-                .countLanguageUsageForShop(shop.getId(), fromDate, toDate)
+        int growthPercent;
+        if (previousTotalVisits <= 0L) {
+            growthPercent = totalVisits > 0L ? 100 : 0;
+        } else {
+            growthPercent = (int) Math.round(((totalVisits - previousTotalVisits) * 100.0d) / previousTotalVisits);
+        }
+
+        List<OwnerLanguageMetricResponse> languageMetrics = analyticsEventRepository
+                .countLanguageUsageByEventType(shop.getId(), engagementEventTypes, rangeFrom, rangeTo)
                 .stream()
                 .map(row -> OwnerLanguageMetricResponse.builder()
                         .language(normalizeLanguage(row[0]))
@@ -152,8 +170,8 @@ public class DashboardService {
                 .limit(6)
                 .toList();
 
-        List<OwnerTopDishMetricResponse> topDishMetrics = orderItemRepository
-                .findTopDishesByShop(shop.getId(), fromDate, toDate, PageRequest.of(0, 6))
+        List<OwnerTopDishMetricResponse> topDishMetrics = analyticsEventRepository
+                .findTopAudioDishesByShop(shop.getId(), rangeFrom, rangeTo)
                 .stream()
                 .map(row -> OwnerTopDishMetricResponse.builder()
                         .dishName(row[0] == null ? "Khác" : row[0].toString())
@@ -163,10 +181,10 @@ public class DashboardService {
 
         return OwnerInsightsResponse.builder()
                 .shopId(shop.getId())
-                .totalOrders7Days(totalOrders)
-                .totalRevenue7Days(totalRevenue)
-                .avgDailyOrders(avgDailyOrders)
-                .uniqueCustomers7Days(uniqueCustomers)
+                .totalVisits7Days(totalVisits)
+                .avgDailyVisits(avgDailyVisits)
+                .totalAudioCompletions7Days(totalAudioCompletions)
+                .uniqueSessions7Days(uniqueSessions)
                 .growthPercent(growthPercent)
                 .dailyMetrics(dailyMetrics)
                 .languageMetrics(languageMetrics)

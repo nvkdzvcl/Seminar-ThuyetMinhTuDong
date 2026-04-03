@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Configuration
 @RequiredArgsConstructor
@@ -32,7 +32,7 @@ public class ApplicationInitConfig {
                     .phoneNumber("0123456789")
                     .fullName("System Administrator")
                     .language("vi")
-                    .createdAt(LocalDate.now())
+                    .createdAt(LocalDateTime.now())
                     .build());
 
             adminUser.setPassword(passwordEncoder.encode("admin123"));
@@ -49,7 +49,7 @@ public class ApplicationInitConfig {
                         .fullName("user123")
                         .phoneNumber("012345678910")
                         .language("vi")
-                        .createdAt(LocalDate.now())
+                        .createdAt(LocalDateTime.now())
                         .status(UserStatus.ACTIVE)
                         .build();
                 userRepository.save(user);
@@ -64,7 +64,7 @@ public class ApplicationInitConfig {
                         .fullName("owner")
                         .phoneNumber("012345678910")
                         .language("vi")
-                        .createdAt(LocalDate.now())
+                        .createdAt(LocalDateTime.now())
                         .status(UserStatus.ACTIVE)
                         .build();
                 userRepository.save(user);

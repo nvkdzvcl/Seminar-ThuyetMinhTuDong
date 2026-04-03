@@ -58,6 +58,52 @@ Backend mac dinh:
 - port: `8080`
 - context path: `/vinhkhanhfoodtour/api`
 
+Ban cloud duoc override bang env:
+
+- `PORT`
+- `SERVER_SERVLET_CONTEXT_PATH`
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_JPA_HIBERNATE_DDL_AUTO`
+- `JWT_SIGNERKEY`
+- `FILE_UPLOAD_DIR`
+- `R2_BUCKET` (optional, but recommended on cloud)
+- `R2_PUBLIC_BASE_URL` (optional)
+- `R2_ENDPOINT` (optional)
+- `R2_ACCESS_KEY_ID` (optional)
+- `R2_SECRET_ACCESS_KEY` (optional)
+- `R2_REGION` (optional, default `auto`)
+
+Luu y:
+
+- `application.yaml` cua backend la file config duoc track trong repo.
+- Khong dua secret that vao file nay; secret phai di qua env.
+
+## Luu tru anh mon/an tren cloud (Cloudflare R2)
+
+Backend ho tro 2 che do luu anh:
+
+- R2 mode (khuyen nghi tren Railway): upload anh len R2, DB luu URL public.
+- Local mode (fallback): luu vao `${FILE_UPLOAD_DIR}` va phuc vu qua `/uploads/**`.
+
+R2 mode duoc bat khi day du cac bien sau:
+
+- `R2_BUCKET`
+- `R2_PUBLIC_BASE_URL`
+- `R2_ENDPOINT`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_REGION` (de `auto`)
+
+Neu thieu bat ky bien nao, backend se tu dong fallback local va van chay.
+
+Luu y:
+
+- Anh cu da luu local truoc do khong tu dong co tren R2.
+- Sau khi bat R2, can upload lai anh (hoac viet script migrate 1 lan).
+- Audio van dang luu local theo `FILE_UPLOAD_DIR`.
+
 ## Azure narration (shop audio TTS)
 
 Backend narration endpoint (`/shop/{id}/narration`) can cau hinh Azure Translator + Speech.
@@ -99,10 +145,144 @@ Them cac bien sau vao `apps/api-server/.env`:
 
 Neu chua cau hinh du, backend van chay theo fallback heuristic va khong crash luong tao POI.
 
+### Khong co Ollama/Qwen van chay duoc khong?
+
+Co. Tren may khong cai Ollama/Qwen, du an van chay binh thuong.
+
+- Khuyen nghi set:
+  - `LLM_PROVIDER=disabled`
+- Khi do moderation van hoat dong theo:
+  - Heuristic (bat buoc)
+  - Azure Content Safety (neu da cau hinh key)
+- Nghia la tinh nang duyet noi dung mo ta POI van dung duoc, chi giam do "hieu ngu canh" so voi khi co LLM local.
+
+### Customer map POI visibility
+
+- Customer web chi hien thi POI da duoc duyet (`PUBLISHED`).
+- Cac POI `DRAFT`, `FLAGGED`, `HIDDEN` khong duoc len ban do customer.
+
 `application.yaml` da duoc cau hinh de tu dong nap `.env` tu:
 
 - `./.env`
 - `./apps/api-server/.env`
+
+## Deploy backend len Railway
+
+Khuyen nghi deploy `apps/api-server` len Railway.
+
+Root Directory:
+
+```txt
+apps/api-server
+```
+
+Build Command:
+
+```txt
+mvn clean package -DskipTests
+```
+
+Start Command:
+
+```txt
+java -Dserver.port=$PORT -jar target/api-server-1.0.0.jar
+```
+
+Bien moi truong toi thieu:
+
+```txt
+SPRING_DATASOURCE_URL=jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+SPRING_DATASOURCE_USERNAME=${{MySQL.MYSQLUSER}}
+SPRING_DATASOURCE_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
+JWT_SIGNERKEY=<your-jwt-signer-key>
+FILE_UPLOAD_DIR=uploads
+LLM_PROVIDER=disabled
+```
+
+Neu dung Cloudflare R2 cho image (khuyen nghi):
+
+```txt
+R2_BUCKET=vkfoodtour-media
+R2_PUBLIC_BASE_URL=https://<your-public-r2-domain-or-r2.dev>
+R2_ENDPOINT=https://<your-account-id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=<your-access-key-id>
+R2_SECRET_ACCESS_KEY=<your-secret-access-key>
+R2_REGION=auto
+```
+
+Neu deploy frontend ra Internet, backend can CORS phu hop. Mac dinh backend da allow:
+
+- localhost dev ports
+- `https://*.devtunnels.ms`
+- `https://*.vercel.app`
+
+Neu dung custom domain frontend, them:
+
+```txt
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=https://your-admin-domain,https://your-customer-domain,https://your-shopowner-domain
+```
+
+## Deploy frontend len Vercel
+
+Ca 3 frontend deu la Vite app va da co `vercel.json` rewrite SPA san.
+
+### customer-web
+
+Root Directory:
+
+```txt
+apps/customer-web
+```
+
+Build settings:
+
+```txt
+Framework Preset: Vite
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+```
+
+Environment Variables:
+
+```txt
+VITE_BACKEND_API=https://<backend-domain>/vinhkhanhfoodtour/api
+VITE_DISH_IMAGE_API=https://<backend-domain>/vinhkhanhfoodtour/api/uploads/dish-images/
+VITE_SHOP_IMAGE_API=https://<backend-domain>/vinhkhanhfoodtour/api/uploads/shop-images/
+VITE_WS_API=wss://<backend-domain>/vinhkhanhfoodtour/api
+VITE_LS_ACCESS=VINH_KHANH_FOOD_TOUR_ACCESS_TOKEN
+```
+
+### shopowner-web
+
+Root Directory:
+
+```txt
+apps/shopowner-web
+```
+
+Environment Variables:
+
+```txt
+VITE_API_BASE_URL=https://<backend-domain>/vinhkhanhfoodtour/api
+VITE_CUSTOMER_WEB_URL=https://<customer-domain>
+```
+
+### admin-web
+
+Root Directory:
+
+```txt
+apps/admin-web
+```
+
+Environment Variables:
+
+```txt
+VITE_API_BASE_URL=https://<backend-domain>/vinhkhanhfoodtour/api
+VITE_CUSTOMER_WEB_URL=https://<customer-domain>
+```
 
 ## Troubleshooting nhanh
 
@@ -116,6 +296,15 @@ for /f "tokens=5" %p in ('netstat -aon ^| findstr :8080 ^| findstr LISTENING') d
 - `GET /shop/{id}/narration` tra `500` voi code `AZURE_CONFIG_MISSING`:
   - Kiem tra `apps/api-server/.env` da co du 6 bien
   - Restart backend sau khi cap nhat env
-```
+- Railway backend `502` khi vua deploy:
+  - Kiem tra `SPRING_DATASOURCE_*`
+  - Kiem tra `JWT_SIGNERKEY`
+  - Kiem tra `SPRING_JPA_HIBERNATE_DDL_AUTO=update`
+- Upload anh luc co luc khong:
+  - Neu dang luu local, image co the mat sau restart/redeploy tren cloud
+  - Khuyen nghi bat R2 env de image on dinh
+- Vercel frontend goi API bi CORS:
+  - Kiem tra backend dang dung build moi co `https://*.vercel.app`
+  - Neu dung custom domain, set `APP_CORS_ALLOWED_ORIGIN_PATTERNS`
 
 Tai lieu yeu cau hien duoc dat trong `docs/requirements`.

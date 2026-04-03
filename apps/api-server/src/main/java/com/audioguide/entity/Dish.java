@@ -29,6 +29,7 @@ public class Dish {
 
     String name;
 
+    @Column(columnDefinition = "TEXT")
     String description;
 
     Integer price;

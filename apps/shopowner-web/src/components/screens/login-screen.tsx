@@ -132,7 +132,7 @@ export function LoginScreen({
                   <Input
                     id="email"
                     type="email"
-                    placeholder="owner@gmail.com"
+                    placeholder="Nhập email"
                     className="pl-10 h-12 text-base"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
@@ -194,7 +194,7 @@ export function LoginScreen({
                   <Input
                     id="owner-name"
                     type="text"
-                    placeholder="Ví dụ: Nguyễn Văn A"
+                    placeholder="Nhập tên chủ quán"
                     className="pl-10 h-12 text-base"
                     value={registerOwnerName}
                     onChange={(event) => setRegisterOwnerName(event.target.value)}
@@ -212,7 +212,7 @@ export function LoginScreen({
                   <Input
                     id="reg-shop-name"
                     type="text"
-                    placeholder="Ví dụ: Quán Ốc Bà Sáu"
+                    placeholder="Nhập tên quán (nếu có)"
                     className="pl-10 h-12 text-base"
                     value={registerShopName}
                     onChange={(event) => setRegisterShopName(event.target.value)}
@@ -229,7 +229,7 @@ export function LoginScreen({
                   <Input
                     id="register-phone"
                     type="tel"
-                    placeholder="0912 345 678"
+                    placeholder="Nhập số điện thoại"
                     className="pl-10 h-12 text-base"
                     value={registerPhone}
                     onChange={(event) => setRegisterPhone(event.target.value)}
@@ -247,7 +247,7 @@ export function LoginScreen({
                   <Input
                     id="register-email"
                     type="email"
-                    placeholder="quanoc@email.com"
+                    placeholder="Nhập email"
                     className="pl-10 h-12 text-base"
                     value={registerEmail}
                     onChange={(event) => setRegisterEmail(event.target.value)}
@@ -264,7 +264,7 @@ export function LoginScreen({
                   <Input
                     id="register-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Tạo mật khẩu"
+                    placeholder="Nhập mật khẩu (tối thiểu 8 ký tự)"
                     className="pr-10 h-12 text-base"
                     minLength={8}
                     value={registerPassword}

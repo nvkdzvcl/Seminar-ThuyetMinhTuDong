@@ -36,7 +36,8 @@ function DishCard({
     const imageSrc = resolveMediaUrl(
         image,
         import.meta.env.VITE_DISH_IMAGE_API,
-        "https://placehold.co/600x400?text=Dish"
+        "https://placehold.co/600x400?text=Dish",
+        "uploads/dish-images"
     );
 
     const handleNavigateToShop = (shopId: number) => {
