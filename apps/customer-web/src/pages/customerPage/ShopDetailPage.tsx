@@ -76,7 +76,8 @@ function ShopDetailPage() {
     const shopImageSrc = resolveMediaUrl(
         shop?.imageName,
         import.meta.env.VITE_SHOP_IMAGE_API,
-        "https://placehold.co/1200x800?text=Shop"
+        "https://placehold.co/1200x800?text=Shop",
+        "uploads/shop-images"
     );
     const displayDescription = shop?.shortDescription || "Chưa cập nhật mô tả ngắn";
 

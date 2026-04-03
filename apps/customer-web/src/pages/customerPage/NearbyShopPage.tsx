@@ -362,7 +362,8 @@ export default function NearbyShopPage() {
     const currentShopImageSrc = resolveMediaUrl(
         currentShop?.imageName,
         import.meta.env.VITE_SHOP_IMAGE_API,
-        "https://placehold.co/800x500?text=Cua+hang"
+        "https://placehold.co/800x500?text=Cua+hang",
+        "uploads/shop-images"
     );
     const currentShopDisplayDescription =
         currentShop?.shortDescription || "Chưa cập nhật mô tả ngắn";
