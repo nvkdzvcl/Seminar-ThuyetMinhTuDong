@@ -14,6 +14,8 @@ import java.util.List;
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Integer> {
 
+    List<OrderItem> findByOrder_Id(Integer orderId);
+
     @Query("""
             SELECT i.dish.name, COALESCE(SUM(i.quantity), 0)
             FROM OrderItem i

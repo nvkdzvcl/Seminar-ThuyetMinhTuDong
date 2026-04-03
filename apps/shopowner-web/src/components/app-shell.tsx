@@ -10,6 +10,7 @@ import { ShopProfileScreen } from "./screens/shop-profile-screen"
 import { DishEditorScreen } from "./screens/dish-editor-screen"
 import { AudioManagementScreen } from "./screens/audio-management-screen"
 import { ApprovalHistoryScreen } from "./screens/approval-history-screen"
+import { OrderManagementScreen } from "./screens/order-management-screen"
 import { getPoiApprovalSummary, submitPoiRegistration } from "@/services/poi-approval-service"
 import { createShop, getMyShop, getShopTypes, updateMyShop, type CreateShopPayload, type ShopTypeOption } from "@/services/shop-service"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ type Screen =
   | "shop-profile" 
   | "dish-editor"
   | "audio-management"
+  | "order-management"
   | "approval-history"
 
 type Tab = "dashboard" | "menu" | "qr" | "insights"
@@ -270,6 +272,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     switch (currentScreen) {
       case "dashboard":
       case "shop-profile":
+      case "order-management":
       case "approval-history":
         return "dashboard"
       case "menu":
@@ -606,6 +609,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
             poiApprovalStatus={poiApprovalStatus}
           />
         )
+      case "order-management":
+        return <OrderManagementScreen shopId={shopId ?? 0} />
       case "approval-history":
         return (
           <ApprovalHistoryScreen

@@ -26,12 +26,21 @@ import {
   ShieldAlert,
   UserCircle2,
   Settings,
-  LogOut
+  LogOut,
+  ReceiptText,
 } from "lucide-react"
 import { getOwnerHomeStats, type OwnerHomeStats } from "@/services/dashboard-service"
 import type { PoiApprovalStatus } from "@/components/app-shell"
 
-type Screen = "dashboard" | "menu" | "qr" | "insights" | "shop-profile" | "dish-editor" | "audio-management"
+type Screen =
+  | "dashboard"
+  | "menu"
+  | "qr"
+  | "insights"
+  | "shop-profile"
+  | "dish-editor"
+  | "audio-management"
+  | "order-management"
 
 interface DashboardScreenProps {
   onNavigate: (screen: Screen) => void
@@ -275,6 +284,17 @@ export function DashboardScreen({
               <UtensilsCrossed className="w-5 h-5 text-[oklch(0.7_0.16_55)]" />
             </div>
             <span className="text-sm font-medium text-foreground">Quản lý thực đơn</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col items-center gap-2 border-border hover:bg-secondary hover:border-primary/30"
+            onClick={() => onNavigate("order-management")}
+          >
+            <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+              <ReceiptText className="w-5 h-5 text-blue-600" />
+            </div>
+            <span className="text-sm font-medium text-foreground">Xu ly don</span>
           </Button>
 
           <Button

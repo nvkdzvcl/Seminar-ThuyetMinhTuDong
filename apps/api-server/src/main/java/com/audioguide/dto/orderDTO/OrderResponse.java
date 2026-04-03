@@ -2,11 +2,10 @@ package com.audioguide.dto.orderDTO;
 
 
 import com.audioguide.dto.orderItemDTO.OrderItemResponse;
+import com.audioguide.enums.OrderWorkflowStatus;
 import com.audioguide.enums.PaymentMethod;
 import com.audioguide.enums.PaymentStatus;
 import com.audioguide.enums.Status;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -23,11 +22,17 @@ public class OrderResponse {
     Integer id;
 
     Integer shopId;
-    Integer  totalPrice;
+    String shopName;
+
+    Integer customerId;
+    String customerName;
+
+    Integer totalPrice;
     PaymentMethod paymentMethod;
     LocalDate createdAt;
     PaymentStatus paymentStatus;
     Status status;
+    OrderWorkflowStatus orderStatus;
 
     List<OrderItemResponse> orderItems;
 }

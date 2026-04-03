@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import DishCard from "../../components/ui/DishCard";
@@ -6,13 +6,14 @@ import SectionTitle from "../../components/home/SectionTitle";
 import ShopMap from "../../components/shop/ShopMap";
 import SimplePagination from "../../components/common/SimplePagination";
 import { dishService } from "../../services/dishService";
+import { orderService } from "../../services/orderService";
 import { shopService } from "../../services/shopService";
 import type { Dish } from "../../types/dish";
 import type { ShopResponse } from "../../types/shop";
 import { useAudioPlayer } from "../../stores/useAudioPlayer";
 import { resolvePreferredLanguage } from "../../utils/language";
 import { resolveMediaUrl } from "../../utils/media";
-import { notifyError, notifyInfo, notifyWarning } from "../../utils/notify";
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from "../../utils/notify";
 import { routePath } from "../../routes/route";
 
 function resolveBackendAudioUrl(rawAudioPath?: string | null): string | undefined {
@@ -73,6 +74,9 @@ function ShopDetailPage() {
     const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
     const [activeNarrationLanguage, setActiveNarrationLanguage] = useState("en-US");
     const [needsUserGestureToPlay, setNeedsUserGestureToPlay] = useState(false);
+    const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+    const [pendingQuantities, setPendingQuantities] = useState<Record<number, number>>({});
+    const [selectedOrderItems, setSelectedOrderItems] = useState<Record<number, number>>({});
     const shopImageSrc = resolveMediaUrl(
         shop?.imageName,
         import.meta.env.VITE_SHOP_IMAGE_API,
@@ -154,6 +158,99 @@ function ShopDetailPage() {
 
     const handleViewMenu = (dishId: number) => {
         console.log("Xem món", dishId);
+    };
+
+    const selectedOrderEntries = useMemo(() => {
+        return Object.entries(selectedOrderItems)
+            .map(([dishIdRaw, quantity]) => {
+                const dishId = Number(dishIdRaw);
+                const dish = shopDishes.find((item) => item.id === dishId);
+                if (!dish || quantity <= 0) {
+                    return null;
+                }
+                return {
+                    dish,
+                    quantity,
+                };
+            })
+            .filter((entry): entry is { dish: Dish; quantity: number } => Boolean(entry));
+    }, [selectedOrderItems, shopDishes]);
+
+    const selectedOrderCount = useMemo(() => {
+        return selectedOrderEntries.reduce((total, item) => total + item.quantity, 0);
+    }, [selectedOrderEntries]);
+
+    const selectedOrderTotal = useMemo(() => {
+        return selectedOrderEntries.reduce(
+            (total, item) => total + Number(item.dish.price || 0) * item.quantity,
+            0
+        );
+    }, [selectedOrderEntries]);
+
+    const updatePendingQuantity = (dishId: number, delta: number) => {
+        setPendingQuantities((current) => {
+            const nextValue = Math.max(1, (current[dishId] ?? 1) + delta);
+            return {
+                ...current,
+                [dishId]: nextValue,
+            };
+        });
+    };
+
+    const addDishToOrderDraft = (dish: Dish) => {
+        const quantity = Math.max(1, pendingQuantities[dish.id] ?? 1);
+        setSelectedOrderItems((current) => ({
+            ...current,
+            [dish.id]: (current[dish.id] ?? 0) + quantity,
+        }));
+        setPendingQuantities((current) => ({
+            ...current,
+            [dish.id]: 1,
+        }));
+    };
+
+    const removeDishFromOrderDraft = (dishId: number) => {
+        setSelectedOrderItems((current) => {
+            const clone = { ...current };
+            delete clone[dishId];
+            return clone;
+        });
+    };
+
+    const handleCreateOrder = async () => {
+        if (!shop) {
+            return;
+        }
+
+        if (selectedOrderEntries.length === 0) {
+            notifyWarning("Vui lòng chọn ít nhất 1 món trước khi đặt.");
+            return;
+        }
+
+        try {
+            setIsCreatingOrder(true);
+            const createPayload = {
+                shopId: shop.id,
+                orderItems: selectedOrderEntries.map((item) => ({
+                    dishId: item.dish.id,
+                    quantity: item.quantity,
+                })),
+            };
+
+            const response = await orderService.createOrder(createPayload);
+            if (!response.result) {
+                throw new Error(response.message || "Không thể tạo đơn hàng.");
+            }
+
+            notifySuccess("Đặt món thành công. Quán đã nhận đơn của bạn.");
+            setSelectedOrderItems({});
+            setPendingQuantities({});
+            navigate(`${routePath.orderPage}?newOrderId=${response.result.id}`);
+        } catch (error) {
+            notifyError(resolveRequestErrorMessage(error, "Đặt món thất bại. Vui lòng thử lại."));
+        } finally {
+            setIsCreatingOrder(false);
+        }
     };
 
     const handleBackToShopList = () => {
@@ -355,31 +452,116 @@ function ShopDetailPage() {
 
                 <div ref={menuSectionRef} className="mt-8 scroll-mt-24">
                     <SectionTitle
-                        title="Món ăn của quán"
-                        subtitle="Danh sách món ăn theo quán, có phân trang"
+                        title="Mon an cua quan"
+                        subtitle="Khach co the chon nhieu mon, nhap so luong va gui don cho quan"
                     />
 
                     {shopDishes.length === 0 ? (
                         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
-                            Quán này chưa có món nào trong menu.
+                            Quan nay chua co mon nao trong menu.
                         </div>
                     ) : (
                         <>
+                            <div className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50/70 p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-900">Don mon dang chon</h3>
+                                        <p className="text-sm text-slate-600">
+                                            Chon nhieu mon va nhan Dat mon de gui cho quan.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleCreateOrder()}
+                                        disabled={isCreatingOrder || selectedOrderEntries.length === 0}
+                                        className="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {isCreatingOrder ? "Dang dat..." : "Dat mon"}
+                                    </button>
+                                </div>
+
+                                {selectedOrderEntries.length === 0 ? (
+                                    <p className="mt-3 text-sm text-slate-500">Ban chua chon mon nao.</p>
+                                ) : (
+                                    <div className="mt-3 space-y-2 rounded-2xl border border-emerald-200 bg-white p-3">
+                                        {selectedOrderEntries.map((entry) => (
+                                            <div
+                                                key={entry.dish.id}
+                                                className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 last:border-b-0 last:pb-0"
+                                            >
+                                                <div>
+                                                    <p className="text-sm font-semibold text-slate-900">{entry.dish.name}</p>
+                                                    <p className="text-xs text-slate-500">
+                                                        {entry.quantity} x {Number(entry.dish.price || 0).toLocaleString("vi-VN")}d
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeDishFromOrderDraft(entry.dish.id)}
+                                                    className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                >
+                                                    Bo
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="mt-3 flex items-center justify-between text-sm">
+                                    <span className="text-slate-600">{selectedOrderCount} mon da chon</span>
+                                    <span className="font-bold text-emerald-700">
+                                        Tam tinh: {selectedOrderTotal.toLocaleString("vi-VN")}d
+                                    </span>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                                 {shopDishes.map((dish) => (
-                                    <DishCard
-                                        key={dish.id}
-                                        shopId={dish.shopId}
-                                        id={dish.id}
-                                        image={dish.image || "https://placehold.co/600x400?text=Dish"}
-                                        dishName={dish.name}
-                                        rating={4.7}
-                                        price={dish.price}
-                                        shopName={shop.name}
-                                        onNavigate={handleNavigate}
-                                        onListenAudio={handleListenAudio}
-                                        onViewMenu={handleViewMenu}
-                                    />
+                                    <div key={dish.id} className="space-y-2">
+                                        <DishCard
+                                            shopId={dish.shopId}
+                                            id={dish.id}
+                                            image={dish.image || "https://placehold.co/600x400?text=Dish"}
+                                            dishName={dish.name}
+                                            rating={4.7}
+                                            price={dish.price}
+                                            shopName={shop.name}
+                                            onNavigate={handleNavigate}
+                                            onListenAudio={handleListenAudio}
+                                            onViewMenu={handleViewMenu}
+                                        />
+
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="inline-flex items-center overflow-hidden rounded-xl border border-slate-300">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updatePendingQuantity(dish.id, -1)}
+                                                        className="px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="min-w-10 px-2 text-center text-sm font-semibold text-slate-900">
+                                                        {Math.max(1, pendingQuantities[dish.id] ?? 1)}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updatePendingQuantity(dish.id, 1)}
+                                                        className="px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => addDishToOrderDraft(dish)}
+                                                    className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
+                                                >
+                                                    Chon mon
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
 
@@ -392,7 +574,6 @@ function ShopDetailPage() {
                         </>
                     )}
                 </div>
-
                 <div className="mt-8">
                     <SectionTitle title="Các món khác" subtitle="Gợi ý thêm từ các quán khác" />
 
@@ -420,3 +601,4 @@ function ShopDetailPage() {
 }
 
 export default ShopDetailPage;
+

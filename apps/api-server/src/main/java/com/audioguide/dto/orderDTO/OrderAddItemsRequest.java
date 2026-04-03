@@ -1,11 +1,13 @@
 package com.audioguide.dto.orderDTO;
 
-
 import com.audioguide.dto.orderItemDTO.OrderItemCreationRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 import java.util.List;
@@ -15,12 +17,8 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class OrderCreationRequest {
-
-    @NotNull(message = "SHOP_ID_NOT_BLANK")
-    Integer shopId;
+public class OrderAddItemsRequest {
 
     @NotEmpty(message = "DISH_IDS_EMPTY")
     List<@Valid OrderItemCreationRequest> orderItems;
-
 }

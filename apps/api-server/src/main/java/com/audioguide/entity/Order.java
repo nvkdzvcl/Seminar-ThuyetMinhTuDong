@@ -3,6 +3,7 @@ package com.audioguide.entity;
 
 import com.audioguide.enums.PaymentMethod;
 import com.audioguide.enums.PaymentStatus;
+import com.audioguide.enums.OrderWorkflowStatus;
 import com.audioguide.enums.Status;
 import jakarta.persistence.*;
 import lombok.*;
@@ -43,6 +44,10 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     Status status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_status", length = 32)
+    OrderWorkflowStatus orderStatus;
 
     @OneToMany(mappedBy = "order", fetch = FetchType.EAGER)
     List<OrderItem> orderItems;

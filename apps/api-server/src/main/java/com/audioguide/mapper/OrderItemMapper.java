@@ -14,6 +14,7 @@ public interface OrderItemMapper {
 
 
     @Mapping(target = "dishId", source = "orderItem.dish.id")
+    @Mapping(target = "dishName", source = "orderItem.dish.name")
     @Mapping(target = "orderId", source = "orderItem.order.id")
     OrderItemResponse toOrderItemResponse(OrderItem orderItem);
 

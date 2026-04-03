@@ -9,9 +9,18 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
+
+    List<Order> findByCustomer_IdOrderByIdDesc(Integer customerId);
+
+    List<Order> findByShop_Owner_IdOrderByIdDesc(Integer ownerId);
+
+    Optional<Order> findByIdAndCustomer_Id(Integer orderId, Integer customerId);
+
+    Optional<Order> findByIdAndShop_Owner_Id(Integer orderId, Integer ownerId);
 
     @Query("""
             SELECT o.createdAt, COUNT(o.id)

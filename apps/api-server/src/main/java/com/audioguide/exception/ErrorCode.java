@@ -49,9 +49,15 @@ public enum ErrorCode {
     AZURE_CONFIG_MISSING("AZURE_CONFIG_MISSING", HttpStatus.INTERNAL_SERVER_ERROR, "Azure configuration is missing"),
     AZURE_TTS_FAILED("AZURE_TTS_FAILED", HttpStatus.BAD_GATEWAY, "Cannot generate narration audio right now"),
     DISH_NOT_FOUND( "DISH_NOT_FOUND", HttpStatus.NOT_FOUND, "Dish not found"),
+    DISH_NOT_AVAILABLE("DISH_NOT_AVAILABLE", HttpStatus.BAD_REQUEST, "Dish is unavailable or out of stock"),
+    DISH_ID_NOT_BLANK("DISH_ID_NOT_BLANK", HttpStatus.BAD_REQUEST, "Dish ID is required"),
+    ORDER_ITEM_QUANTITY_INVALID("ORDER_ITEM_QUANTITY_INVALID", HttpStatus.BAD_REQUEST, "Quantity must be at least 1"),
     DISH_IDS_EMPTY( "DISH_IDS_EMPTY", HttpStatus.BAD_REQUEST, "Dish IDs list cannot be empty"),
     SHOP_ID_NOT_BLANK( "SHOP_ID_NOT_BLANK", HttpStatus.BAD_REQUEST, "Shop ID is required for dish creation"),
+    SHOP_NOT_ACTIVE("SHOP_NOT_ACTIVE", HttpStatus.BAD_REQUEST, "Shop is not active"),
     ORDER_NOT_FOUND( "ORDER_NOT_FOUND", HttpStatus.NOT_FOUND, "Order not found"),
+    ORDER_STATUS_INVALID_TRANSITION("ORDER_STATUS_INVALID_TRANSITION", HttpStatus.BAD_REQUEST, "Order status transition is invalid"),
+    ORDER_CUSTOMER_CANNOT_CANCEL_PREPARING("ORDER_CUSTOMER_CANNOT_CANCEL_PREPARING", HttpStatus.BAD_REQUEST, "Customer cannot cancel while order is preparing"),
 
 
     INVALID_LAT_LNG("INVALID_LAT_LNG", HttpStatus.BAD_REQUEST, "Latitude hoặc longitude không hợp lệ"),
