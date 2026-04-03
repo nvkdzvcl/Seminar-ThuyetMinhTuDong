@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -179,6 +180,21 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(ErrorCode.FORBIDDEN.getStatusCode())
+                .body(apiResponse);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException exception
+    ) {
+        log.error("File upload too large: {}", exception.getMessage());
+
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setCode(4013);
+        apiResponse.setMessage("File size exceeds the maximum allowed limit");
+
+        return ResponseEntity
+                .status(413)
                 .body(apiResponse);
     }
 

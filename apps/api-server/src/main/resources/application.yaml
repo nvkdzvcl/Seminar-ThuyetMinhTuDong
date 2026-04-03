@@ -43,7 +43,7 @@ springdoc:
         path: /api-docs
 
 file:
-    upload-dir: ${FILE_UPLOAD_DIR:D:/Study/SGU/NAM_3/Ki_2/SEMINAR/VinhKhanh_Audio_Guide/backend/uploads/}
+    upload-dir: ${FILE_UPLOAD_DIR:./uploads/}
 
 r2:
   bucket: ${R2_BUCKET:}

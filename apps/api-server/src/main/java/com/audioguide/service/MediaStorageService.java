@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -16,6 +17,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -44,14 +46,24 @@ public class MediaStorageService {
     String publicBaseUrl;
 
     public String storeImage(MultipartFile file, Path localDir, String remoteFolder) {
+        log.info("storeImage called. fileSize={}, originalName={}, remoteFolder={}, r2Configured={}",
+                file.getSize(), file.getOriginalFilename(), remoteFolder, isR2Configured());
+
         if (isR2Configured()) {
             try {
                 return uploadToR2(file, remoteFolder);
             } catch (Exception exception) {
                 log.warn("R2 unavailable, falling back to local storage. reason={}", exception.getMessage());
             }
+        } else {
+            log.warn("R2 is NOT configured. bucket={}, endpoint={}, accessKeyId={}, publicBaseUrl={}",
+                    hasText(normalizeConfigValue(bucket)),
+                    hasText(normalizeConfigValue(endpoint)),
+                    hasText(normalizeConfigValue(accessKeyId)),
+                    hasText(normalizeConfigValue(publicBaseUrl)));
         }
 
+        log.info("Falling back to local storage. localDir={}", localDir);
         return FileStoreUtil.saveKeepingNameWithSuffix(file, localDir);
     }
 
@@ -60,6 +72,9 @@ public class MediaStorageService {
         String resolvedEndpoint = normalizeConfigValue(endpoint);
         String key = buildObjectKey(file, remoteFolder);
         String contentType = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
+
+        log.info("Uploading to R2. endpoint={}, bucket={}, key={}, contentType={}, size={}",
+                resolvedEndpoint, resolvedBucket, key, contentType, file.getSize());
 
         try (S3Client s3Client = buildS3Client();
              InputStream inputStream = file.getInputStream()) {
@@ -92,6 +107,10 @@ public class MediaStorageService {
                 )
                 .region(Region.of(resolveRegion()))
                 .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
+                .overrideConfiguration(ClientOverrideConfiguration.builder()
+                        .apiCallTimeout(Duration.ofSeconds(30))
+                        .apiCallAttemptTimeout(Duration.ofSeconds(15))
+                        .build())
                 .build();
     }
 
