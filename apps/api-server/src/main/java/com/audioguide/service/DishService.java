@@ -16,7 +16,6 @@ import com.audioguide.repository.PoiMenuItemRepository;
 import com.audioguide.repository.PoiRepository;
 import com.audioguide.repository.ShopRepository;
 import com.audioguide.repository.UserRepository;
-import com.audioguide.utils.FileStoreUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -46,6 +45,7 @@ public class DishService {
     final PoiRepository poiRepository;
     final PoiMenuItemRepository poiMenuItemRepository;
     final DishMapper dishMapper;
+    final MediaStorageService mediaStorageService;
 
     @Value("${file.upload-dir}")
     String uploadDir;
@@ -151,7 +151,7 @@ public class DishService {
         }
 
         Path imageDir = Path.of(uploadDir, "dish-images");
-        String image = FileStoreUtil.saveKeepingNameWithSuffix(file, imageDir);
+        String image = mediaStorageService.storeImage(file, imageDir, "dish-images");
 
         dish.setImage(image);
 

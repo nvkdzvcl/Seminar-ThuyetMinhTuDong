@@ -45,6 +45,14 @@ springdoc:
 file:
     upload-dir: ${FILE_UPLOAD_DIR:D:/Study/SGU/NAM_3/Ki_2/SEMINAR/VinhKhanh_Audio_Guide/backend/uploads/}
 
+r2:
+  bucket: ${R2_BUCKET:}
+  public-base-url: ${R2_PUBLIC_BASE_URL:}
+  endpoint: ${R2_ENDPOINT:}
+  access-key-id: ${R2_ACCESS_KEY_ID:}
+  secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  region: ${R2_REGION:auto}
+
 azure:
   translator:
     key: ${AZURE_TRANSLATOR_KEY:}
