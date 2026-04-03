@@ -45,7 +45,11 @@ public class MediaStorageService {
 
     public String storeImage(MultipartFile file, Path localDir, String remoteFolder) {
         if (isR2Configured()) {
-            return uploadToR2(file, remoteFolder);
+            try {
+                return uploadToR2(file, remoteFolder);
+            } catch (Exception exception) {
+                log.warn("R2 unavailable, falling back to local storage. reason={}", exception.getMessage());
+            }
         }
 
         return FileStoreUtil.saveKeepingNameWithSuffix(file, localDir);
