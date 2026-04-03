@@ -452,22 +452,22 @@ function ShopDetailPage() {
 
                 <div ref={menuSectionRef} className="mt-8 scroll-mt-24">
                     <SectionTitle
-                        title="Mon an cua quan"
-                        subtitle="Khach co the chon nhieu mon, nhap so luong va gui don cho quan"
+                        title="Món ăn của quán"
+                        subtitle="Khách có thể chọn nhiều món, nhập số lượng và gửi đơn cho quán"
                     />
 
                     {shopDishes.length === 0 ? (
                         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
-                            Quan nay chua co mon nao trong menu.
+                            Quán này chưa có món nào trong menu.
                         </div>
                     ) : (
                         <>
                             <div className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50/70 p-4">
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div>
-                                        <h3 className="text-base font-bold text-slate-900">Don mon dang chon</h3>
+                                        <h3 className="text-base font-bold text-slate-900">Đơn món đang chọn</h3>
                                         <p className="text-sm text-slate-600">
-                                            Chon nhieu mon va nhan Dat mon de gui cho quan.
+                                            Chọn nhiều món và nhấn Đặt món để gửi cho quán.
                                         </p>
                                     </div>
                                     <button
@@ -476,12 +476,12 @@ function ShopDetailPage() {
                                         disabled={isCreatingOrder || selectedOrderEntries.length === 0}
                                         className="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                                     >
-                                        {isCreatingOrder ? "Dang dat..." : "Dat mon"}
+                                        {isCreatingOrder ? "Đang đặt..." : "Đặt món"}
                                     </button>
                                 </div>
 
                                 {selectedOrderEntries.length === 0 ? (
-                                    <p className="mt-3 text-sm text-slate-500">Ban chua chon mon nao.</p>
+                                    <p className="mt-3 text-sm text-slate-500">Bạn chưa chọn món nào.</p>
                                 ) : (
                                     <div className="mt-3 space-y-2 rounded-2xl border border-emerald-200 bg-white p-3">
                                         {selectedOrderEntries.map((entry) => (
@@ -492,7 +492,7 @@ function ShopDetailPage() {
                                                 <div>
                                                     <p className="text-sm font-semibold text-slate-900">{entry.dish.name}</p>
                                                     <p className="text-xs text-slate-500">
-                                                        {entry.quantity} x {Number(entry.dish.price || 0).toLocaleString("vi-VN")}d
+                                                        {entry.quantity} x {Number(entry.dish.price || 0).toLocaleString("vi-VN")}đ
                                                     </p>
                                                 </div>
                                                 <button
@@ -500,7 +500,7 @@ function ShopDetailPage() {
                                                     onClick={() => removeDishFromOrderDraft(entry.dish.id)}
                                                     className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
                                                 >
-                                                    Bo
+                                                    Bỏ
                                                 </button>
                                             </div>
                                         ))}
@@ -508,9 +508,9 @@ function ShopDetailPage() {
                                 )}
 
                                 <div className="mt-3 flex items-center justify-between text-sm">
-                                    <span className="text-slate-600">{selectedOrderCount} mon da chon</span>
+                                    <span className="text-slate-600">{selectedOrderCount} món đã chọn</span>
                                     <span className="font-bold text-emerald-700">
-                                        Tam tinh: {selectedOrderTotal.toLocaleString("vi-VN")}d
+                                        Tạm tính: {selectedOrderTotal.toLocaleString("vi-VN")}đ
                                     </span>
                                 </div>
                             </div>
@@ -557,7 +557,7 @@ function ShopDetailPage() {
                                                     onClick={() => addDishToOrderDraft(dish)}
                                                     className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
                                                 >
-                                                    Chon mon
+                                                    Chọn món
                                                 </button>
                                             </div>
                                         </div>

@@ -13,19 +13,19 @@ import { notifyError, notifyInfo, notifySuccess } from "../../utils/notify";
 type OrderTab = "ALL" | "WAIT" | "PREPARING" | "COMPLETED" | "CANCELLED";
 
 const tabs: Array<{ id: OrderTab; label: string }> = [
-    { id: "ALL", label: "Tat ca" },
-    { id: "WAIT", label: "Cho xac nhan" },
-    { id: "PREPARING", label: "Dang chuan bi" },
-    { id: "COMPLETED", label: "Hoan tat" },
-    { id: "CANCELLED", label: "Da huy" },
+    { id: "ALL", label: "Tất cả" },
+    { id: "WAIT", label: "Chờ xác nhận" },
+    { id: "PREPARING", label: "Đang chuẩn bị" },
+    { id: "COMPLETED", label: "Hoàn tất" },
+    { id: "CANCELLED", label: "Đã hủy" },
 ];
 
 const statusLabels: Record<OrderWorkflowStatus, string> = {
-    WAIT: "Cho xac nhan",
-    PREPARING: "Dang chuan bi",
-    COMPLETED: "Hoan tat",
-    CUSTOMER_CANCELLED: "Ban da huy",
-    SHOP_CANCELLED: "Quan da huy",
+    WAIT: "Chờ xác nhận",
+    PREPARING: "Đang chuẩn bị",
+    COMPLETED: "Hoàn tất",
+    CUSTOMER_CANCELLED: "Bạn đã hủy",
+    SHOP_CANCELLED: "Quán đã hủy",
 };
 
 const statusClasses: Record<OrderWorkflowStatus, string> = {
@@ -111,7 +111,7 @@ function OrderPage() {
                 const previousStatus = previousStatusesRef.current[order.id];
                 if (previousStatus && previousStatus !== order.orderStatus) {
                     notifyInfo(
-                        `Don #${order.id} da chuyen sang trang thai: ${
+                        `Đơn #${order.id} đã chuyển sang trạng thái: ${
                             statusLabels[order.orderStatus] || order.orderStatus
                         }`
                     );
@@ -121,7 +121,7 @@ function OrderPage() {
             previousStatusesRef.current = nextStatusMap;
             setOrders(nextOrders);
         } catch (error) {
-            setErrorMessage(resolveOrderErrorMessage(error, "Khong the tai danh sach don hang."));
+            setErrorMessage(resolveOrderErrorMessage(error, "Không thể tải danh sách đơn hàng."));
         } finally {
             if (!silent) {
                 setIsLoading(false);
@@ -154,7 +154,7 @@ function OrderPage() {
         announcedNewOrderRef.current = true;
         setExpandedOrderId(createdOrder.id);
         setActiveTab("ALL");
-        notifySuccess(`Da tao don #${createdOrder.id}. Ban co the theo doi trang thai tai day.`);
+        notifySuccess(`Đã tạo đơn #${createdOrder.id}. Bạn có thể theo dõi trạng thái tại đây.`);
     }, [hasNewOrderParam, newOrderIdParam, orders]);
 
     const filteredOrders = useMemo(() => {
@@ -194,7 +194,7 @@ function OrderPage() {
             setEditingOrderId(order.id);
             const dishes = await ensureShopDishesLoaded(order.shopId);
             if (dishes.length === 0) {
-                notifyInfo("Quan hien khong co mon active de goi them.");
+                notifyInfo("Quán hiện không có món đang bán để gọi thêm.");
                 setEditingOrderId(null);
                 return;
             }
@@ -208,7 +208,7 @@ function OrderPage() {
                 [order.id]: Math.max(1, current[order.id] ?? 1),
             }));
         } catch (error) {
-            notifyError(resolveOrderErrorMessage(error, "Khong the tai menu de goi them mon."));
+            notifyError(resolveOrderErrorMessage(error, "Không thể tải menu để gọi thêm món."));
             setEditingOrderId(null);
         }
     };
@@ -218,7 +218,7 @@ function OrderPage() {
         const quantity = Math.max(1, selectedQuantityByOrder[order.id] ?? 1);
 
         if (!dishId) {
-            notifyInfo("Vui long chon mon can goi them.");
+            notifyInfo("Vui lòng chọn món cần gọi thêm.");
             return;
         }
 
@@ -233,11 +233,11 @@ function OrderPage() {
                 ],
             });
 
-            notifySuccess("Da goi them mon thanh cong.");
+            notifySuccess("Đã gọi thêm món thành công.");
             setEditingOrderId(null);
             await loadOrders(true);
         } catch (error) {
-            notifyError(resolveOrderErrorMessage(error, "Khong the goi them mon cho don hang."));
+            notifyError(resolveOrderErrorMessage(error, "Không thể gọi thêm món cho đơn hàng."));
         } finally {
             setAddingOrderId(null);
         }
@@ -247,10 +247,10 @@ function OrderPage() {
         try {
             setCancelingOrderId(order.id);
             await orderService.cancelByCustomer(order.id);
-            notifySuccess("Ban da huy don hang.");
+            notifySuccess("Bạn đã hủy đơn hàng.");
             await loadOrders(true);
         } catch (error) {
-            notifyError(resolveOrderErrorMessage(error, "Khong the huy don hang."));
+            notifyError(resolveOrderErrorMessage(error, "Không thể hủy đơn hàng."));
         } finally {
             setCancelingOrderId(null);
         }
@@ -277,7 +277,7 @@ function OrderPage() {
 
             {isLoading ? (
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
-                    Dang tai don hang...
+                    Đang tải đơn hàng...
                 </div>
             ) : null}
 
@@ -289,7 +289,7 @@ function OrderPage() {
 
             {!isLoading && !errorMessage && filteredOrders.length === 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
-                    Chua co don hang nao phu hop bo loc.
+                    Chưa có đơn hàng nào phù hợp bộ lọc.
                 </div>
             ) : null}
 
@@ -307,7 +307,7 @@ function OrderPage() {
                                 <div>
                                     <p className="text-sm text-slate-500">{formatDate(order.createdAt)}</p>
                                     <h3 className="text-base font-semibold text-slate-900">{order.shopName}</h3>
-                                    <p className="text-xs text-slate-500">Ma don: #{order.id}</p>
+                                    <p className="text-xs text-slate-500">Mã đơn: #{order.id}</p>
                                 </div>
                                 <span
                                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -319,9 +319,9 @@ function OrderPage() {
                             </div>
 
                             <div className="mb-3 flex items-center justify-between text-sm">
-                                <span className="text-slate-500">Tong tien</span>
+                                <span className="text-slate-500">Tổng tiền</span>
                                 <span className="font-bold text-emerald-700">
-                                    {Number(order.totalPrice || 0).toLocaleString("vi-VN")}d
+                                    {Number(order.totalPrice || 0).toLocaleString("vi-VN")}đ
                                 </span>
                             </div>
 
@@ -331,7 +331,7 @@ function OrderPage() {
                                     onClick={() => setExpandedOrderId((prev) => (prev === order.id ? null : order.id))}
                                     className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700"
                                 >
-                                    {isExpanded ? "An chi tiet" : "Xem chi tiet"}
+                                    {isExpanded ? "Ẩn chi tiết" : "Xem chi tiết"}
                                 </button>
 
                                 {isCancelableByCustomer(order) ? (
@@ -341,7 +341,7 @@ function OrderPage() {
                                         disabled={cancelingOrderId === order.id}
                                         className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                                     >
-                                        {cancelingOrderId === order.id ? "Dang huy..." : "Huy don"}
+                                        {cancelingOrderId === order.id ? "Đang hủy..." : "Hủy đơn"}
                                     </button>
                                 ) : (
                                     <div className="hidden sm:block" />
@@ -353,7 +353,7 @@ function OrderPage() {
                                         onClick={() => void startAddMoreItems(order)}
                                         className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
                                     >
-                                        Goi them mon
+                                        Gọi thêm món
                                     </button>
                                 ) : (
                                     <div className="hidden sm:block" />
@@ -368,17 +368,17 @@ function OrderPage() {
                                             className="flex items-center justify-between gap-3 py-1.5 text-sm"
                                         >
                                             <span className="text-slate-700">
-                                                {item.dishName || `Mon #${item.dishId}`} x{item.quantity}
+                                                {item.dishName || `Món #${item.dishId}`} x{item.quantity}
                                             </span>
                                             <span className="font-semibold text-slate-900">
-                                                {Number(item.pricePerUnit * item.quantity).toLocaleString("vi-VN")}d
+                                                {Number(item.pricePerUnit * item.quantity).toLocaleString("vi-VN")}đ
                                             </span>
                                         </div>
                                     ))}
 
                                     {isEditing && canAddMoreItems(order) ? (
                                         <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
-                                            <p className="mb-2 text-sm font-semibold text-slate-800">Them mon vao don</p>
+                                            <p className="mb-2 text-sm font-semibold text-slate-800">Thêm món vào đơn</p>
 
                                             <div className="grid gap-2 sm:grid-cols-2">
                                                 <select
@@ -393,7 +393,7 @@ function OrderPage() {
                                                 >
                                                     {orderDishes.map((dish) => (
                                                         <option key={dish.id} value={dish.id}>
-                                                            {dish.name} - {Number(dish.price || 0).toLocaleString("vi-VN")}d
+                                                            {dish.name} - {Number(dish.price || 0).toLocaleString("vi-VN")}đ
                                                         </option>
                                                     ))}
                                                 </select>
@@ -418,7 +418,7 @@ function OrderPage() {
                                                     onClick={() => setEditingOrderId(null)}
                                                     className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700"
                                                 >
-                                                    Dong
+                                                    Đóng
                                                 </button>
                                                 <button
                                                     type="button"
@@ -426,7 +426,7 @@ function OrderPage() {
                                                     disabled={addingOrderId === order.id || orderDishes.length === 0}
                                                     className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                                                 >
-                                                    {addingOrderId === order.id ? "Dang them..." : "Xac nhan them"}
+                                                    {addingOrderId === order.id ? "Đang thêm..." : "Xác nhận thêm"}
                                                 </button>
                                             </div>
                                         </div>
