@@ -97,6 +97,12 @@ const navItems: NavItem[] = [
         isActive: (pathname) => pathname === routePath.orderPage || pathname.startsWith("/order/"),
     },
     {
+        label: "Tour",
+        to: routePath.tourSuggestPage,
+        icon: OrderIcon,
+        isActive: (pathname) => pathname === routePath.tourSuggestPage || pathname.startsWith("/tour/"),
+    },
+    {
         label: "Hồ sơ",
         to: routePath.profilePage,
         icon: ProfileIcon,

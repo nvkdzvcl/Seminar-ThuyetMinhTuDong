@@ -42,7 +42,7 @@ public class TourPlan {
     Status status;
 
 
-    @OneToMany(mappedBy = "tourPlan", fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "tourPlan", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     List<TourStop> tourStops;
     
 

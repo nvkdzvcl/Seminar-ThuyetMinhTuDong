@@ -15,7 +15,7 @@ import java.util.List;
 public class TourStopResponse {
 
 
-    Integer Id;
+    Integer id;
     Integer tourPlanId;
     Integer shopId;
     Integer stopIndex;

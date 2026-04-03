@@ -8,6 +8,8 @@ import ScanShopQrPage from "../pages/customerPage/ScanShopQrPage";
 import ShopDetailPage from "../pages/customerPage/ShopDetailPage";
 import OrderPage from "../pages/customerPage/OrderPage";
 import ProfilePage from "../pages/customerPage/ProfilePage";
+import TourDetailPage from "../pages/customerPage/TourDetailPage";
+import TourSuggestionPage from "../pages/customerPage/TourSuggestionPage";
 
 
 const routePath = {
@@ -25,7 +27,9 @@ const routePath = {
     scanShopQrRootPage: "/scan-qr",
     orderPage: "/order",
     profilePage: "/profile",
-
+    tourDetailPage: "/tour/:tourId",
+    tourSuggestPage: "/tour",
+    
    
 };
 
@@ -138,6 +142,23 @@ const cusPublicRoutes = [
 
 
     
+     {
+        path: routePath.tourDetailPage,
+        label: "Chi tiết tour",
+        isContent: true,
+        type: "CUSTOMER",
+        component: TourDetailPage,
+        isPrivate: false,
+    },
+
+    {
+        path: routePath.tourSuggestPage,
+        label: "Tour",
+        isContent: true,
+        type: "CUSTOMER",
+        component: TourSuggestionPage,
+        isPrivate: false,
+    }
 
 
    

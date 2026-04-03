@@ -29,7 +29,7 @@ public class TourStop {
 
     Integer timeToSpendInMinutes;
 
-    @OneToMany(mappedBy = "tourStop", fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "tourStop", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     List<TourStopItem> tourStopItems;
 
     @ManyToOne(fetch = FetchType.LAZY)
