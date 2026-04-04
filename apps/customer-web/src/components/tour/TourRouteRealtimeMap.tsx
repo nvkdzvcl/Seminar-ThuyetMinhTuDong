@@ -8,6 +8,8 @@ import { locationSocketService } from "../../services/locationSocket";
 import { icons } from "../../types/icons";
 import type { ShopResponse } from "../../types/shop";
 import type { ApiResponse, PagingDto } from "../../types/api";
+import { getPoiMarkerIcon, resolvePoiCategoryKey } from "../../utils/poiMap";
+import type { PoiCategoryKey } from "../../types/poi";
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -22,6 +24,54 @@ type TourRouteRealtimeMapProps = {
     shops: ShopResponse[];
     className?: string;
 };
+
+const SHOP_TYPE_CATEGORY_BY_ID: Record<number, PoiCategoryKey> = {
+    1: "hai_san",
+    2: "pho",
+    3: "do_nuong",
+    4: "giai_khat",
+};
+
+const SHOP_TYPE_CATEGORY_BY_NAME: Record<string, PoiCategoryKey> = {
+    SEAFOOD: "hai_san",
+    NOODLE: "pho",
+    SNACK: "do_nuong",
+    DRINK: "giai_khat",
+};
+
+function resolveShopCategoryKey(shop: ShopResponse): PoiCategoryKey | null {
+    const categoryById =
+        typeof shop.shopTypeId === "number"
+            ? SHOP_TYPE_CATEGORY_BY_ID[shop.shopTypeId]
+            : undefined;
+    if (categoryById) {
+        return categoryById;
+    }
+
+    const normalizedTypeName = shop.shopTypeName?.trim().toUpperCase();
+    if (normalizedTypeName && SHOP_TYPE_CATEGORY_BY_NAME[normalizedTypeName]) {
+        return SHOP_TYPE_CATEGORY_BY_NAME[normalizedTypeName];
+    }
+
+    return resolvePoiCategoryKey(
+        shop.shopTypeName,
+        shop.shortDescription,
+        shop.description,
+        shop.name
+    );
+}
+
+function resolveShopMarkerIcon(shop: ShopResponse) {
+    const categoryKey = resolveShopCategoryKey(shop);
+    if (!categoryKey) {
+        return icons.locationShopMarker;
+    }
+
+    return getPoiMarkerIcon({
+        categoryKey,
+        status: "PUBLISHED",
+    });
+}
 
 function RecenterMap({ center }: { center: PositionTuple }) {
     const map = useMap();
@@ -258,7 +308,7 @@ export default function TourRouteRealtimeMap({ shops, className }: TourRouteReal
                     {shops.map((shop, index) => (
                         <Marker
                             key={shop.id}
-                            icon={ icons.locationShopMarker }
+                            icon={resolveShopMarkerIcon(shop)}
                             position={[shop.lat, shop.lng]}
                         >
                             <Popup>
@@ -274,7 +324,7 @@ export default function TourRouteRealtimeMap({ shops, className }: TourRouteReal
                     ))}
 
                     {otherRealtimeShops.map((shop) => (
-                        <Marker key={`nearby-${shop.id}`} icon={icons.shopIconMarker} position={[shop.lat, shop.lng]}>
+                        <Marker key={`nearby-${shop.id}`} icon={resolveShopMarkerIcon(shop)} position={[shop.lat, shop.lng]}>
                             <Popup>
                                 <div className="min-w-[180px]">
                                     <div className="font-semibold">Quán realtime gần bạn</div>

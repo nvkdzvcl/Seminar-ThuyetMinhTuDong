@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
 @RequestMapping("/tour-plan")
@@ -53,6 +54,14 @@ public class TourPlanController {
         return ApiResponse.<PagingDto<TourPlanResponse>>builder()
                 .message("Tour plans retrieved successfully")
                 .result(tourPlanService.getAllTourPlans(page, size, status))
+                .build();
+    }
+
+    @DeleteMapping("/{tourPlanId}")
+    public ApiResponse<Void> deleteTourPlan(@PathVariable Integer tourPlanId) {
+        tourPlanService.deleteTourPlan(tourPlanId);
+        return ApiResponse.<Void>builder()
+                .message("Tour plan deleted successfully")
                 .build();
     }
 }

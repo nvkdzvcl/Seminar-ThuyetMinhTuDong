@@ -510,4 +510,22 @@ public class TourPlanService {
                 tourPlanPage.getTotalPages()
         );
     }
+
+    public void deleteTourPlan(Integer tourPlanId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Integer customerId = Integer.parseInt(authentication.getName());
+
+        userRepository.findById(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        TourPlan tourPlan = tourPlanRepository.findByIdAndCustomerId(tourPlanId, customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.TOUR_PLAN_NOT_FOUND));
+
+        if (tourPlan.getStatus() == Status.DELETED) {
+            return;
+        }
+
+        tourPlan.setStatus(Status.DELETED);
+        tourPlanRepository.save(tourPlan);
+    }
 }
