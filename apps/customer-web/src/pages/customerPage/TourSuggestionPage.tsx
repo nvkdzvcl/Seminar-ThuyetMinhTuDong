@@ -47,7 +47,6 @@ function TourSuggestionPage() {
         timeTotalMin: 120,
         peopleCount: 2,
         tourStopCount: 3,
-        shopTypeId: null,
     });
 
     useEffect(() => {
@@ -99,9 +98,17 @@ function TourSuggestionPage() {
     const handleCreateTour = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        const requestedStopCount = form.tourStopCount;
         const resultAction = await dispatch(createSuggestedTourThunk(form));
         if (createSuggestedTourThunk.fulfilled.match(resultAction)) {
-            alert("Đã tạo tour thành công");
+            const generatedStopCount = resultAction.payload.tourStopCount ?? requestedStopCount;
+            if (generatedStopCount < requestedStopCount) {
+                alert(
+                    `Không đủ dữ liệu để tạo ${requestedStopCount} điểm dừng. Hệ thống đã tự tạo tour ${generatedStopCount} điểm dừng phù hợp hơn.`
+                );
+            } else {
+                alert("Đã tạo tour thành công");
+            }
             dispatch(
                 fetchTourPlansThunk({
                     page,

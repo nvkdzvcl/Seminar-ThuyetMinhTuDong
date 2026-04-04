@@ -47,17 +47,46 @@ export const createSuggestedTourThunk = createAsyncThunk<
     TourPlanCreationRequest,
     { rejectValue: string }
 >("tour/createSuggestedTour", async (payload, { rejectWithValue }) => {
-    try {
-        const res = await tourPlanService.createSuggestedTour(payload);
-        if (!res.result) {
-            return rejectWithValue("Không tạo được tour");
+    const basePayload: TourPlanCreationRequest = {
+        budgetTotal: Math.max(1, Math.floor(payload.budgetTotal ?? 0)),
+        timeTotalMin: Math.max(1, Math.floor(payload.timeTotalMin ?? 0)),
+        peopleCount: Math.max(1, Math.floor(payload.peopleCount ?? 0)),
+        tourStopCount: Math.max(1, Math.floor(payload.tourStopCount ?? 0)),
+        ...(payload.shopTypeId == null ? {} : { shopTypeId: payload.shopTypeId }),
+    };
+
+    let currentStopCount = basePayload.tourStopCount;
+    let lastErrorMessage = "Không tạo được tour";
+
+    while (currentStopCount >= 1) {
+        try {
+            const requestPayload: TourPlanCreationRequest = {
+                ...basePayload,
+                tourStopCount: currentStopCount,
+            };
+
+            const res = await tourPlanService.createSuggestedTour(requestPayload);
+            if (!res.result) {
+                return rejectWithValue("Không tạo được tour");
+            }
+            return res.result;
+        } catch (err: any) {
+            const errorCode = err?.response?.data?.code;
+            lastErrorMessage =
+                err?.response?.data?.message ?? err?.message ?? "Không tạo được tour";
+
+            const canRetryWithLessStops =
+                errorCode === "REQUEST_BODY_INVALID" && currentStopCount > 1;
+
+            if (!canRetryWithLessStops) {
+                return rejectWithValue(lastErrorMessage);
+            }
+
+            currentStopCount -= 1;
         }
-        return res.result;
-    } catch (err: any) {
-        return rejectWithValue(
-            err?.response?.data?.message ?? err?.message ?? "Không tạo được tour"
-        );
     }
+
+    return rejectWithValue(lastErrorMessage);
 });
 
 export const fetchTourPlansThunk = createAsyncThunk<
