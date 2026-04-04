@@ -14,6 +14,7 @@ import { ApprovalHistoryScreen } from "./screens/approval-history-screen"
 import { OrderManagementScreen } from "./screens/order-management-screen"
 import { getPoiApprovalSummary, submitPoiRegistration } from "@/services/poi-approval-service"
 import { createShop, getMyShop, getShopTypes, updateMyShop, type CreateShopPayload, type ShopTypeOption } from "@/services/shop-service"
+import { getCurrentUser } from "@/services/auth-service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -143,6 +144,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const [shopDetailedDescription, setShopDetailedDescription] = useState("")
   const [shopLat, setShopLat] = useState<number | null>(null)
   const [shopLng, setShopLng] = useState<number | null>(null)
+  const [ownerPhoneNumber, setOwnerPhoneNumber] = useState("")
+  const [ownerEmail, setOwnerEmail] = useState("")
   const [dishReloadToken, setDishReloadToken] = useState(0)
   const [isSavingShop, setIsSavingShop] = useState(false)
   const [isCreatingShop, setIsCreatingShop] = useState(false)
@@ -182,6 +185,17 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
     }
   }
 
+  const loadOwnerAccount = async () => {
+    try {
+      const owner = await getCurrentUser()
+      setOwnerPhoneNumber(owner.phoneNumber || "")
+      setOwnerEmail(owner.email || "")
+    } catch {
+      setOwnerPhoneNumber("")
+      setOwnerEmail("")
+    }
+  }
+
   const loadShopTypes = async () => {
     try {
       const types = await getShopTypes()
@@ -216,6 +230,7 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
   const loadOwnerContext = async () => {
     setIsLoadingOwnerContext(true)
     try {
+      await loadOwnerAccount()
       const shop = await getMyShop()
       if (!shop) {
         setShopId(null)
@@ -553,6 +568,8 @@ export function AppShell({ initialScreen = "dashboard", onLogout }: AppShellProp
             initialDetailedDescription={shopDetailedDescription}
             initialShopLat={shopLat}
             initialShopLng={shopLng}
+            ownerPhoneNumber={ownerPhoneNumber}
+            ownerEmail={ownerEmail}
             isSaving={isSavingShop}
             onSaveShop={async (payload) => {
               if (!payload.name.trim() || !payload.address.trim()) {

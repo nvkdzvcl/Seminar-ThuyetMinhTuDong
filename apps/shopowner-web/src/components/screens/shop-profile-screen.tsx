@@ -49,6 +49,8 @@ interface ShopProfileScreenProps {
   initialDetailedDescription: string
   initialShopLat?: number | null
   initialShopLng?: number | null
+  ownerPhoneNumber?: string | null
+  ownerEmail?: string | null
   isSaving: boolean
   onSaveShop: (payload: {
     name: string
@@ -92,6 +94,8 @@ export function ShopProfileScreen({
   initialDetailedDescription,
   initialShopLat,
   initialShopLng,
+  ownerPhoneNumber,
+  ownerEmail,
   isSaving,
   onSaveShop,
 }: ShopProfileScreenProps) {
@@ -115,8 +119,8 @@ export function ShopProfileScreen({
   const [moderationError, setModerationError] = useState<string | null>(null)
   const [hasEditedDetailedDescription, setHasEditedDetailedDescription] = useState(false)
   const [autoModerationPaused, setAutoModerationPaused] = useState(false)
-  const [contactPhone] = useState("0901 000 003")
-  const [contactEmail] = useState("owner@gmail.com")
+  const contactPhone = ownerPhoneNumber?.trim() || "Chưa cập nhật số điện thoại"
+  const contactEmail = ownerEmail?.trim() || "Chưa cập nhật email"
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
     if (typeof window === "undefined") {
       return false
