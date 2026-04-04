@@ -4,7 +4,6 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
-import { useNavigate } from "react-router-dom";
 import { locationSocketService } from "../../services/locationSocket";
 import { icons } from "../../types/icons";
 import type { ShopResponse } from "../../types/shop";
@@ -101,7 +100,6 @@ const formatDistance = (from: PositionTuple, to: PositionTuple) => {
 };
 
 export default function TourRouteRealtimeMap({ shops, className }: TourRouteRealtimeMapProps) {
-    const navigate = useNavigate();
     const [connected, setConnected] = useState(false);
     const [error, setError] = useState("");
     const [currentPosition, setCurrentPosition] = useState<PositionTuple>([
@@ -132,13 +130,12 @@ export default function TourRouteRealtimeMap({ shops, className }: TourRouteReal
 
         locationSocketService.connect(
             token,
-            navigate,
             (response: ApiResponse<PagingDto<ShopResponse>>) => {
                 setRealtimeNearbyShops(response.result?.items ?? []);
                 setError("");
             },
-            (socketError) => {
-                setError(socketError.message || "Không nhận được dữ liệu realtime từ socket");
+            (errorResponse) => {
+                setError(errorResponse.message || "Không nhận được dữ liệu realtime từ socket");
             },
             () => {
                 setConnected(true);
@@ -149,7 +146,7 @@ export default function TourRouteRealtimeMap({ shops, className }: TourRouteReal
             locationSocketService.disconnect();
             setConnected(false);
         };
-    }, [navigate, token]);
+    }, [token]);
 
     useEffect(() => {
         if (!connected) return;
