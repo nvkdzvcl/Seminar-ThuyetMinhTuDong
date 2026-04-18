@@ -15,8 +15,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 public interface UserMapper {
 
     User toUserFromUserCreateRequest(UserCreationRequest request);
-    User toUserFromUserRegister(UserRegister request);
-    UserResponse toUserResponseFromUser(User user);
+    User toUserFromUserRegister(UserRegister request);    UserResponse toUserResponseFromUser(User user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateUserInfo(@MappingTarget User user, UserUpdateRequest request);

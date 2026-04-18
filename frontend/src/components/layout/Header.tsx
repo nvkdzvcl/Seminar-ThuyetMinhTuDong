@@ -21,11 +21,13 @@ const Header: React.FC = () => {
     const isShopActive =
         isExactOrChild(routePath.shopSearchPage);
 
-    const isScanShopQrActive =
-        pathname === routePath.scanShopQrRootPage;
-
-    const isTourActive =
+     const isTourActive =
         pathname === routePath.NearbyShopPage || pathname.startsWith("/tour/");
+
+    const isScanShopQrActive =
+            pathname === routePath.scanShopQrRootPage;
+
+    const isTourSuggestActive = pathname === routePath.tourSuggestPage; 
 
     const isOrderActive =
         pathname === "/order" ||
@@ -75,6 +77,14 @@ const Header: React.FC = () => {
                             className={ isScanShopQrActive ? activeClass : inactiveClass}
                         >
                             Quét QR
+                        </NavLink>
+
+
+                        <NavLink
+                            to={routePath.tourSuggestPage}
+                            className={ isTourSuggestActive ? activeClass : inactiveClass}
+                        >
+                            Tour
                         </NavLink>
 
                         <NavLink

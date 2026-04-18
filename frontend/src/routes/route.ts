@@ -6,12 +6,11 @@ import SearchDishPage from "../pages/customerPage/SearchDishPage";
 import SearchShopPage from "../pages/customerPage/SearchShopPage";
 import ScanShopQrPage from "../pages/customerPage/ScanShopQrPage";
 import ShopDetailPage from "../pages/customerPage/ShopDetailPage";
-
+import TourSuggestionPage from "../pages/customerPage/TourSuggestionPage";
+import TourDetailPage from "../pages/customerPage/TourDetailPage";
 
 const routePath = {
     login: "/login",
-
-
 
     HomeDishPage: "/dish",
     dishDetailPage: "/dish/:dishId",
@@ -22,11 +21,12 @@ const routePath = {
     scanShopQrPage: "/shop/scan-qr",
     scanShopQrRootPage: "/scan-qr",
 
-   
+    tourSuggestPage: "/tour",
+    tourDetailPage: "/tour/:tourId",
 };
 
 const cusPublicRoutes = [
-     {
+    {
         path: routePath.login,
         label: "Trang chủ",
         isContent: false,
@@ -34,14 +34,7 @@ const cusPublicRoutes = [
         component: LoginOrRegister,
         isPrivate: false,
     },
-
-
-
-
-
-
-
-     {
+    {
         path: routePath.HomeDishPage,
         label: "Món ăn",
         isContent: true,
@@ -49,9 +42,6 @@ const cusPublicRoutes = [
         component: HomePage,
         isPrivate: false,
     },
-
-
-
     {
         path: routePath.searchDishes,
         label: "Tìm món ăn",
@@ -60,9 +50,7 @@ const cusPublicRoutes = [
         component: SearchDishPage,
         isPrivate: false,
     },
-
-
-     {
+    {
         path: routePath.dishDetailPage,
         label: "Chi tiết món ăn",
         isContent: true,
@@ -70,8 +58,7 @@ const cusPublicRoutes = [
         component: DishDetailPage,
         isPrivate: false,
     },
-
-     {
+    {
         path: routePath.scanShopQrPage,
         label: "Quét QR quán",
         isContent: true,
@@ -79,8 +66,7 @@ const cusPublicRoutes = [
         component: ScanShopQrPage,
         isPrivate: false,
     },
-
-     {
+    {
         path: routePath.ShopDetailPage,
         label: "Chi tiết quán",
         isContent: true,
@@ -88,8 +74,7 @@ const cusPublicRoutes = [
         component: ShopDetailPage,
         isPrivate: false,
     },
-
-     {
+    {
         path: routePath.shopSearchPage,
         label: "Tìm quán ăn",
         isContent: true,
@@ -97,8 +82,7 @@ const cusPublicRoutes = [
         component: SearchShopPage,
         isPrivate: false,
     },
-
-     {
+    {
         path: routePath.NearbyShopPage,
         label: "Vị trí gần tôi",
         isContent: true,
@@ -106,7 +90,6 @@ const cusPublicRoutes = [
         component: NearbyShopPage,
         isPrivate: false,
     },
-
     {
         path: routePath.scanShopQrRootPage,
         label: "Vị trí gần tôi",
@@ -115,13 +98,22 @@ const cusPublicRoutes = [
         component: ScanShopQrPage,
         isPrivate: false,
     },
-
-
-    
-
-
-   
-
+    {
+        path: routePath.tourSuggestPage,
+        label: "Đề xuất tour",
+        isContent: true,
+        type: "CUSTOMER",
+        component: TourSuggestionPage,
+        isPrivate: false,
+    },
+    {
+        path: routePath.tourDetailPage,
+        label: "Chi tiết tour",
+        isContent: true,
+        type: "CUSTOMER",
+        component: TourDetailPage,
+        isPrivate: false,
+    },
 ];
 
 export { routePath, cusPublicRoutes };

@@ -2,7 +2,6 @@ package com.audioguide.service;
 
 import com.audioguide.dto.apiDTO.PagingDto;
 import com.audioguide.dto.shopDTO.ShopResponse;
-import com.audioguide.entity.Shop;
 import com.audioguide.enums.Status;
 import com.audioguide.exception.AppException;
 import com.audioguide.exception.ErrorCode;

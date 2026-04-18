@@ -4,11 +4,10 @@ export type ApiResponse<T> = {
     result: T | null;
 };
 
-
 export type PagingDto<T> = {
-    items: T[],
-    totalItems: 0,
-    currentPage: 0,
-    pageSize: 0,
-    totalPages: 0
-}
+    items: T[];
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+};

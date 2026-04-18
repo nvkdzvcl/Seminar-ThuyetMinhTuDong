@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Table(name = "tour_stop")
@@ -24,13 +25,12 @@ public class TourStop {
     Shop shop;
 
     Integer stopIndex;
-
     Integer plannedCost;
-
     Integer timeToSpendInMinutes;
 
-    @OneToMany(mappedBy = "tourStop", fetch = FetchType.EAGER)
-    List<TourStopItem> tourStopItems;
+    @Builder.Default
+    @OneToMany(mappedBy = "tourStop", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    List<TourStopItem> tourStopItems = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tour_plan_id")

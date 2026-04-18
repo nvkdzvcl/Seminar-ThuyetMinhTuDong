@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-import L, { icon } from "leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import { locationSocketService } from "../../services/locationSocket";
@@ -62,9 +63,8 @@ function RecenterMap({ center }: { center: PositionTuple }) {
     return null;
 }
 
-
-
 export default function NearbyShopPage() {
+    const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const { shops, currentShop } = useAppSelector((state) => state.shop);
     const {
@@ -126,6 +126,7 @@ export default function NearbyShopPage() {
     useEffect(() => {
         locationSocketService.connect(
             token,
+            navigate,
             (response) => {
                 const items = response.result?.items || [];
                 dispatch(setNearbyShops(items));
@@ -141,11 +142,7 @@ export default function NearbyShopPage() {
 
                 dispatch(setCurrentShop(nearestShop));
 
-                if (
-                    autoAudioRef.current &&
-                    nearestShop.audioURL &&
-                    !isSameCurrentShop
-                ) {
+                if (autoAudioRef.current && nearestShop.audioURL && !isSameCurrentShop) {
                     playShopAudio(nearestShop, "REALTIME");
                 }
             },
@@ -232,9 +229,10 @@ export default function NearbyShopPage() {
 
     const handleOpenDirections = () => {
         if (!currentShop) return;
+        navigate("/shop/" + currentShop.id);
 
-        const url = `https://www.google.com/maps/dir/${currentPosition[0]},${currentPosition[1]}/${currentShop.lat},${currentShop.lng}`;
-        window.open(url, "_blank");
+        // const url = `https://www.google.com/maps/dir/${currentPosition[0]},${currentPosition[1]}/${currentShop.lat},${currentShop.lng}`;
+        // window.open(url, "_blank");
     };
 
     const handleListenOtherShopAudio = (shop: ShopResponse) => {
@@ -243,7 +241,7 @@ export default function NearbyShopPage() {
     };
 
     const handleViewOtherShop = (shopId: number) => {
-        console.log("Xem quán:", shopId);
+        navigate(`/shop/${shopId}`);
     };
 
     return (
@@ -269,7 +267,9 @@ export default function NearbyShopPage() {
                         <input
                             type="checkbox"
                             checked={autoTurnOnNearbyShopAudio}
-                            onChange={(e) => dispatch(setAutoTurnOnNearbyShopAudio(e.target.checked))}
+                            onChange={(e) =>
+                                dispatch(setAutoTurnOnNearbyShopAudio(e.target.checked))
+                            }
                             className="h-4 w-4 rounded border-slate-300"
                         />
                         <span className="text-sm font-medium text-slate-700">
@@ -311,11 +311,17 @@ export default function NearbyShopPage() {
 
                                     <RecenterMap center={currentPosition} />
 
-                                    <Marker icon={icons.locationHumanMarker} position={currentPosition}>
+                                    <Marker
+                                        icon={icons.locationHumanMarker}
+                                        position={currentPosition}
+                                    >
                                         <Popup>Vị trí hiện tại của bạn</Popup>
                                     </Marker>
 
-                                    <Marker icon={icons.locationShopMarker} position={[currentShop.lat, currentShop.lng]}>
+                                    <Marker
+                                        icon={icons.locationShopMarker}
+                                        position={[currentShop.lat, currentShop.lng]}
+                                    >
                                         <Popup>
                                             <div>
                                                 <div className="font-semibold">
@@ -329,7 +335,11 @@ export default function NearbyShopPage() {
                                     </Marker>
 
                                     {otherShops.map((shop) => (
-                                        <Marker key={shop.id} icon={icons.shopIconMarker} position={[shop.lat, shop.lng]}>
+                                        <Marker
+                                            key={shop.id}
+                                            icon={icons.shopIconMarker}
+                                            position={[shop.lat, shop.lng]}
+                                        >
                                             <Popup>
                                                 <div>
                                                     <div className="font-semibold">{shop.name}</div>
@@ -352,10 +362,7 @@ export default function NearbyShopPage() {
                         <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
                                 <img
-                                    src={
-                                        currentShop.imageName ||
-                                        "https://placehold.co/800x500?text=Shop"
-                                    }
+                                    src={ import.meta.env.VITE_SHOP_IMAGE_API + currentShop.imageName }
                                     alt={currentShop.name}
                                     className="h-64 w-full rounded-[24px] object-cover"
                                 />
@@ -383,7 +390,9 @@ export default function NearbyShopPage() {
                                             onClick={toggleCurrentShopAudio}
                                             className="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700"
                                         >
-                                            {isAudioPlaying && currentAudio?.type === "SHOP" && currentAudio.id === currentShop.id
+                                            {isAudioPlaying &&
+                                            currentAudio?.type === "SHOP" &&
+                                            currentAudio.id === currentShop.id
                                                 ? "Tắt audio"
                                                 : "Phát audio"}
                                         </button>

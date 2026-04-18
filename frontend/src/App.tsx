@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { cusPublicRoutes } from "./routes/route";
 import DefaultLayout from "./components/layout/DefaultLayout";
 
@@ -22,7 +22,6 @@ function App() {
             <>
             <Router>
                 <Routes>
-                    <Route path="/" element={<Navigate to="/login" replace />} />
                     {cusPublicRoutes.map((route, index) => {
                         const ContentComp = route.component;
                         let Layouts: React.FC<{ children: React.ReactNode }> = DefaultLayout;

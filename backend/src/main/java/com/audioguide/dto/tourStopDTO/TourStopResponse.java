@@ -1,6 +1,5 @@
 package com.audioguide.dto.tourStopDTO;
 
-
 import com.audioguide.dto.tourStopItemDTO.TourStopItemResponse;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -13,15 +12,11 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class TourStopResponse {
-
-
-    Integer Id;
+    Integer id;
     Integer tourPlanId;
     Integer shopId;
     Integer stopIndex;
     Integer plannedCost;
     Integer timeToSpendInMinutes;
-
     List<TourStopItemResponse> tourStopItems;
-
 }

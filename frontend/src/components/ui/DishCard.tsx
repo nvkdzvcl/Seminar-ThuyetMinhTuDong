@@ -30,7 +30,7 @@ function DishCard({
     onListenAudio,
     onViewMenu,
 }: DishCardProps) {
-    const navigate = useNavigate();
+    const navigate = useNavigate()
     const { currentAudio, isAudioPlaying } = useAudioPlayer();
     const isCurrentDishAudio =
         currentAudio?.type === "DISH" && currentAudio.id === id;

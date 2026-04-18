@@ -3,6 +3,7 @@ import authReducer from "./slices/authSlice";
 import modalReducer from "./slices/modalSlice";
 import shopReducer from "./slices/shopSlice";
 import audioReducer from "./slices/audioSlice";
+import tourReducer from "./slices/tourSlice";
 
 export const store = configureStore({
     reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
         modal: modalReducer,
         shop: shopReducer,
         audio: audioReducer,
+        tour: tourReducer,
     },
 });
 
